@@ -120,6 +120,10 @@ interface ChecklistContextValue {
   addSection: (title: string) => void;
   updateSection: (oldTitle: string, newTitle: string) => void;
   removeSection: (title: string) => void;
+
+  // Reorder operations
+  reorderSections: (newSections: string[]) => void;
+  reorderTasksInSection: (category: string, newSectionTasks: Task[]) => void;
 }
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null);
@@ -296,6 +300,26 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     [updateActiveSections, updateActiveTasks]
   );
 
+  const reorderSections = useCallback(
+    (newSections: string[]) => updateActiveSections(() => newSections),
+    [updateActiveSections]
+  );
+
+  const reorderTasksInSection = useCallback(
+    (category: string, newSectionTasks: Task[]) => {
+      updateActiveTasks((prev) => {
+        // Find the positions in the flat array where this section's tasks live
+        // and replace them in-place with the new order
+        const categoryIndices: number[] = [];
+        prev.forEach((t, i) => { if (t.category === category) categoryIndices.push(i); });
+        const result = [...prev];
+        categoryIndices.forEach((idx, i) => { result[idx] = newSectionTasks[i]; });
+        return result;
+      });
+    },
+    [updateActiveTasks]
+  );
+
   return (
     <ChecklistContext.Provider
       value={{
@@ -315,6 +339,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         addSection,
         updateSection,
         removeSection,
+        reorderSections,
+        reorderTasksInSection,
       }}
     >
       {children}

@@ -20,7 +20,53 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Edit Modal (sections / tasks) ───────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function moveItem<T>(arr: T[], index: number, dir: "up" | "down"): T[] {
+  const next = [...arr];
+  const target = dir === "up" ? index - 1 : index + 1;
+  if (target < 0 || target >= next.length) return next;
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+// ─── Move Buttons ─────────────────────────────────────────────────────────────
+
+function MoveButtons({
+  onUp,
+  onDown,
+  canUp,
+  canDown,
+}: {
+  onUp: () => void;
+  onDown: () => void;
+  canUp: boolean;
+  canDown: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <View style={styles.moveBtns}>
+      <TouchableOpacity
+        onPress={onUp}
+        disabled={!canUp}
+        style={[styles.moveBtn, { opacity: canUp ? 1 : 0.25 }]}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      >
+        <Text style={[styles.moveBtnText, { color: colors.mutedForeground }]}>↑</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={onDown}
+        disabled={!canDown}
+        style={[styles.moveBtn, { opacity: canDown ? 1 : 0.25 }]}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      >
+        <Text style={[styles.moveBtnText, { color: colors.mutedForeground }]}>↓</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
 
 type EditTarget =
   | { kind: "section"; title: string }
@@ -59,15 +105,10 @@ function EditModal({
 
   const handleSave = () => {
     if (!valid) return;
-    if (isNewSection) {
-      addSection(text.trim());
-    } else if (target.kind === "section") {
-      updateSection(target.title, text.trim());
-    } else if (isNewTask && target.kind === "newTask") {
-      addTask(target.category, text.trim(), required);
-    } else if (isTask && target.kind === "task") {
-      updateTask(target.task.id, { text: text.trim(), required });
-    }
+    if (isNewSection) addSection(text.trim());
+    else if (target.kind === "section") updateSection(target.title, text.trim());
+    else if (isNewTask && target.kind === "newTask") addTask(target.category, text.trim(), required);
+    else if (isTask && target.kind === "task") updateTask(target.task.id, { text: text.trim(), required });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
   };
@@ -82,15 +123,8 @@ function EditModal({
         <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
           <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-            {isNewSection
-              ? "Add Section"
-              : target.kind === "section"
-              ? "Edit Section"
-              : isNewTask
-              ? "Add Task"
-              : "Edit Task"}
+            {isNewSection ? "Add Section" : target.kind === "section" ? "Edit Section" : isNewTask ? "Add Task" : "Edit Task"}
           </Text>
-
           <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>
             {isSection ? "Section title" : "Task description"}
           </Text>
@@ -112,16 +146,11 @@ function EditModal({
               },
             ]}
           />
-
           {!isSection && (
             <View style={styles.requiredRow}>
               <View>
-                <Text style={[styles.requiredLabel, { color: colors.foreground }]}>
-                  Required task
-                </Text>
-                <Text style={[styles.requiredHint, { color: colors.mutedForeground }]}>
-                  Required tasks are shown in bold
-                </Text>
+                <Text style={[styles.requiredLabel, { color: colors.foreground }]}>Required task</Text>
+                <Text style={[styles.requiredHint, { color: colors.mutedForeground }]}>Required tasks are shown in bold</Text>
               </View>
               <Switch
                 value={required}
@@ -131,21 +160,12 @@ function EditModal({
               />
             </View>
           )}
-
           <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: colors.muted }]}
-              onPress={onClose}
-            >
-              <Text style={[styles.modalBtnText, { color: colors.foreground }]}>
-                Cancel
-              </Text>
+            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.muted }]} onPress={onClose}>
+              <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.modalBtn,
-                { backgroundColor: valid ? colors.primary : colors.border, flex: 1.5 },
-              ]}
+              style={[styles.modalBtn, { backgroundColor: valid ? colors.primary : colors.border, flex: 1.5 }]}
               onPress={handleSave}
               disabled={!valid}
             >
@@ -160,9 +180,28 @@ function EditModal({
 
 // ─── Task Row ─────────────────────────────────────────────────────────────────
 
-function TaskSettingsRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
+function TaskSettingsRow({
+  task,
+  index,
+  total,
+  category,
+  onEdit,
+}: {
+  task: Task;
+  index: number;
+  total: number;
+  category: string;
+  onEdit: () => void;
+}) {
   const colors = useColors();
-  const { removeTask, updateTask } = useChecklist();
+  const { removeTask, updateTask, tasks, reorderTasksInSection } = useChecklist();
+
+  const sectionTasks = tasks.filter((t) => t.category === category);
+
+  const handleMove = (dir: "up" | "down") => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    reorderTasksInSection(category, moveItem(sectionTasks, index, dir));
+  };
 
   const handleRemove = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -178,17 +217,18 @@ function TaskSettingsRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
   };
 
   return (
-    <View style={[styles.taskSettingsRow, { borderBottomColor: colors.border }]}>
-      <TouchableOpacity onPress={toggleRequired} style={styles.requiredPill}>
-        <View
-          style={[
-            styles.dot,
-            { backgroundColor: task.required ? colors.primary : colors.border },
-          ]}
-        />
+    <View style={[styles.taskRow, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+      <MoveButtons
+        onUp={() => handleMove("up")}
+        onDown={() => handleMove("down")}
+        canUp={index > 0}
+        canDown={index < total - 1}
+      />
+      <TouchableOpacity onPress={toggleRequired} style={styles.taskContent}>
+        <View style={[styles.dot, { backgroundColor: task.required ? colors.primary : colors.border }]} />
         <Text
           style={[
-            styles.taskSettingsText,
+            styles.taskText,
             {
               color: task.required ? colors.foreground : colors.mutedForeground,
               fontWeight: task.required ? "600" : "400",
@@ -201,18 +241,10 @@ function TaskSettingsRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
         </Text>
       </TouchableOpacity>
       <View style={styles.rowActions}>
-        <TouchableOpacity
-          onPress={onEdit}
-          style={[styles.iconBtn, { backgroundColor: colors.muted }]}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        <TouchableOpacity onPress={onEdit} style={[styles.iconBtn, { backgroundColor: colors.muted }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.iconBtnText}>✏️</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleRemove}
-          style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        <TouchableOpacity onPress={handleRemove} style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.iconBtnText}>🗑️</Text>
         </TouchableOpacity>
       </View>
@@ -224,85 +256,74 @@ function TaskSettingsRow({ task, onEdit }: { task: Task; onEdit: () => void }) {
 
 function SectionCard({
   title,
-  tasks,
+  index,
+  totalSections,
   onEdit,
 }: {
   title: string;
-  tasks: Task[];
+  index: number;
+  totalSections: number;
   onEdit: (t: EditTarget) => void;
 }) {
   const colors = useColors();
-  const { removeSection } = useChecklist();
+  const { tasks, removeSection, sections, reorderSections } = useChecklist();
+  const sectionTasks = tasks.filter((t) => t.category === title);
   const [expanded, setExpanded] = useState(true);
+
+  const handleMove = (dir: "up" | "down") => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    reorderSections(moveItem(sections, index, dir));
+  };
 
   const handleRemoveSection = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       "Remove Section",
-      `Remove "${title}" and all ${tasks.length} task${tasks.length !== 1 ? "s" : ""} in it?`,
+      `Remove "${title}" and all ${sectionTasks.length} task${sectionTasks.length !== 1 ? "s" : ""} in it?`,
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => removeSection(title),
-        },
+        { text: "Remove", style: "destructive", onPress: () => removeSection(title) },
       ]
     );
   };
 
   return (
-    <View
-      style={[
-        styles.sectionCard,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      <View
-        style={[
-          styles.sectionCardHeader,
-          { borderBottomColor: expanded ? colors.border : "transparent" },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => setExpanded((e) => !e)}
-          style={styles.sectionTitleRow}
-        >
-          <Text style={[styles.chevron, { color: colors.mutedForeground }]}>
-            {expanded ? "▾" : "▸"}
-          </Text>
-          <Text
-            style={[styles.sectionCardTitle, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
+    <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      {/* Section header */}
+      <View style={[styles.sectionHeader, { borderBottomColor: expanded ? colors.border : "transparent" }]}>
+        <MoveButtons
+          onUp={() => handleMove("up")}
+          onDown={() => handleMove("down")}
+          canUp={index > 0}
+          canDown={index < totalSections - 1}
+        />
+        <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.sectionTitleRow}>
+          <Text style={[styles.chevron, { color: colors.mutedForeground }]}>{expanded ? "▾" : "▸"}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
           <Text style={[styles.taskCount, { color: colors.mutedForeground }]}>
-            {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+            {sectionTasks.length} task{sectionTasks.length !== 1 ? "s" : ""}
           </Text>
         </TouchableOpacity>
         <View style={styles.rowActions}>
-          <TouchableOpacity
-            onPress={() => onEdit({ kind: "section", title })}
-            style={[styles.iconBtn, { backgroundColor: colors.muted }]}
-          >
+          <TouchableOpacity onPress={() => onEdit({ kind: "section", title })} style={[styles.iconBtn, { backgroundColor: colors.muted }]}>
             <Text style={styles.iconBtnText}>✏️</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleRemoveSection}
-            style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]}
-          >
+          <TouchableOpacity onPress={handleRemoveSection} style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]}>
             <Text style={styles.iconBtnText}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Tasks */}
       {expanded && (
         <View>
-          {tasks.map((task) => (
+          {sectionTasks.map((task, i) => (
             <TaskSettingsRow
               key={task.id}
               task={task}
+              index={i}
+              total={sectionTasks.length}
+              category={title}
               onEdit={() => onEdit({ kind: "task", task })}
             />
           ))}
@@ -310,9 +331,7 @@ function SectionCard({
             style={[styles.addTaskBtn, { borderColor: colors.border }]}
             onPress={() => onEdit({ kind: "newTask", category: title })}
           >
-            <Text style={[styles.addTaskBtnText, { color: colors.primary }]}>
-              + Add Task
-            </Text>
+            <Text style={[styles.addTaskBtnText, { color: colors.primary }]}>+ Add Task</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -326,20 +345,12 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {
-    checklists,
-    activeChecklistId,
-    updateChecklistName,
-    sections,
-    tasks,
-  } = useChecklist();
+  const { checklists, activeChecklistId, updateChecklistName, sections, tasks } = useChecklist();
   const [editTarget, setEditTarget] = useState<EditTarget>(null);
   const isWeb = Platform.OS === "web";
   const topPadding = isWeb ? 67 : insets.top;
 
   const activeMeta = checklists.find((c) => c.id === activeChecklistId);
-
-  // Inline rename state for the checklist name field
   const [nameValue, setNameValue] = useState(activeMeta?.name ?? "");
   const [nameDirty, setNameDirty] = useState(false);
 
@@ -353,12 +364,7 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.primary, paddingTop: topPadding },
-        ]}
-      >
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>‹ Back</Text>
         </TouchableOpacity>
@@ -369,31 +375,25 @@ export default function SettingsScreen() {
       <FlatList
         data={sections}
         keyExtractor={(item) => item}
-        renderItem={({ item: section }) => (
-          <SectionCard
-            title={section}
-            tasks={tasks.filter((t) => t.category === section)}
-            onEdit={setEditTarget}
-          />
-        )}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           padding: 12,
           paddingBottom: (isWeb ? 34 : insets.bottom) + 80,
           gap: 12,
         }}
-        showsVerticalScrollIndicator={false}
+        renderItem={({ item: section, index }) => (
+          <SectionCard
+            title={section}
+            index={index}
+            totalSections={sections.length}
+            onEdit={setEditTarget}
+          />
+        )}
         ListHeaderComponent={
-          <View style={{ gap: 12 }}>
-            {/* Checklist name */}
-            <View
-              style={[
-                styles.nameCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.nameCardLabel, { color: colors.mutedForeground }]}>
-                CHECKLIST NAME
-              </Text>
+          <View style={{ gap: 12, marginBottom: 4 }}>
+            {/* Checklist name card */}
+            <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.nameCardLabel, { color: colors.mutedForeground }]}>CHECKLIST NAME</Text>
               <View style={styles.nameCardRow}>
                 <TextInput
                   value={nameValue}
@@ -407,17 +407,11 @@ export default function SettingsScreen() {
                   onSubmitEditing={handleNameSave}
                   style={[
                     styles.nameCardInput,
-                    {
-                      color: colors.foreground,
-                      borderColor: nameDirty ? colors.primary : colors.border,
-                    },
+                    { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
                   ]}
                 />
                 {nameDirty && (
-                  <TouchableOpacity
-                    onPress={handleNameSave}
-                    style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}
-                  >
+                  <TouchableOpacity onPress={handleNameSave} style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}>
                     <Text style={styles.saveNameBtnText}>Save</Text>
                   </TouchableOpacity>
                 )}
@@ -425,27 +419,18 @@ export default function SettingsScreen() {
             </View>
 
             {/* Legend */}
-            <View
-              style={[
-                styles.legend,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
+            <View style={[styles.legend, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.legendItem}>
                 <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.legendText, { color: colors.foreground, fontWeight: "600" }]}>
-                  Required
-                </Text>
+                <Text style={[styles.legendText, { color: colors.foreground, fontWeight: "600" }]}>Required</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.dot, { backgroundColor: colors.border }]} />
-                <Text style={[styles.legendText, { color: colors.mutedForeground }]}>
-                  Optional
-                </Text>
+                <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Optional</Text>
               </View>
-              <Text style={[styles.legendHint, { color: colors.mutedForeground }]}>
-                Tap dot to toggle
-              </Text>
+              <View style={styles.legendItem}>
+                <Text style={[styles.legendText, { color: colors.mutedForeground }]}>↑↓ to reorder</Text>
+              </View>
             </View>
           </View>
         }
@@ -454,16 +439,12 @@ export default function SettingsScreen() {
             style={[styles.addSectionBtn, { borderColor: colors.primary }]}
             onPress={() => setEditTarget({ kind: "newSection" })}
           >
-            <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>
-              + Add Section
-            </Text>
+            <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>+ Add Section</Text>
           </TouchableOpacity>
         }
       />
 
-      {editTarget && (
-        <EditModal target={editTarget} onClose={() => setEditTarget(null)} />
-      )}
+      {editTarget && <EditModal target={editTarget} onClose={() => setEditTarget(null)} />}
     </View>
   );
 }
@@ -494,7 +475,28 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
 
-  // Checklist name card
+  // Move buttons
+  moveBtns: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 28,
+    gap: 0,
+    flexShrink: 0,
+  },
+  moveBtn: {
+    width: 28,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  moveBtnText: {
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+
+  // Name card
   nameCard: {
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
@@ -507,11 +509,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
-  nameCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  nameCardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   nameCardInput: {
     flex: 1,
     fontSize: 16,
@@ -522,17 +520,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  saveNameBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  saveNameBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
+  saveNameBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8 },
+  saveNameBtnText: { color: "#fff", fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 
   // Legend
   legend: {
@@ -541,11 +530,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: 14,
+    gap: 16,
+    flexWrap: "wrap",
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendText: { fontSize: 13 },
-  legendHint: { fontSize: 12, marginLeft: "auto", fontStyle: "italic" },
   dot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
 
   // Section card
@@ -554,54 +543,41 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
-  sectionCardHeader: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingLeft: 4,
+    paddingRight: 8,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 8,
+    gap: 4,
   },
   sectionTitleRow: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    paddingVertical: 2,
   },
   chevron: { fontSize: 14, width: 14 },
-  sectionCardTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    flex: 1,
-  },
+  sectionTitle: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_700Bold", flex: 1 },
   taskCount: { fontSize: 12 },
   rowActions: { flexDirection: "row", gap: 6 },
-  iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  iconBtn: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   iconBtnText: { fontSize: 14 },
 
   // Task row
-  taskSettingsRow: {
+  taskRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
+    paddingLeft: 4,
+    paddingRight: 8,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 8,
+    gap: 4,
   },
-  requiredPill: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  taskSettingsText: { fontSize: 13, lineHeight: 18 },
+  taskContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  taskText: { fontSize: 13, lineHeight: 18 },
 
   addTaskBtn: {
     paddingVertical: 10,
@@ -609,12 +585,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
   },
-  addTaskBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
-
+  addTaskBtnText: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
   addSectionBtn: {
     borderWidth: 1.5,
     borderStyle: "dashed",
@@ -623,44 +594,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
   },
-  addSectionBtnText: {
-    fontSize: 15,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
+  addSectionBtnText: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  modalSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 36,
-    gap: 12,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 4,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    marginBottom: 4,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  modalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  modalTitle: { fontSize: 18, fontWeight: "700", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  inputLabel: { fontSize: 12, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 },
   textInput: {
     borderWidth: 1,
     borderRadius: 10,
@@ -670,24 +612,10 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     lineHeight: 22,
   },
-  requiredRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 6,
-  },
+  requiredRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6 },
   requiredLabel: { fontSize: 15, fontWeight: "500" },
   requiredHint: { fontSize: 12, marginTop: 2 },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
-  modalBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  modalBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
+  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  modalBtnText: { fontSize: 15, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 });
