@@ -165,7 +165,7 @@ function ChecklistTabBar() {
   };
 
   return (
-    <View style={[styles.tabBarContainer, { backgroundColor: colors.primary }]}>
+    <View style={[styles.tabBarContainer, { backgroundColor: "#A0102A" }]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -182,16 +182,19 @@ function ChecklistTabBar() {
               delayLongPress={400}
               style={[
                 styles.tab,
-                {
-                  backgroundColor: active ? "#fff" : "rgba(255,255,255,0.15)",
-                  borderColor: active ? "#fff" : "rgba(255,255,255,0.35)",
-                },
+                active
+                  ? { backgroundColor: "#fff" }
+                  : { backgroundColor: "transparent" },
               ]}
             >
               <Text
                 style={[
                   styles.tabText,
-                  { color: active ? colors.primary : "#fff" },
+                  {
+                    color: active ? colors.primary : "rgba(255,255,255,0.75)",
+                    fontFamily: active ? "Inter_700Bold" : "Inter_400Regular",
+                    fontWeight: active ? "700" : "400",
+                  },
                 ]}
                 numberOfLines={1}
               >
@@ -204,7 +207,7 @@ function ChecklistTabBar() {
         {/* Add button */}
         <TouchableOpacity
           onPress={() => setModal({ kind: "new" })}
-          style={[styles.addTabBtn, { borderColor: "rgba(255,255,255,0.45)" }]}
+          style={styles.addTabBtn}
         >
           <Text style={styles.addTabText}>＋</Text>
         </TouchableOpacity>
@@ -643,26 +646,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    borderWidth: 1,
     maxWidth: 180,
   },
   tabText: {
     fontSize: 13,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
   },
   addTabBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   addTabText: {
-    color: "#fff",
-    fontSize: 16,
-    lineHeight: 20,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 20,
+    lineHeight: 24,
   },
 
   // Category
