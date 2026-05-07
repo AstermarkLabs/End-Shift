@@ -3,11 +3,11 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -17,51 +17,28 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SortableList } from "@/components/SortableList";
 import { Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Drag Handle ─────────────────────────────────────────────────────────────
 
-function moveItem<T>(arr: T[], index: number, dir: "up" | "down"): T[] {
-  const next = [...arr];
-  const target = dir === "up" ? index - 1 : index + 1;
-  if (target < 0 || target >= next.length) return next;
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-}
-
-// ─── Move Buttons ─────────────────────────────────────────────────────────────
-
-function MoveButtons({
-  onUp,
-  onDown,
-  canUp,
-  canDown,
+function DragHandle({
+  panHandlers,
+  isActive,
 }: {
-  onUp: () => void;
-  onDown: () => void;
-  canUp: boolean;
-  canDown: boolean;
+  panHandlers: object;
+  isActive: boolean;
 }) {
   const colors = useColors();
   return (
-    <View style={styles.moveBtns}>
-      <TouchableOpacity
-        onPress={onUp}
-        disabled={!canUp}
-        style={[styles.moveBtn, { opacity: canUp ? 1 : 0.25 }]}
-        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-      >
-        <Text style={[styles.moveBtnText, { color: colors.mutedForeground }]}>↑</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={onDown}
-        disabled={!canDown}
-        style={[styles.moveBtn, { opacity: canDown ? 1 : 0.25 }]}
-        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-      >
-        <Text style={[styles.moveBtnText, { color: colors.mutedForeground }]}>↓</Text>
-      </TouchableOpacity>
+    <View
+      {...panHandlers}
+      style={[styles.dragHandle, { opacity: isActive ? 0.4 : 0.55 }]}
+    >
+      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
+      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
+      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
     </View>
   );
 }
@@ -182,26 +159,17 @@ function EditModal({
 
 function TaskSettingsRow({
   task,
-  index,
-  total,
-  category,
+  isActive,
+  dragHandleProps,
   onEdit,
 }: {
   task: Task;
-  index: number;
-  total: number;
-  category: string;
+  isActive: boolean;
+  dragHandleProps: object;
   onEdit: () => void;
 }) {
   const colors = useColors();
-  const { removeTask, updateTask, tasks, reorderTasksInSection } = useChecklist();
-
-  const sectionTasks = tasks.filter((t) => t.category === category);
-
-  const handleMove = (dir: "up" | "down") => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    reorderTasksInSection(category, moveItem(sectionTasks, index, dir));
-  };
+  const { removeTask, updateTask } = useChecklist();
 
   const handleRemove = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -217,13 +185,16 @@ function TaskSettingsRow({
   };
 
   return (
-    <View style={[styles.taskRow, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
-      <MoveButtons
-        onUp={() => handleMove("up")}
-        onDown={() => handleMove("down")}
-        canUp={index > 0}
-        canDown={index < total - 1}
-      />
+    <View
+      style={[
+        styles.taskRow,
+        {
+          borderBottomColor: colors.border,
+          backgroundColor: isActive ? colors.accent : colors.card,
+        },
+      ]}
+    >
+      <DragHandle panHandlers={dragHandleProps} isActive={isActive} />
       <TouchableOpacity onPress={toggleRequired} style={styles.taskContent}>
         <View style={[styles.dot, { backgroundColor: task.required ? colors.primary : colors.border }]} />
         <Text
@@ -256,24 +227,23 @@ function TaskSettingsRow({
 
 function SectionCard({
   title,
-  index,
-  totalSections,
+  isActive: sectionActive,
+  dragHandleProps,
   onEdit,
+  onDragStart,
+  onDragEnd,
 }: {
   title: string;
-  index: number;
-  totalSections: number;
+  isActive: boolean;
+  dragHandleProps: object;
   onEdit: (t: EditTarget) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const colors = useColors();
-  const { tasks, removeSection, sections, reorderSections } = useChecklist();
+  const { tasks, removeSection, reorderTasksInSection } = useChecklist();
   const sectionTasks = tasks.filter((t) => t.category === title);
   const [expanded, setExpanded] = useState(true);
-
-  const handleMove = (dir: "up" | "down") => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    reorderSections(moveItem(sections, index, dir));
-  };
 
   const handleRemoveSection = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -288,15 +258,19 @@ function SectionCard({
   };
 
   return (
-    <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.sectionCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: sectionActive ? colors.primary : colors.border,
+          borderWidth: sectionActive ? 1.5 : StyleSheet.hairlineWidth,
+        },
+      ]}
+    >
       {/* Section header */}
       <View style={[styles.sectionHeader, { borderBottomColor: expanded ? colors.border : "transparent" }]}>
-        <MoveButtons
-          onUp={() => handleMove("up")}
-          onDown={() => handleMove("down")}
-          canUp={index > 0}
-          canDown={index < totalSections - 1}
-        />
+        <DragHandle panHandlers={dragHandleProps} isActive={sectionActive} />
         <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.sectionTitleRow}>
           <Text style={[styles.chevron, { color: colors.mutedForeground }]}>{expanded ? "▾" : "▸"}</Text>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
@@ -314,19 +288,25 @@ function SectionCard({
         </View>
       </View>
 
-      {/* Tasks */}
+      {/* Sortable tasks */}
       {expanded && (
         <View>
-          {sectionTasks.map((task, i) => (
-            <TaskSettingsRow
-              key={task.id}
-              task={task}
-              index={i}
-              total={sectionTasks.length}
-              category={title}
-              onEdit={() => onEdit({ kind: "task", task })}
-            />
-          ))}
+          <SortableList
+            data={sectionTasks}
+            keyExtractor={(t) => String(t.id)}
+            rowHeight={48}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onReorder={(newData) => reorderTasksInSection(title, newData)}
+            renderItem={({ item, isActive, dragHandleProps: hp }) => (
+              <TaskSettingsRow
+                task={item}
+                isActive={isActive}
+                dragHandleProps={hp}
+                onEdit={() => onEdit({ kind: "task", task: item })}
+              />
+            )}
+          />
           <TouchableOpacity
             style={[styles.addTaskBtn, { borderColor: colors.border }]}
             onPress={() => onEdit({ kind: "newTask", category: title })}
@@ -345,8 +325,9 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { checklists, activeChecklistId, updateChecklistName, sections, tasks } = useChecklist();
+  const { checklists, activeChecklistId, updateChecklistName, sections, tasks, reorderSections } = useChecklist();
   const [editTarget, setEditTarget] = useState<EditTarget>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
   const isWeb = Platform.OS === "web";
   const topPadding = isWeb ? 67 : insets.top;
 
@@ -372,77 +353,88 @@ export default function SettingsScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      <FlatList
-        data={sections}
-        keyExtractor={(item) => item}
+      <ScrollView
+        scrollEnabled={scrollEnabled}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           padding: 12,
           paddingBottom: (isWeb ? 34 : insets.bottom) + 80,
           gap: 12,
         }}
-        renderItem={({ item: section, index }) => (
-          <SectionCard
-            title={section}
-            index={index}
-            totalSections={sections.length}
-            onEdit={setEditTarget}
-          />
-        )}
-        ListHeaderComponent={
-          <View style={{ gap: 12, marginBottom: 4 }}>
-            {/* Checklist name card */}
-            <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.nameCardLabel, { color: colors.mutedForeground }]}>CHECKLIST NAME</Text>
-              <View style={styles.nameCardRow}>
-                <TextInput
-                  value={nameValue}
-                  onChangeText={(v) => {
-                    setNameValue(v);
-                    setNameDirty(v.trim() !== (activeMeta?.name ?? ""));
-                  }}
-                  placeholder="Checklist name"
-                  placeholderTextColor={colors.mutedForeground}
-                  returnKeyType="done"
-                  onSubmitEditing={handleNameSave}
-                  style={[
-                    styles.nameCardInput,
-                    { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
-                  ]}
-                />
-                {nameDirty && (
-                  <TouchableOpacity onPress={handleNameSave} style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.saveNameBtnText}>Save</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Legend */}
-            <View style={[styles.legend, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.legendText, { color: colors.foreground, fontWeight: "600" }]}>Required</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: colors.border }]} />
-                <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Optional</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <Text style={[styles.legendText, { color: colors.mutedForeground }]}>↑↓ to reorder</Text>
-              </View>
-            </View>
+      >
+        {/* Checklist name card */}
+        <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.nameCardLabel, { color: colors.mutedForeground }]}>CHECKLIST NAME</Text>
+          <View style={styles.nameCardRow}>
+            <TextInput
+              value={nameValue}
+              onChangeText={(v) => {
+                setNameValue(v);
+                setNameDirty(v.trim() !== (activeMeta?.name ?? ""));
+              }}
+              placeholder="Checklist name"
+              placeholderTextColor={colors.mutedForeground}
+              returnKeyType="done"
+              onSubmitEditing={handleNameSave}
+              style={[
+                styles.nameCardInput,
+                { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
+              ]}
+            />
+            {nameDirty && (
+              <TouchableOpacity onPress={handleNameSave} style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}>
+                <Text style={styles.saveNameBtnText}>Save</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        }
-        ListFooterComponent={
-          <TouchableOpacity
-            style={[styles.addSectionBtn, { borderColor: colors.primary }]}
-            onPress={() => setEditTarget({ kind: "newSection" })}
-          >
-            <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>+ Add Section</Text>
-          </TouchableOpacity>
-        }
-      />
+        </View>
+
+        {/* Legend */}
+        <View style={[styles.legend, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.legendText, { color: colors.foreground, fontWeight: "600" }]}>Required</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: colors.border }]} />
+            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Optional</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Text style={{ fontSize: 16, color: colors.mutedForeground }}>≡</Text>
+            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Hold to reorder</Text>
+          </View>
+        </View>
+
+        {/* Sortable sections */}
+        <SortableList
+          data={sections}
+          keyExtractor={(s) => s}
+          rowHeight={56}
+          onDragStart={() => setScrollEnabled(false)}
+          onDragEnd={() => setScrollEnabled(true)}
+          onReorder={reorderSections}
+          style={{ gap: 12 }}
+          renderItem={({ item: section, isActive, dragHandleProps }) => (
+            <SectionCard
+              title={section}
+              isActive={isActive}
+              dragHandleProps={dragHandleProps}
+              onEdit={setEditTarget}
+              onDragStart={() => setScrollEnabled(false)}
+              onDragEnd={() => setScrollEnabled(true)}
+            />
+          )}
+        />
+
+        {/* Add section */}
+        <TouchableOpacity
+          style={[styles.addSectionBtn, { borderColor: colors.primary }]}
+          onPress={() => setEditTarget({ kind: "newSection" })}
+        >
+          <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>+ Add Section</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       {editTarget && <EditModal target={editTarget} onClose={() => setEditTarget(null)} />}
     </View>
@@ -475,25 +467,21 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
 
-  // Move buttons
-  moveBtns: {
-    flexDirection: "column",
+  // Drag handle
+  dragHandle: {
+    width: 30,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     alignItems: "center",
     justifyContent: "center",
-    width: 28,
-    gap: 0,
+    gap: 4,
     flexShrink: 0,
+    cursor: "grab" as any,
   },
-  moveBtn: {
-    width: 28,
-    height: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moveBtnText: {
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: "600",
+  dragLine: {
+    width: 16,
+    height: 2,
+    borderRadius: 1,
   },
 
   // Name card
@@ -530,7 +518,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: 16,
+    gap: 14,
     flexWrap: "wrap",
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -540,13 +528,11 @@ const styles = StyleSheet.create({
   // Section card
   sectionCard: {
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: 4,
     paddingRight: 8,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -570,7 +556,6 @@ const styles = StyleSheet.create({
   taskRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: 4,
     paddingRight: 8,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -592,7 +577,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
-    marginTop: 4,
   },
   addSectionBtnText: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
 
