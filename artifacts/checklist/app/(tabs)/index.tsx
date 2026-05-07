@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   iconAction: {
     width: 36,
     height: 36,
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "transparent",
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resetButton: {
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "transparent",
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
