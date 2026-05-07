@@ -158,3 +158,29 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # Security: fix ReDoS + method-injection in picomatch (GHSA-c2c7-rcm5-vvqj, GHSA-3v7f-55p6-f55p)
+  # Path-specific overrides only — no blanket override to avoid forcing v4 onto v2 consumers (anymatch, etc.)
+  # v2 consumers: upgrade within v2
+  "jest-util>picomatch": "^2.3.2"
+  "micromatch>picomatch": "^2.3.2"
+  "anymatch>picomatch": "^2.3.2"
+  # v4 consumers: upgrade within v4 (each is a direct dep of the named package)
+  "@expo/cli>picomatch": "^4.0.4"
+  "@expo/metro-config>picomatch": "^4.0.4"
+  "tinyglobby>picomatch": "^4.0.4"
+  "vite>picomatch": "^4.0.4"
+  # Security: fix DoS in path-to-regexp (GHSA-j3q9-mxjg-w52f, GHSA-27v5-c462-wpq7)
+  path-to-regexp: "^8.4.2"
+  # Security: fix code-injection + prototype-pollution in lodash (GHSA-r5fr-rjxr-66jc, GHSA-f23m-r3pf-42rh)
+  lodash: "^4.18.1"
+  # Security: fix prototype-pollution in yaml (GHSA-48c2-rrv3-qjmp)
+  # Scoped to metro-config only (already uses yaml@2); @expo/ngrok uses yaml@1 and must stay on v1.
+  "metro-config>yaml": "^2.8.3"
+  # Security: fix ReDoS in brace-expansion (GHSA-f886-m6hf-6m8v)
+  # Vulnerable range is brace-expansion@2.0.0-2.0.2 only (v1.x is not affected).
+  # Only minimatch@9+ (used by @expo/cli) pulls in brace-expansion@2; minimatch@3 uses v1.
+  # brace-expansion@2 core expand() API is backward compatible with v1, so this is safe for all consumers.
+  # pnpm path overrides only support one level of ">", so we scope to the immediate parent (minimatch).
+  "minimatch>brace-expansion": "^2.0.3"
+  # Security: fix XSS in postcss (GHSA-qx2v-qp2m-jg93)
+  postcss: "^8.5.10"
