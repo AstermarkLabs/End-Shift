@@ -16,7 +16,22 @@ export interface Task {
   required: boolean;
 }
 
-const INITIAL_TASKS: Task[] = [
+export interface ChecklistMeta {
+  id: string;
+  name: string;
+  sections: string[];
+}
+
+// ─── Default data ────────────────────────────────────────────────────────────
+
+const DEFAULT_SECTIONS = [
+  "1 Hour Before Closing",
+  "30 Minutes Before Closing",
+  "Driver Area Cleaning",
+  "Final Walk-Through",
+];
+
+const DEFAULT_TASKS: Task[] = [
   { id: 1, category: "1 Hour Before Closing", text: "Begin the daily count sheet and complete inventory counts.", completed: false, required: true },
   { id: 2, category: "1 Hour Before Closing", text: "Ensure all required labels are completed; pull any labels that need to be removed.", completed: false, required: true },
   { id: 3, category: "1 Hour Before Closing", text: "Pull product as required at this time.", completed: false, required: true },
@@ -55,24 +70,53 @@ const INITIAL_TASKS: Task[] = [
   { id: 36, category: "Final Walk-Through", text: "Tea containers have been washed out.", completed: false, required: true },
 ];
 
-const INITIAL_SECTIONS = [
-  "1 Hour Before Closing",
-  "30 Minutes Before Closing",
-  "Driver Area Cleaning",
-  "Final Walk-Through",
+const DEFAULT_CHECKLIST_ID = "closing";
+const DEFAULT_CHECKLISTS: ChecklistMeta[] = [
+  { id: DEFAULT_CHECKLIST_ID, name: "Closing Checklist", sections: DEFAULT_SECTIONS },
 ];
+const DEFAULT_TASKS_BY_CHECKLIST: Record<string, Task[]> = {
+  [DEFAULT_CHECKLIST_ID]: DEFAULT_TASKS,
+};
 
-const TASKS_KEY = "@pizza_hut_tasks_v2";
-const SECTIONS_KEY = "@pizza_hut_sections_v2";
+// ─── Storage keys ─────────────────────────────────────────────────────────────
+
+const KEY_CHECKLISTS = "@pizza_hut_v3_checklists";
+const KEY_TASKS = "@pizza_hut_v3_tasks";
+const KEY_ACTIVE = "@pizza_hut_v3_active";
+
+// ─── ID generation ────────────────────────────────────────────────────────────
+
+let _nextTaskId = 200;
+function nextTaskId() {
+  return _nextTaskId++;
+}
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 interface ChecklistContextValue {
+  // Multi-checklist management
+  checklists: ChecklistMeta[];
+  activeChecklistId: string;
+  setActiveChecklistId: (id: string) => void;
+  addChecklist: (name: string) => void;
+  updateChecklistName: (id: string, name: string) => void;
+  removeChecklist: (id: string) => void;
+
+  // Active checklist data (derived)
   tasks: Task[];
   sections: string[];
+
+  // Task operations (active checklist)
   toggleTask: (id: number) => void;
   resetChecklist: () => void;
   addTask: (category: string, text: string, required: boolean) => void;
   updateTask: (id: number, updates: Partial<Omit<Task, "id">>) => void;
   removeTask: (id: number) => void;
+
+  // Section operations (active checklist)
   addSection: (title: string) => void;
   updateSection: (oldTitle: string, newTitle: string) => void;
   removeSection: (title: string) => void;
@@ -80,94 +124,187 @@ interface ChecklistContextValue {
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null);
 
-let nextId = 100;
-
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [sections, setSections] = useState<string[]>(INITIAL_SECTIONS);
+  const [checklists, setChecklists] = useState<ChecklistMeta[]>(DEFAULT_CHECKLISTS);
+  const [activeId, setActiveId] = useState<string>(DEFAULT_CHECKLIST_ID);
+  const [tasksByChecklist, setTasksByChecklist] = useState<Record<string, Task[]>>(
+    DEFAULT_TASKS_BY_CHECKLIST
+  );
   const loaded = useRef(false);
 
+  // ── Load from storage ──────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
-      AsyncStorage.getItem(TASKS_KEY),
-      AsyncStorage.getItem(SECTIONS_KEY),
-    ]).then(([tasksData, sectionsData]) => {
-      if (tasksData) {
-        try {
-          const parsed = JSON.parse(tasksData) as Task[];
-          setTasks(parsed);
-          const maxId = parsed.reduce((m, t) => Math.max(m, t.id), 0);
-          nextId = maxId + 1;
-        } catch {}
-      }
-      if (sectionsData) {
-        try {
-          setSections(JSON.parse(sectionsData));
-        } catch {}
-      }
+      AsyncStorage.getItem(KEY_CHECKLISTS),
+      AsyncStorage.getItem(KEY_TASKS),
+      AsyncStorage.getItem(KEY_ACTIVE),
+    ]).then(([cl, tk, ac]) => {
+      try {
+        if (cl) setChecklists(JSON.parse(cl));
+        if (tk) {
+          const parsed = JSON.parse(tk) as Record<string, Task[]>;
+          setTasksByChecklist(parsed);
+          let max = 200;
+          for (const arr of Object.values(parsed)) {
+            for (const t of arr) max = Math.max(max, t.id);
+          }
+          _nextTaskId = max + 1;
+        }
+        if (ac) setActiveId(JSON.parse(ac));
+      } catch {}
       loaded.current = true;
     });
   }, []);
 
+  // ── Persist on change ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!loaded.current) return;
-    AsyncStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    AsyncStorage.setItem(KEY_CHECKLISTS, JSON.stringify(checklists));
+  }, [checklists]);
 
   useEffect(() => {
     if (!loaded.current) return;
-    AsyncStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
-  }, [sections]);
+    AsyncStorage.setItem(KEY_TASKS, JSON.stringify(tasksByChecklist));
+  }, [tasksByChecklist]);
 
-  const toggleTask = useCallback((id: number) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+  useEffect(() => {
+    if (!loaded.current) return;
+    AsyncStorage.setItem(KEY_ACTIVE, JSON.stringify(activeId));
+  }, [activeId]);
+
+  // ── Derived active data ────────────────────────────────────────────────────
+  const activeMeta = checklists.find((c) => c.id === activeId) ?? checklists[0];
+  const tasks = tasksByChecklist[activeMeta?.id] ?? [];
+  const sections = activeMeta?.sections ?? [];
+
+  // ── Multi-checklist ops ───────────────────────────────────────────────────
+  const setActiveChecklistId = useCallback((id: string) => setActiveId(id), []);
+
+  const addChecklist = useCallback((name: string) => {
+    const id = uid();
+    setChecklists((prev) => [...prev, { id, name, sections: [] }]);
+    setTasksByChecklist((prev) => ({ ...prev, [id]: [] }));
+    setActiveId(id);
+  }, []);
+
+  const updateChecklistName = useCallback((id: string, name: string) => {
+    setChecklists((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name } : c))
     );
   }, []);
 
-  const resetChecklist = useCallback(() => {
-    setTasks((prev) => prev.map((t) => ({ ...t, completed: false })));
-  }, []);
-
-  const addTask = useCallback((category: string, text: string, required: boolean) => {
-    setTasks((prev) => [
-      ...prev,
-      { id: nextId++, category, text, completed: false, required },
-    ]);
-  }, []);
-
-  const updateTask = useCallback(
-    (id: number, updates: Partial<Omit<Task, "id">>) => {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-      );
+  const removeChecklist = useCallback(
+    (id: string) => {
+      setChecklists((prev) => {
+        const next = prev.filter((c) => c.id !== id);
+        if (next.length === 0) return prev; // must keep at least one
+        return next;
+      });
+      setTasksByChecklist((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setActiveId((prev) => {
+        if (prev !== id) return prev;
+        const remaining = checklists.filter((c) => c.id !== id);
+        return remaining[0]?.id ?? prev;
+      });
     },
-    []
+    [checklists]
   );
 
-  const removeTask = useCallback((id: number) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  // ── Task ops (active checklist) ────────────────────────────────────────────
+  const updateActiveTasks = useCallback(
+    (fn: (tasks: Task[]) => Task[]) => {
+      setTasksByChecklist((prev) => ({
+        ...prev,
+        [activeMeta.id]: fn(prev[activeMeta.id] ?? []),
+      }));
+    },
+    [activeMeta?.id]
+  );
 
-  const addSection = useCallback((title: string) => {
-    setSections((prev) => [...prev, title]);
-  }, []);
+  const toggleTask = useCallback(
+    (id: number) =>
+      updateActiveTasks((ts) =>
+        ts.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      ),
+    [updateActiveTasks]
+  );
 
-  const updateSection = useCallback((oldTitle: string, newTitle: string) => {
-    setSections((prev) => prev.map((s) => (s === oldTitle ? newTitle : s)));
-    setTasks((prev) =>
-      prev.map((t) => (t.category === oldTitle ? { ...t, category: newTitle } : t))
-    );
-  }, []);
+  const resetChecklist = useCallback(
+    () => updateActiveTasks((ts) => ts.map((t) => ({ ...t, completed: false }))),
+    [updateActiveTasks]
+  );
 
-  const removeSection = useCallback((title: string) => {
-    setSections((prev) => prev.filter((s) => s !== title));
-    setTasks((prev) => prev.filter((t) => t.category !== title));
-  }, []);
+  const addTask = useCallback(
+    (category: string, text: string, required: boolean) =>
+      updateActiveTasks((ts) => [
+        ...ts,
+        { id: nextTaskId(), category, text, completed: false, required },
+      ]),
+    [updateActiveTasks]
+  );
+
+  const updateTask = useCallback(
+    (id: number, updates: Partial<Omit<Task, "id">>) =>
+      updateActiveTasks((ts) =>
+        ts.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      ),
+    [updateActiveTasks]
+  );
+
+  const removeTask = useCallback(
+    (id: number) =>
+      updateActiveTasks((ts) => ts.filter((t) => t.id !== id)),
+    [updateActiveTasks]
+  );
+
+  // ── Section ops (active checklist) ────────────────────────────────────────
+  const updateActiveSections = useCallback(
+    (fn: (sections: string[]) => string[]) => {
+      setChecklists((prev) =>
+        prev.map((c) =>
+          c.id === activeMeta.id ? { ...c, sections: fn(c.sections) } : c
+        )
+      );
+    },
+    [activeMeta?.id]
+  );
+
+  const addSection = useCallback(
+    (title: string) => updateActiveSections((s) => [...s, title]),
+    [updateActiveSections]
+  );
+
+  const updateSection = useCallback(
+    (oldTitle: string, newTitle: string) => {
+      updateActiveSections((s) => s.map((x) => (x === oldTitle ? newTitle : x)));
+      updateActiveTasks((ts) =>
+        ts.map((t) => (t.category === oldTitle ? { ...t, category: newTitle } : t))
+      );
+    },
+    [updateActiveSections, updateActiveTasks]
+  );
+
+  const removeSection = useCallback(
+    (title: string) => {
+      updateActiveSections((s) => s.filter((x) => x !== title));
+      updateActiveTasks((ts) => ts.filter((t) => t.category !== title));
+    },
+    [updateActiveSections, updateActiveTasks]
+  );
 
   return (
     <ChecklistContext.Provider
       value={{
+        checklists,
+        activeChecklistId: activeMeta?.id ?? activeId,
+        setActiveChecklistId,
+        addChecklist,
+        updateChecklistName,
+        removeChecklist,
         tasks,
         sections,
         toggleTask,

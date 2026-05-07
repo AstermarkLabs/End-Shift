@@ -1,14 +1,19 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,9 +22,213 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
-type ListItem =
-  | { type: "header"; category: string; completed: number; total: number }
-  | { type: "task"; task: Task };
+// ─── Name Modal (for creating / renaming checklists) ─────────────────────────
+
+function NameModal({
+  visible,
+  initial,
+  title,
+  onSave,
+  onClose,
+}: {
+  visible: boolean;
+  initial: string;
+  title: string;
+  onSave: (name: string) => void;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const [value, setValue] = useState(initial);
+
+  useEffect(() => {
+    if (visible) setValue(initial);
+  }, [visible, initial]);
+
+  const handleSave = () => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    onSave(trimmed);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.nameModalOverlay}
+      >
+        <Pressable style={styles.nameModalBackdrop} onPress={onClose} />
+        <View style={[styles.nameModalBox, { backgroundColor: colors.card }]}>
+          <Text style={[styles.nameModalTitle, { color: colors.foreground }]}>
+            {title}
+          </Text>
+          <TextInput
+            value={value}
+            onChangeText={setValue}
+            placeholder="Checklist name"
+            placeholderTextColor={colors.mutedForeground}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
+            style={[
+              styles.nameModalInput,
+              {
+                color: colors.foreground,
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+              },
+            ]}
+          />
+          <View style={styles.nameModalActions}>
+            <TouchableOpacity
+              style={[styles.nameModalBtn, { backgroundColor: colors.muted }]}
+              onPress={onClose}
+            >
+              <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.nameModalBtn,
+                {
+                  backgroundColor: value.trim() ? colors.primary : colors.border,
+                  flex: 1.4,
+                },
+              ]}
+              onPress={handleSave}
+              disabled={!value.trim()}
+            >
+              <Text style={[styles.nameModalBtnText, { color: "#fff" }]}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Tab Bar ──────────────────────────────────────────────────────────────────
+
+function ChecklistTabBar() {
+  const colors = useColors();
+  const {
+    checklists,
+    activeChecklistId,
+    setActiveChecklistId,
+    addChecklist,
+    updateChecklistName,
+    removeChecklist,
+  } = useChecklist();
+
+  const [modal, setModal] = useState<
+    { kind: "new" } | { kind: "rename"; id: string; name: string } | null
+  >(null);
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  const handleTabPress = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveChecklistId(id);
+  };
+
+  const handleTabLongPress = (id: string, name: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(name, undefined, [
+      {
+        text: "Rename",
+        onPress: () => setModal({ kind: "rename", id, name }),
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          if (checklists.length <= 1) {
+            Alert.alert("Can't delete", "You must keep at least one checklist.");
+            return;
+          }
+          Alert.alert("Delete Checklist", `Delete "${name}"? This cannot be undone.`, [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: () => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                removeChecklist(id);
+              },
+            },
+          ]);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  return (
+    <View style={[styles.tabBarContainer, { backgroundColor: colors.primary }]}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabBarScroll}
+      >
+        {checklists.map((cl) => {
+          const active = cl.id === activeChecklistId;
+          return (
+            <TouchableOpacity
+              key={cl.id}
+              onPress={() => handleTabPress(cl.id)}
+              onLongPress={() => handleTabLongPress(cl.id, cl.name)}
+              delayLongPress={400}
+              style={[
+                styles.tab,
+                {
+                  backgroundColor: active ? "#fff" : "rgba(255,255,255,0.15)",
+                  borderColor: active ? "#fff" : "rgba(255,255,255,0.35)",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: active ? colors.primary : "#fff" },
+                ]}
+                numberOfLines={1}
+              >
+                {cl.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Add button */}
+        <TouchableOpacity
+          onPress={() => setModal({ kind: "new" })}
+          style={[styles.addTabBtn, { borderColor: "rgba(255,255,255,0.45)" }]}
+        >
+          <Text style={styles.addTabText}>＋</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <NameModal
+        visible={modal !== null}
+        initial={modal?.kind === "rename" ? modal.name : ""}
+        title={modal?.kind === "rename" ? "Rename Checklist" : "New Checklist"}
+        onSave={(name) => {
+          if (modal?.kind === "rename") {
+            updateChecklistName(modal.id, name);
+          } else {
+            addChecklist(name);
+          }
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }}
+        onClose={() => setModal(null)}
+      />
+    </View>
+  );
+}
+
+// ─── Task Row ─────────────────────────────────────────────────────────────────
 
 function TaskRow({
   task,
@@ -54,13 +263,16 @@ function TaskRow({
             opacity: isOptional && !task.completed ? 0.7 : 1,
           },
         ]}
-        testID={`task-${task.id}`}
       >
         <View
           style={[
             styles.checkbox,
             {
-              borderColor: task.completed ? colors.primary : isOptional ? colors.border : colors.primary + "80",
+              borderColor: task.completed
+                ? colors.primary
+                : isOptional
+                ? colors.border
+                : colors.primary + "80",
               backgroundColor: task.completed ? colors.primary : "transparent",
             },
           ]}
@@ -86,7 +298,12 @@ function TaskRow({
             {task.text}
           </Text>
           {isOptional && !task.completed && (
-            <Text style={[styles.optionalBadge, { color: colors.mutedForeground, borderColor: colors.border }]}>
+            <Text
+              style={[
+                styles.optionalBadge,
+                { color: colors.mutedForeground, borderColor: colors.border },
+              ]}
+            >
               optional
             </Text>
           )}
@@ -95,6 +312,8 @@ function TaskRow({
     </Animated.View>
   );
 }
+
+// ─── Category Header ──────────────────────────────────────────────────────────
 
 function CategoryHeader({
   category,
@@ -145,6 +364,12 @@ function CategoryHeader({
   );
 }
 
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
+type ListItem =
+  | { type: "header"; category: string; completed: number; total: number }
+  | { type: "task"; task: Task };
+
 export default function ChecklistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -176,10 +401,7 @@ export default function ChecklistScreen() {
     }
   }, [allDone]);
 
-  const handleToggle = useCallback(
-    (id: number) => toggleTask(id),
-    [toggleTask]
-  );
+  const handleToggle = useCallback((id: number) => toggleTask(id), [toggleTask]);
 
   const handleReset = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -206,13 +428,8 @@ export default function ChecklistScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Sticky Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.primary, paddingTop: topPadding },
-        ]}
-      >
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <Image
@@ -221,8 +438,8 @@ export default function ChecklistScreen() {
               resizeMode="contain"
             />
             <View>
-              <Text style={styles.headerTitle}>Closing Checklist</Text>
-              <Text style={styles.headerSubtitle}>Pizza Hut</Text>
+              <Text style={styles.headerTitle}>Pizza Hut</Text>
+              <Text style={styles.headerSubtitle}>Shift Checklists</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
@@ -248,12 +465,25 @@ export default function ChecklistScreen() {
             </Text>
           </View>
           <View style={styles.progressTrack}>
-            <View
-              style={[styles.progressFill, { width: `${progress * 100}%` as any }]}
-            />
+            <View style={[styles.progressFill, { width: `${progress * 100}%` as any }]} />
           </View>
         </View>
       </View>
+
+      {/* Tab bar */}
+      <ChecklistTabBar />
+
+      {/* Empty state */}
+      {listData.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>
+            No tasks yet
+          </Text>
+          <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
+            Tap ⚙️ to add sections and tasks to this checklist.
+          </Text>
+        </View>
+      )}
 
       {/* List */}
       <FlatList
@@ -311,11 +541,13 @@ export default function ChecklistScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -327,7 +559,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 12,
     marginTop: 8,
   },
   headerLeft: {
@@ -335,16 +567,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  logo: { width: 40, height: 40 },
+  logo: { width: 38, height: 38 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.72)",
     fontFamily: "Inter_400Regular",
     marginTop: 1,
   },
@@ -361,9 +593,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconActionText: {
-    fontSize: 16,
-  },
+  iconActionText: { fontSize: 18 },
   resetButton: {
     backgroundColor: "transparent",
     paddingHorizontal: 14,
@@ -397,6 +627,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 3,
   },
+
+  // Tab bar
+  tabBarContainer: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.2)",
+  },
+  tabBarScroll: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 7,
+    alignItems: "center",
+  },
+  tab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    maxWidth: 180,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+  },
+  addTabBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addTabText: {
+    color: "#fff",
+    fontSize: 16,
+    lineHeight: 20,
+  },
+
+  // Category
   categoryHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -426,6 +695,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "Inter_600SemiBold",
   },
+
+  // Task
   taskRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -451,14 +722,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 16,
   },
-  taskTextContainer: {
-    flex: 1,
-    gap: 3,
-  },
-  taskText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
+  taskTextContainer: { flex: 1, gap: 3 },
+  taskText: { fontSize: 15, lineHeight: 22 },
   optionalBadge: {
     fontSize: 10,
     fontStyle: "italic",
@@ -468,6 +733,28 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     alignSelf: "flex-start",
   },
+
+  // Empty state
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 10,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+  },
+  emptyHint: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    fontFamily: "Inter_400Regular",
+  },
+
+  // Completion banner
   completionBanner: {
     position: "absolute",
     alignSelf: "center",
@@ -489,5 +776,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     fontFamily: "Inter_700Bold",
+  },
+
+  // Name modal
+  nameModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 28,
+  },
+  nameModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  nameModalBox: {
+    borderRadius: 16,
+    padding: 22,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  nameModalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
+  },
+  nameModalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  nameModalActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  nameModalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  nameModalBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 });
