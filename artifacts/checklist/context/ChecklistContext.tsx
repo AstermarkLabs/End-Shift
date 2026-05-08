@@ -22,6 +22,12 @@ export interface ChecklistMeta {
   sections: string[];
 }
 
+export interface AppConfig {
+  name: string;
+  primaryColor: string;
+  icon: string;
+}
+
 export interface CompletedChecklist {
   id: string;
   checklistId: string;
@@ -93,12 +99,19 @@ const DEFAULT_TASKS_BY_CHECKLIST: Record<string, Task[]> = {
   [DEFAULT_CHECKLIST_ID]: DEFAULT_TASKS,
 };
 
+const DEFAULT_APP_CONFIG: AppConfig = {
+  name: "End Shift",
+  primaryColor: "#C8102E",
+  icon: "🍕",
+};
+
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
 const KEY_CHECKLISTS = "@pizza_hut_v3_checklists";
 const KEY_TASKS = "@pizza_hut_v3_tasks";
 const KEY_ACTIVE = "@pizza_hut_v3_active";
 const KEY_HISTORY = "@pizza_hut_v3_history";
+const KEY_APP_CONFIG = "@end_shift_app_config";
 
 // ─── ID generation ────────────────────────────────────────────────────────────
 
@@ -137,9 +150,13 @@ interface ChecklistContextValue {
   completeChecklist: () => void;
   deleteHistoryEntry: (id: string) => void;
   clearHistory: () => void;
+
+  // App config
+  appConfig: AppConfig;
+  updateAppConfig: (updates: Partial<AppConfig>) => void;
 }
 
-const ChecklistContext = createContext<ChecklistContextValue | null>(null);
+export const ChecklistContext = createContext<ChecklistContextValue | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const [checklists, setChecklists] = useState<ChecklistMeta[]>(DEFAULT_CHECKLISTS);
@@ -148,6 +165,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     DEFAULT_TASKS_BY_CHECKLIST
   );
   const [completionHistory, setCompletionHistory] = useState<CompletedChecklist[]>([]);
+  const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
   const loaded = useRef(false);
 
   // ── Load from storage ──────────────────────────────────────────────────────
@@ -157,7 +175,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.getItem(KEY_TASKS),
       AsyncStorage.getItem(KEY_ACTIVE),
       AsyncStorage.getItem(KEY_HISTORY),
-    ]).then(([cl, tk, ac, hist]) => {
+      AsyncStorage.getItem(KEY_APP_CONFIG),
+    ]).then(([cl, tk, ac, hist, cfg]) => {
       try {
         if (cl) setChecklists(JSON.parse(cl));
         if (tk) {
@@ -171,6 +190,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         }
         if (ac) setActiveId(JSON.parse(ac));
         if (hist) setCompletionHistory(JSON.parse(hist));
+        if (cfg) setAppConfig({ ...DEFAULT_APP_CONFIG, ...JSON.parse(cfg) });
       } catch {}
       loaded.current = true;
     });
@@ -196,6 +216,11 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     if (!loaded.current) return;
     AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(completionHistory));
   }, [completionHistory]);
+
+  useEffect(() => {
+    if (!loaded.current) return;
+    AsyncStorage.setItem(KEY_APP_CONFIG, JSON.stringify(appConfig));
+  }, [appConfig]);
 
   // ── Derived active data ────────────────────────────────────────────────────
   const activeMeta = checklists.find((c) => c.id === activeId) ?? checklists[0];
@@ -364,6 +389,10 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setCompletionHistory([]);
   }, []);
 
+  const updateAppConfig = useCallback((updates: Partial<AppConfig>) => {
+    setAppConfig((prev) => ({ ...prev, ...updates }));
+  }, []);
+
   return (
     <ChecklistContext.Provider
       value={{
@@ -390,6 +419,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         completeChecklist,
         deleteHistoryEntry,
         clearHistory,
+        appConfig,
+        updateAppConfig,
       }}
     >
       {children}

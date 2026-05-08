@@ -5,7 +5,6 @@ import {
   Alert,
   Animated,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -312,7 +311,7 @@ function ChecklistTabBar() {
   };
 
   return (
-    <View style={[styles.tabBarContainer, { backgroundColor: "#A0102A" }]}>
+    <View style={[styles.tabBarContainer, { backgroundColor: colors.primary + "cc" }]}>
       <ScrollView
         horizontal
         scrollEnabled={scrollEnabled}
@@ -506,7 +505,7 @@ export default function ChecklistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { tasks, sections, toggleTask, resetChecklist, completeChecklist, completionHistory } = useChecklist();
+  const { tasks, sections, toggleTask, resetChecklist, completeChecklist, completionHistory, appConfig } = useChecklist();
   const completeBannerAnim = useRef(new Animated.Value(0)).current;
   const isWeb = Platform.OS === "web";
 
@@ -590,14 +589,10 @@ export default function ChecklistScreen() {
       <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <Image
-              source={require("../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <View>
-              <Text style={styles.headerTitle}>End Shift</Text>
+            <View style={styles.headerIconWrap}>
+              <Text style={styles.headerIconText}>{appConfig.icon}</Text>
             </View>
+            <Text style={styles.headerTitle}>{appConfig.name}</Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -741,18 +736,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  logo: { width: 38, height: 38 },
+  headerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerIconText: { fontSize: 20 },
   headerTitle: {
     fontSize: 19,
     fontWeight: "700",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
-  },
-  headerSubtitle: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.72)",
-    fontFamily: "Inter_400Regular",
-    marginTop: 1,
   },
   headerActions: {
     flexDirection: "row",

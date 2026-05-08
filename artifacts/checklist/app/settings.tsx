@@ -1,12 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,20 +16,36 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Row ──────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const COLOR_OPTIONS = [
+  "#C8102E", "#E53935", "#E91E63", "#9C27B0",
+  "#3F51B5", "#2196F3", "#009688", "#4CAF50",
+  "#FF9800", "#607D8B",
+];
+
+const ICON_OPTIONS = [
+  "🍕", "🍔", "🌮", "🍜", "🍗", "☕",
+  "🍣", "🏪", "✅", "📋", "⭐", "🔧",
+  "🏠", "🎯", "🚀", "💼",
+];
+
+// ─── Section label ────────────────────────────────────────────────────────────
+
+function SectionLabel({ title }: { title: string }) {
+  const colors = useColors();
+  return (
+    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{title}</Text>
+  );
+}
+
+// ─── Tappable row ────────────────────────────────────────────────────────────
 
 function SettingsRow({
-  label,
-  subtitle,
-  onPress,
-  destructive,
-  icon,
+  label, subtitle, onPress, destructive, icon,
 }: {
-  label: string;
-  subtitle?: string;
-  onPress: () => void;
-  destructive?: boolean;
-  icon: string;
+  label: string; subtitle?: string; onPress: () => void;
+  destructive?: boolean; icon: string;
 }) {
   const colors = useColors();
   return (
@@ -53,24 +70,30 @@ function SettingsRow({
   );
 }
 
-// ─── Section header ───────────────────────────────────────────────────────────
-
-function SectionLabel({ title }: { title: string }) {
-  const colors = useColors();
-  return (
-    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{title}</Text>
-  );
-}
-
-// ─── App-wide Settings Screen ─────────────────────────────────────────────────
+// ─── App Settings Screen ──────────────────────────────────────────────────────
 
 export default function AppSettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { completionHistory, clearHistory, resetChecklist } = useChecklist();
+  const { completionHistory, clearHistory, resetChecklist, appConfig, updateAppConfig } = useChecklist();
   const isWeb = Platform.OS === "web";
   const topPadding = isWeb ? 67 : insets.top;
+
+  const [nameValue, setNameValue] = useState(appConfig.name);
+  const [nameDirty, setNameDirty] = useState(false);
+
+  useEffect(() => {
+    setNameValue(appConfig.name);
+  }, [appConfig.name]);
+
+  const handleNameSave = () => {
+    const trimmed = nameValue.trim();
+    if (!trimmed) return;
+    updateAppConfig({ name: trimmed });
+    setNameDirty(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
 
   const handleClearHistory = () => {
     if (completionHistory.length === 0) {
@@ -95,22 +118,18 @@ export default function AppSettingsScreen() {
   };
 
   const handleResetTasks = () => {
-    Alert.alert(
-      "Reset All Tasks",
-      "Uncheck all tasks in the current checklist?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: () => {
-            resetChecklist();
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.back();
-          },
+    Alert.alert("Reset All Tasks", "Uncheck all tasks in the current checklist?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reset",
+        style: "destructive",
+        onPress: () => {
+          resetChecklist();
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.back();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -126,13 +145,103 @@ export default function AppSettingsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingVertical: 20,
           paddingBottom: (isWeb ? 34 : insets.bottom) + 40,
           gap: 4,
         }}
       >
-        {/* History */}
+        {/* ── Appearance ── */}
+        <SectionLabel title="APPEARANCE" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+
+          {/* App name */}
+          <View style={[styles.appearanceRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <Text style={[styles.appearanceLabel, { color: colors.mutedForeground }]}>App Name</Text>
+            <View style={styles.nameRow}>
+              <TextInput
+                value={nameValue}
+                onChangeText={(v) => { setNameValue(v); setNameDirty(v.trim() !== appConfig.name); }}
+                returnKeyType="done"
+                onSubmitEditing={handleNameSave}
+                onBlur={handleNameSave}
+                placeholder="App name"
+                placeholderTextColor={colors.mutedForeground}
+                style={[
+                  styles.nameInput,
+                  { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
+                ]}
+              />
+              {nameDirty && (
+                <TouchableOpacity
+                  onPress={handleNameSave}
+                  style={[styles.nameSaveBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={styles.nameSaveBtnText}>Save</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Color picker */}
+          <View style={[styles.appearanceRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <Text style={[styles.appearanceLabel, { color: colors.mutedForeground }]}>Color</Text>
+            <View style={styles.swatchRow}>
+              {COLOR_OPTIONS.map((c) => {
+                const selected = appConfig.primaryColor === c;
+                return (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => {
+                      updateAppConfig({ primaryColor: c });
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={[
+                      styles.swatch,
+                      { backgroundColor: c },
+                      selected && styles.swatchSelected,
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    {selected && <Text style={styles.swatchCheck}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Icon picker */}
+          <View style={[styles.appearanceRow, { backgroundColor: colors.card, borderBottomColor: "transparent" }]}>
+            <Text style={[styles.appearanceLabel, { color: colors.mutedForeground }]}>Icon</Text>
+            <View style={styles.iconRow}>
+              {ICON_OPTIONS.map((ic) => {
+                const selected = appConfig.icon === ic;
+                return (
+                  <TouchableOpacity
+                    key={ic}
+                    onPress={() => {
+                      updateAppConfig({ icon: ic });
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={[
+                      styles.iconOption,
+                      {
+                        backgroundColor: selected ? colors.secondary : colors.muted,
+                        borderColor: selected ? colors.primary : "transparent",
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.iconOptionText}>{ic}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Shift History ── */}
         <SectionLabel title="SHIFT HISTORY" />
         <View style={[styles.group, { borderColor: colors.border }]}>
           <SettingsRow
@@ -157,7 +266,7 @@ export default function AppSettingsScreen() {
           />
         </View>
 
-        {/* Checklist */}
+        {/* ── Current Checklist ── */}
         <SectionLabel title="CURRENT CHECKLIST" />
         <View style={[styles.group, { borderColor: colors.border }]}>
           <SettingsRow
@@ -169,15 +278,15 @@ export default function AppSettingsScreen() {
           />
         </View>
 
-        {/* About */}
+        {/* ── About ── */}
         <SectionLabel title="ABOUT" />
         <View style={[styles.group, { borderColor: colors.border }]}>
           <View style={[styles.row, { backgroundColor: colors.card, borderBottomColor: "transparent" }]}>
-            <View style={[styles.rowIcon, { backgroundColor: colors.muted }]}>
-              <Text style={styles.rowIconText}>🍕</Text>
+            <View style={[styles.rowIcon, { backgroundColor: colors.secondary }]}>
+              <Text style={styles.rowIconText}>{appConfig.icon}</Text>
             </View>
             <View style={styles.rowBody}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>End Shift</Text>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>{appConfig.name}</Text>
               <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>Version 1.0</Text>
             </View>
           </View>
@@ -231,6 +340,66 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
 
+  // Appearance rows
+  appearanceRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  appearanceLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  nameInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    fontFamily: "Inter_500Medium",
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  nameSaveBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8 },
+  nameSaveBtnText: { color: "#fff", fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+
+  swatchRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  swatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  swatchSelected: {
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  swatchCheck: { color: "#fff", fontSize: 14, fontWeight: "700" },
+
+  iconRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  iconOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+  },
+  iconOptionText: { fontSize: 22 },
+
+  // Standard rows
   row: {
     flexDirection: "row",
     alignItems: "center",
