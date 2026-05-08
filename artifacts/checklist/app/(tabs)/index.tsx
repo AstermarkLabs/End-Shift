@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -590,7 +591,15 @@ export default function ChecklistScreen() {
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <View style={styles.headerIconWrap}>
-              <Text style={styles.headerIconText}>{appConfig.icon}</Text>
+              {appConfig.customIconUri ? (
+                <Image
+                  source={{ uri: appConfig.customIconUri }}
+                  style={styles.headerCustomIcon}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.headerIconText}>{appConfig.icon}</Text>
+              )}
             </View>
             <Text style={styles.headerTitle}>{appConfig.name}</Text>
           </View>
@@ -743,8 +752,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   headerIconText: { fontSize: 20 },
+  headerCustomIcon: { width: 36, height: 36, borderRadius: 10 },
   headerTitle: {
     fontSize: 19,
     fontWeight: "700",

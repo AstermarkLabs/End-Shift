@@ -1,8 +1,10 @@
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -86,6 +88,49 @@ export default function AppSettingsScreen() {
   useEffect(() => {
     setNameValue(appConfig.name);
   }, [appConfig.name]);
+
+  const pickCustomIcon = async () => {
+    if (Platform.OS === "web") {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/svg+xml,image/jpeg,image/webp,image/png";
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const uri = ev.target?.result as string;
+          if (uri) {
+            updateAppConfig({ customIconUri: uri });
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please allow photo access to pick a custom icon.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const uri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        updateAppConfig({ customIconUri: uri });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+  };
 
   const handleNameSave = () => {
     const trimmed = nameValue.trim();
@@ -215,13 +260,64 @@ export default function AppSettingsScreen() {
           <View style={[styles.appearanceRow, { backgroundColor: colors.card, borderBottomColor: "transparent" }]}>
             <Text style={[styles.appearanceLabel, { color: colors.mutedForeground }]}>Icon</Text>
             <View style={styles.iconRow}>
+              {/* Custom uploaded image tile */}
+              {appConfig.customIconUri && (
+                <View style={styles.customIconWrap}>
+                  <TouchableOpacity
+                    onPress={() => updateAppConfig({ customIconUri: undefined })}
+                    style={[
+                      styles.iconOption,
+                      {
+                        borderColor: colors.primary,
+                        backgroundColor: colors.secondary,
+                        padding: 0,
+                        overflow: "hidden",
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={{ uri: appConfig.customIconUri }}
+                      style={styles.customIconImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => updateAppConfig({ customIconUri: undefined })}
+                    style={[styles.customIconRemove, { backgroundColor: colors.destructive }]}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                  >
+                    <Text style={styles.customIconRemoveText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Upload tile */}
+              <TouchableOpacity
+                onPress={pickCustomIcon}
+                style={[
+                  styles.iconOption,
+                  styles.uploadTile,
+                  {
+                    borderColor: colors.border,
+                    borderStyle: "dashed",
+                    backgroundColor: colors.muted,
+                  },
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.uploadTileIcon, { color: colors.mutedForeground }]}>+</Text>
+                <Text style={[styles.uploadTileLabel, { color: colors.mutedForeground }]}>Upload</Text>
+              </TouchableOpacity>
+
+              {/* Emoji tiles */}
               {ICON_OPTIONS.map((ic) => {
-                const selected = appConfig.icon === ic;
+                const selected = !appConfig.customIconUri && appConfig.icon === ic;
                 return (
                   <TouchableOpacity
                     key={ic}
                     onPress={() => {
-                      updateAppConfig({ icon: ic });
+                      updateAppConfig({ icon: ic, customIconUri: undefined });
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     }}
                     style={[
@@ -398,6 +494,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   iconOptionText: { fontSize: 22 },
+
+  customIconWrap: { position: "relative" },
+  customIconImage: { width: 40, height: 40, borderRadius: 8 },
+  customIconRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  customIconRemoveText: { color: "#fff", fontSize: 13, fontWeight: "700", lineHeight: 16 },
+
+  uploadTile: { flexDirection: "column", gap: 1, borderWidth: 2 },
+  uploadTileIcon: { fontSize: 18, fontWeight: "300", lineHeight: 20 },
+  uploadTileLabel: { fontSize: 9, fontWeight: "600", fontFamily: "Inter_600SemiBold", letterSpacing: 0.3 },
 
   // Standard rows
   row: {

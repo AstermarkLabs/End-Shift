@@ -26,6 +26,7 @@ export interface AppConfig {
   name: string;
   primaryColor: string;
   icon: string;
+  customIconUri?: string;
 }
 
 export interface CompletedChecklist {
