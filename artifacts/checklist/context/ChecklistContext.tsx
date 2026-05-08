@@ -22,6 +22,21 @@ export interface ChecklistMeta {
   sections: string[];
 }
 
+export interface CompletedChecklist {
+  id: string;
+  checklistId: string;
+  checklistName: string;
+  completedAt: string; // ISO string
+  sections: string[];
+  tasks: Array<{
+    id: number;
+    category: string;
+    text: string;
+    completed: boolean;
+    required: boolean;
+  }>;
+}
+
 // ─── Default data ────────────────────────────────────────────────────────────
 
 const DEFAULT_SECTIONS = [
@@ -83,21 +98,17 @@ const DEFAULT_TASKS_BY_CHECKLIST: Record<string, Task[]> = {
 const KEY_CHECKLISTS = "@pizza_hut_v3_checklists";
 const KEY_TASKS = "@pizza_hut_v3_tasks";
 const KEY_ACTIVE = "@pizza_hut_v3_active";
+const KEY_HISTORY = "@pizza_hut_v3_history";
 
 // ─── ID generation ────────────────────────────────────────────────────────────
 
 let _nextTaskId = 200;
-function nextTaskId() {
-  return _nextTaskId++;
-}
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
+function nextTaskId() { return _nextTaskId++; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-// ─── Context ──────────────────────────────────────────────────────────────────
+// ─── Context type ─────────────────────────────────────────────────────────────
 
 interface ChecklistContextValue {
-  // Multi-checklist management
   checklists: ChecklistMeta[];
   activeChecklistId: string;
   setActiveChecklistId: (id: string) => void;
@@ -106,25 +117,26 @@ interface ChecklistContextValue {
   removeChecklist: (id: string) => void;
   reorderChecklists: (newChecklists: ChecklistMeta[]) => void;
 
-  // Active checklist data (derived)
   tasks: Task[];
   sections: string[];
 
-  // Task operations (active checklist)
   toggleTask: (id: number) => void;
   resetChecklist: () => void;
   addTask: (category: string, text: string, required: boolean) => void;
   updateTask: (id: number, updates: Partial<Omit<Task, "id">>) => void;
   removeTask: (id: number) => void;
 
-  // Section operations (active checklist)
   addSection: (title: string) => void;
   updateSection: (oldTitle: string, newTitle: string) => void;
   removeSection: (title: string) => void;
-
-  // Reorder operations
   reorderSections: (newSections: string[]) => void;
   reorderTasksInSection: (category: string, newSectionTasks: Task[]) => void;
+
+  // History
+  completionHistory: CompletedChecklist[];
+  completeChecklist: () => void;
+  deleteHistoryEntry: (id: string) => void;
+  clearHistory: () => void;
 }
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null);
@@ -135,6 +147,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const [tasksByChecklist, setTasksByChecklist] = useState<Record<string, Task[]>>(
     DEFAULT_TASKS_BY_CHECKLIST
   );
+  const [completionHistory, setCompletionHistory] = useState<CompletedChecklist[]>([]);
   const loaded = useRef(false);
 
   // ── Load from storage ──────────────────────────────────────────────────────
@@ -143,7 +156,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.getItem(KEY_CHECKLISTS),
       AsyncStorage.getItem(KEY_TASKS),
       AsyncStorage.getItem(KEY_ACTIVE),
-    ]).then(([cl, tk, ac]) => {
+      AsyncStorage.getItem(KEY_HISTORY),
+    ]).then(([cl, tk, ac, hist]) => {
       try {
         if (cl) setChecklists(JSON.parse(cl));
         if (tk) {
@@ -156,6 +170,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
           _nextTaskId = max + 1;
         }
         if (ac) setActiveId(JSON.parse(ac));
+        if (hist) setCompletionHistory(JSON.parse(hist));
       } catch {}
       loaded.current = true;
     });
@@ -177,12 +192,17 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(KEY_ACTIVE, JSON.stringify(activeId));
   }, [activeId]);
 
+  useEffect(() => {
+    if (!loaded.current) return;
+    AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(completionHistory));
+  }, [completionHistory]);
+
   // ── Derived active data ────────────────────────────────────────────────────
   const activeMeta = checklists.find((c) => c.id === activeId) ?? checklists[0];
   const tasks = tasksByChecklist[activeMeta?.id] ?? [];
   const sections = activeMeta?.sections ?? [];
 
-  // ── Multi-checklist ops ───────────────────────────────────────────────────
+  // ── Multi-checklist ops ────────────────────────────────────────────────────
   const setActiveChecklistId = useCallback((id: string) => setActiveId(id), []);
 
   const addChecklist = useCallback((name: string) => {
@@ -193,16 +213,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateChecklistName = useCallback((id: string, name: string) => {
-    setChecklists((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, name } : c))
-    );
+    setChecklists((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
   }, []);
 
   const removeChecklist = useCallback(
     (id: string) => {
       setChecklists((prev) => {
         const next = prev.filter((c) => c.id !== id);
-        if (next.length === 0) return prev; // must keep at least one
+        if (next.length === 0) return prev;
         return next;
       });
       setTasksByChecklist((prev) => {
@@ -219,7 +237,12 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     [checklists]
   );
 
-  // ── Task ops (active checklist) ────────────────────────────────────────────
+  const reorderChecklists = useCallback(
+    (newChecklists: ChecklistMeta[]) => setChecklists(newChecklists),
+    []
+  );
+
+  // ── Task ops ───────────────────────────────────────────────────────────────
   const updateActiveTasks = useCallback(
     (fn: (tasks: Task[]) => Task[]) => {
       setTasksByChecklist((prev) => ({
@@ -232,9 +255,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTask = useCallback(
     (id: number) =>
-      updateActiveTasks((ts) =>
-        ts.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-      ),
+      updateActiveTasks((ts) => ts.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))),
     [updateActiveTasks]
   );
 
@@ -254,25 +275,20 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const updateTask = useCallback(
     (id: number, updates: Partial<Omit<Task, "id">>) =>
-      updateActiveTasks((ts) =>
-        ts.map((t) => (t.id === id ? { ...t, ...updates } : t))
-      ),
+      updateActiveTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...updates } : t))),
     [updateActiveTasks]
   );
 
   const removeTask = useCallback(
-    (id: number) =>
-      updateActiveTasks((ts) => ts.filter((t) => t.id !== id)),
+    (id: number) => updateActiveTasks((ts) => ts.filter((t) => t.id !== id)),
     [updateActiveTasks]
   );
 
-  // ── Section ops (active checklist) ────────────────────────────────────────
+  // ── Section ops ────────────────────────────────────────────────────────────
   const updateActiveSections = useCallback(
     (fn: (sections: string[]) => string[]) => {
       setChecklists((prev) =>
-        prev.map((c) =>
-          c.id === activeMeta.id ? { ...c, sections: fn(c.sections) } : c
-        )
+        prev.map((c) => (c.id === activeMeta.id ? { ...c, sections: fn(c.sections) } : c))
       );
     },
     [activeMeta?.id]
@@ -301,11 +317,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     [updateActiveSections, updateActiveTasks]
   );
 
-  const reorderChecklists = useCallback(
-    (newChecklists: ChecklistMeta[]) => setChecklists(newChecklists),
-    []
-  );
-
   const reorderSections = useCallback(
     (newSections: string[]) => updateActiveSections(() => newSections),
     [updateActiveSections]
@@ -314,8 +325,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const reorderTasksInSection = useCallback(
     (category: string, newSectionTasks: Task[]) => {
       updateActiveTasks((prev) => {
-        // Find the positions in the flat array where this section's tasks live
-        // and replace them in-place with the new order
         const categoryIndices: number[] = [];
         prev.forEach((t, i) => { if (t.category === category) categoryIndices.push(i); });
         const result = [...prev];
@@ -325,6 +334,35 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     },
     [updateActiveTasks]
   );
+
+  // ── History ops ────────────────────────────────────────────────────────────
+  const completeChecklist = useCallback(() => {
+    const snapshot: CompletedChecklist = {
+      id: uid(),
+      checklistId: activeMeta.id,
+      checklistName: activeMeta.name,
+      completedAt: new Date().toISOString(),
+      sections: [...sections],
+      tasks: tasks.map((t) => ({
+        id: t.id,
+        category: t.category,
+        text: t.text,
+        completed: t.completed,
+        required: t.required,
+      })),
+    };
+    setCompletionHistory((prev) => [snapshot, ...prev]);
+    // Reset the checklist after saving
+    updateActiveTasks((ts) => ts.map((t) => ({ ...t, completed: false })));
+  }, [activeMeta, sections, tasks, updateActiveTasks]);
+
+  const deleteHistoryEntry = useCallback((id: string) => {
+    setCompletionHistory((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setCompletionHistory([]);
+  }, []);
 
   return (
     <ChecklistContext.Provider
@@ -348,6 +386,10 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         removeSection,
         reorderSections,
         reorderTasksInSection,
+        completionHistory,
+        completeChecklist,
+        deleteHistoryEntry,
+        clearHistory,
       }}
     >
       {children}

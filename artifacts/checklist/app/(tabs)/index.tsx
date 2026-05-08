@@ -393,7 +393,7 @@ export default function ChecklistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { tasks, sections, toggleTask, resetChecklist } = useChecklist();
+  const { tasks, sections, toggleTask, resetChecklist, completeChecklist, completionHistory } = useChecklist();
   const completeBannerAnim = useRef(new Animated.Value(0)).current;
   const isWeb = Platform.OS === "web";
 
@@ -422,9 +422,32 @@ export default function ChecklistScreen() {
 
   const handleToggle = useCallback((id: number) => toggleTask(id), [toggleTask]);
 
-  const handleReset = () => {
+  const handleShiftMenu = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    resetChecklist();
+    Alert.alert(
+      "End of Shift",
+      "Do you want to save this shift to history before resetting?",
+      [
+        {
+          text: "Save & Reset",
+          onPress: () => {
+            completeChecklist();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+        {
+          text: "Just Reset",
+          style: "destructive",
+          onPress: () => resetChecklist(),
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  };
+
+  const handleCompleteFromBanner = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    completeChecklist();
   };
 
   const listData: ListItem[] = [];
@@ -463,13 +486,27 @@ export default function ChecklistScreen() {
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
+              onPress={() => router.push("/history")}
+              style={styles.iconAction}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.iconActionText}>🕐</Text>
+              {completionHistory.length > 0 && (
+                <View style={styles.historyBadge}>
+                  <Text style={styles.historyBadgeText}>
+                    {completionHistory.length > 9 ? "9+" : completionHistory.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => router.push("/settings")}
               style={styles.iconAction}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.iconActionText}>⚙️</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
+            <TouchableOpacity onPress={handleShiftMenu} style={styles.resetButton}>
               <Text style={styles.resetButtonText}>Reset</Text>
             </TouchableOpacity>
           </View>
@@ -553,7 +590,12 @@ export default function ChecklistScreen() {
             style={styles.bannerLogo}
             resizeMode="contain"
           />
-          <Text style={styles.bannerText}>Shift Complete. Great job team!</Text>
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerText}>Shift complete! Great job team!</Text>
+            <TouchableOpacity onPress={handleCompleteFromBanner} style={styles.bannerSaveBtn}>
+              <Text style={styles.bannerSaveBtnText}>Save to History</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       )}
     </View>
@@ -613,6 +655,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconActionText: { fontSize: 18 },
+  historyBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  historyBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#C1121F",
+    lineHeight: 12,
+  },
   resetButton: {
     backgroundColor: "transparent",
     paddingHorizontal: 14,
@@ -791,12 +851,26 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  bannerLogo: { width: 22, height: 22 },
+  bannerLogo: { width: 22, height: 22, flexShrink: 0 },
+  bannerContent: { flex: 1, gap: 6 },
   bannerText: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     fontFamily: "Inter_700Bold",
+  },
+  bannerSaveBtn: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignSelf: "flex-start",
+  },
+  bannerSaveBtnText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 
   // Name modal
