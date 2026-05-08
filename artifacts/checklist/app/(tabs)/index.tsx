@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -19,10 +18,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SortableList } from "@/components/SortableList";
 import { Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Name Modal (for creating / renaming checklists) ─────────────────────────
+// ─── Name Modal ───────────────────────────────────────────────────────────────
 
 function NameModal({
   visible,
@@ -59,9 +59,7 @@ function NameModal({
       >
         <Pressable style={styles.nameModalBackdrop} onPress={onClose} />
         <View style={[styles.nameModalBox, { backgroundColor: colors.card }]}>
-          <Text style={[styles.nameModalTitle, { color: colors.foreground }]}>
-            {title}
-          </Text>
+          <Text style={[styles.nameModalTitle, { color: colors.foreground }]}>{title}</Text>
           <TextInput
             value={value}
             onChangeText={setValue}
@@ -72,30 +70,15 @@ function NameModal({
             onSubmitEditing={handleSave}
             style={[
               styles.nameModalInput,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-              },
+              { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border },
             ]}
           />
           <View style={styles.nameModalActions}>
-            <TouchableOpacity
-              style={[styles.nameModalBtn, { backgroundColor: colors.muted }]}
-              onPress={onClose}
-            >
-              <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>
-                Cancel
-              </Text>
+            <TouchableOpacity style={[styles.nameModalBtn, { backgroundColor: colors.muted }]} onPress={onClose}>
+              <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.nameModalBtn,
-                {
-                  backgroundColor: value.trim() ? colors.primary : colors.border,
-                  flex: 1.4,
-                },
-              ]}
+              style={[styles.nameModalBtn, { backgroundColor: value.trim() ? colors.primary : colors.border, flex: 1.4 }]}
               onPress={handleSave}
               disabled={!value.trim()}
             >
@@ -112,19 +95,8 @@ function NameModal({
 
 function ChecklistTabBar() {
   const colors = useColors();
-  const {
-    checklists,
-    activeChecklistId,
-    setActiveChecklistId,
-    addChecklist,
-    updateChecklistName,
-    removeChecklist,
-  } = useChecklist();
-
-  const [modal, setModal] = useState<
-    { kind: "new" } | { kind: "rename"; id: string; name: string } | null
-  >(null);
-
+  const { checklists, activeChecklistId, setActiveChecklistId, addChecklist, updateChecklistName, removeChecklist } = useChecklist();
+  const [modal, setModal] = useState<{ kind: "new" } | { kind: "rename"; id: string; name: string } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const handleTabPress = (id: string) => {
@@ -135,10 +107,7 @@ function ChecklistTabBar() {
   const handleTabLongPress = (id: string, name: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(name, undefined, [
-      {
-        text: "Rename",
-        onPress: () => setModal({ kind: "rename", id, name }),
-      },
+      { text: "Rename", onPress: () => setModal({ kind: "rename", id, name }) },
       {
         text: "Delete",
         style: "destructive",
@@ -180,12 +149,7 @@ function ChecklistTabBar() {
               onPress={() => handleTabPress(cl.id)}
               onLongPress={() => handleTabLongPress(cl.id, cl.name)}
               delayLongPress={400}
-              style={[
-                styles.tab,
-                active
-                  ? { backgroundColor: "#fff" }
-                  : { backgroundColor: "transparent" },
-              ]}
+              style={[styles.tab, active ? { backgroundColor: "#fff" } : { backgroundColor: "transparent" }]}
             >
               <Text
                 style={[
@@ -203,26 +167,17 @@ function ChecklistTabBar() {
             </TouchableOpacity>
           );
         })}
-
-        {/* Add button */}
-        <TouchableOpacity
-          onPress={() => setModal({ kind: "new" })}
-          style={styles.addTabBtn}
-        >
+        <TouchableOpacity onPress={() => setModal({ kind: "new" })} style={styles.addTabBtn}>
           <Text style={styles.addTabText}>＋</Text>
         </TouchableOpacity>
       </ScrollView>
-
       <NameModal
         visible={modal !== null}
         initial={modal?.kind === "rename" ? modal.name : ""}
         title={modal?.kind === "rename" ? "Rename Checklist" : "New Checklist"}
         onSave={(name) => {
-          if (modal?.kind === "rename") {
-            updateChecklistName(modal.id, name);
-          } else {
-            addChecklist(name);
-          }
+          if (modal?.kind === "rename") updateChecklistName(modal.id, name);
+          else addChecklist(name);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }}
         onClose={() => setModal(null)}
@@ -236,12 +191,17 @@ function ChecklistTabBar() {
 function TaskRow({
   task,
   onToggle,
+  isActive,
+  dragHandleProps,
 }: {
   task: Task;
   onToggle: (id: number) => void;
+  isActive: boolean;
+  dragHandleProps: object;
 }) {
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
+  const isOptional = !task.required;
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -252,21 +212,25 @@ function TaskRow({
     onToggle(task.id);
   };
 
-  const isOptional = !task.required;
-
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <Animated.View
+      style={[
+        { transform: [{ scale }] },
+        isActive && styles.taskRowActive,
+      ]}
+    >
       <Pressable
         onPress={handlePress}
         style={[
           styles.taskRow,
           {
-            backgroundColor: colors.card,
+            backgroundColor: isActive ? colors.accent : colors.card,
             borderBottomColor: colors.border,
             opacity: isOptional && !task.completed ? 0.7 : 1,
           },
         ]}
       >
+        {/* Checkbox */}
         <View
           style={[
             styles.checkbox,
@@ -282,6 +246,8 @@ function TaskRow({
         >
           {task.completed && <Text style={styles.checkmark}>✓</Text>}
         </View>
+
+        {/* Text */}
         <View style={styles.taskTextContainer}>
           <Text
             style={[
@@ -302,14 +268,22 @@ function TaskRow({
           </Text>
           {isOptional && !task.completed && (
             <Text
-              style={[
-                styles.optionalBadge,
-                { color: colors.mutedForeground, borderColor: colors.border },
-              ]}
+              style={[styles.optionalBadge, { color: colors.mutedForeground, borderColor: colors.border }]}
             >
               optional
             </Text>
           )}
+        </View>
+
+        {/* Drag handle */}
+        <View
+          {...dragHandleProps}
+          style={styles.dragHandle}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
+          <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
+          <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
         </View>
       </Pressable>
     </Animated.View>
@@ -318,48 +292,21 @@ function TaskRow({
 
 // ─── Category Header ──────────────────────────────────────────────────────────
 
-function CategoryHeader({
-  category,
-  completed,
-  total,
-}: {
-  category: string;
-  completed: number;
-  total: number;
-}) {
+function CategoryHeader({ category, completed, total }: { category: string; completed: number; total: number }) {
   const colors = useColors();
   const allDone = completed === total;
-
   return (
     <View
       style={[
         styles.categoryHeader,
-        {
-          backgroundColor: allDone ? colors.secondary : colors.muted,
-          borderLeftColor: colors.primary,
-        },
+        { backgroundColor: allDone ? colors.secondary : colors.muted, borderLeftColor: colors.primary },
       ]}
     >
-      <Text
-        style={[
-          styles.categoryTitle,
-          { color: allDone ? colors.primary : colors.foreground },
-        ]}
-      >
+      <Text style={[styles.categoryTitle, { color: allDone ? colors.primary : colors.foreground }]}>
         {category}
       </Text>
-      <View
-        style={[
-          styles.categoryBadge,
-          { backgroundColor: allDone ? colors.primary : colors.border },
-        ]}
-      >
-        <Text
-          style={[
-            styles.categoryBadgeText,
-            { color: allDone ? "#fff" : colors.mutedForeground },
-          ]}
-        >
+      <View style={[styles.categoryBadge, { backgroundColor: allDone ? colors.primary : colors.border }]}>
+        <Text style={[styles.categoryBadgeText, { color: allDone ? "#fff" : colors.mutedForeground }]}>
           {completed}/{total}
         </Text>
       </View>
@@ -369,17 +316,14 @@ function CategoryHeader({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-type ListItem =
-  | { type: "header"; category: string; completed: number; total: number }
-  | { type: "task"; task: Task };
-
 export default function ChecklistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { tasks, sections, toggleTask, resetChecklist } = useChecklist();
+  const { tasks, sections, toggleTask, resetChecklist, reorderTasksInSection } = useChecklist();
   const completeBannerAnim = useRef(new Animated.Value(0)).current;
   const isWeb = Platform.OS === "web";
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
@@ -389,18 +333,9 @@ export default function ChecklistScreen() {
   useEffect(() => {
     if (allDone) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Animated.spring(completeBannerAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }).start();
+      Animated.spring(completeBannerAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }).start();
     } else {
-      Animated.timing(completeBannerAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(completeBannerAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
     }
   }, [allDone]);
 
@@ -411,23 +346,9 @@ export default function ChecklistScreen() {
     resetChecklist();
   };
 
-  const listData: ListItem[] = [];
-  for (const category of sections) {
-    const categoryTasks = tasks.filter((t) => t.category === category);
-    if (categoryTasks.length === 0) continue;
-    const completedInCategory = categoryTasks.filter((t) => t.completed).length;
-    listData.push({
-      type: "header",
-      category,
-      completed: completedInCategory,
-      total: categoryTasks.length,
-    });
-    for (const task of categoryTasks) {
-      listData.push({ type: "task", task });
-    }
-  }
-
   const topPadding = isWeb ? 67 : insets.top;
+
+  const hasTasks = tasks.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -435,22 +356,14 @@ export default function ChecklistScreen() {
       <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <Image
-              source={require("../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <Image source={require("../../assets/images/logo.png")} style={styles.logo} resizeMode="contain" />
             <View>
               <Text style={styles.headerTitle}>Pizza Hut</Text>
               <Text style={styles.headerSubtitle}>Shift Checklists</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => router.push("/settings")}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
+            <TouchableOpacity onPress={() => router.push("/settings")} style={styles.iconAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={styles.iconActionText}>⚙️</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
@@ -458,14 +371,10 @@ export default function ChecklistScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Progress */}
         <View style={styles.progressSection}>
           <View style={styles.progressLabelRow}>
             <Text style={styles.progressLabel}>Progress</Text>
-            <Text style={styles.progressLabel}>
-              {completedTasks}/{totalTasks} — {Math.round(progress * 100)}%
-            </Text>
+            <Text style={styles.progressLabel}>{completedTasks}/{totalTasks} — {Math.round(progress * 100)}%</Text>
           </View>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%` as any }]} />
@@ -477,40 +386,50 @@ export default function ChecklistScreen() {
       <ChecklistTabBar />
 
       {/* Empty state */}
-      {listData.length === 0 && (
+      {!hasTasks && (
         <View style={styles.emptyState}>
-          <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>
-            No tasks yet
-          </Text>
+          <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>No tasks yet</Text>
           <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
             Tap ⚙️ to add sections and tasks to this checklist.
           </Text>
         </View>
       )}
 
-      {/* List */}
-      <FlatList
-        data={listData}
-        keyExtractor={(item) =>
-          item.type === "header" ? `cat-${item.category}` : `task-${item.task.id}`
-        }
-        renderItem={({ item }) => {
-          if (item.type === "header") {
+      {/* Sections + sortable tasks */}
+      {hasTasks && (
+        <ScrollView
+          scrollEnabled={scrollEnabled}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: (isWeb ? 34 : insets.bottom) + 80 }}
+        >
+          {sections.map((section) => {
+            const sectionTasks = tasks.filter((t) => t.category === section);
+            if (sectionTasks.length === 0) return null;
+            const completedCount = sectionTasks.filter((t) => t.completed).length;
             return (
-              <CategoryHeader
-                category={item.category}
-                completed={item.completed}
-                total={item.total}
-              />
+              <View key={section}>
+                <CategoryHeader category={section} completed={completedCount} total={sectionTasks.length} />
+                <SortableList
+                  data={sectionTasks}
+                  keyExtractor={(t) => String(t.id)}
+                  rowHeight={52}
+                  onDragStart={() => setScrollEnabled(false)}
+                  onDragEnd={() => setScrollEnabled(true)}
+                  onReorder={(newData) => reorderTasksInSection(section, newData)}
+                  renderItem={({ item, isActive, dragHandleProps }) => (
+                    <TaskRow
+                      task={item}
+                      onToggle={handleToggle}
+                      isActive={isActive}
+                      dragHandleProps={dragHandleProps}
+                    />
+                  )}
+                />
+              </View>
             );
-          }
-          return <TaskRow task={item.task} onToggle={handleToggle} />;
-        }}
-        contentContainerStyle={{
-          paddingBottom: (isWeb ? 34 : insets.bottom) + 80,
-        }}
-        showsVerticalScrollIndicator={false}
-      />
+          })}
+        </ScrollView>
+      )}
 
       {/* Completion Banner */}
       {allDone && (
@@ -522,21 +441,12 @@ export default function ChecklistScreen() {
               bottom: (isWeb ? 34 : insets.bottom) + 20,
               opacity: completeBannerAnim,
               transform: [
-                {
-                  translateY: completeBannerAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [20, 0],
-                  }),
-                },
+                { translateY: completeBannerAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) },
               ],
             },
           ]}
         >
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.bannerLogo}
-            resizeMode="contain"
-          />
+          <Image source={require("../../assets/images/logo.png")} style={styles.bannerLogo} resizeMode="contain" />
           <Text style={styles.bannerText}>Shift Complete. Great job team!</Text>
         </Animated.View>
       )}
@@ -565,103 +475,28 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginTop: 8,
   },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   logo: { width: 38, height: 38 },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-  },
-  headerSubtitle: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.72)",
-    fontFamily: "Inter_400Regular",
-    marginTop: 1,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  iconAction: {
-    width: 36,
-    height: 36,
-    backgroundColor: "transparent",
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  headerTitle: { fontSize: 19, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  headerSubtitle: { fontSize: 11, color: "rgba(255,255,255,0.72)", fontFamily: "Inter_400Regular", marginTop: 1 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  iconAction: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   iconActionText: { fontSize: 18 },
-  resetButton: {
-    backgroundColor: "transparent",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-  },
-  resetButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
+  resetButton: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  resetButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
   progressSection: { gap: 6 },
-  progressLabelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  progressLabel: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 3,
-  },
+  progressLabelRow: { flexDirection: "row", justifyContent: "space-between" },
+  progressLabel: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontFamily: "Inter_500Medium" },
+  progressTrack: { height: 6, backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: "#FFFFFF", borderRadius: 3 },
 
   // Tab bar
-  tabBarContainer: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255,255,255,0.2)",
-  },
-  tabBarScroll: {
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    gap: 7,
-    alignItems: "center",
-  },
-  tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    maxWidth: 180,
-  },
-  tabText: {
-    fontSize: 13,
-  },
-  addTabBtn: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addTabText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 20,
-    lineHeight: 24,
-  },
+  tabBarContainer: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.2)" },
+  tabBarScroll: { paddingHorizontal: 12, paddingVertical: 9, gap: 7, alignItems: "center" },
+  tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, maxWidth: 180 },
+  tabText: { fontSize: 13 },
+  addTabBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  addTabText: { color: "rgba(255,255,255,0.75)", fontSize: 20, lineHeight: 24 },
 
   // Category
   categoryHeader: {
@@ -683,25 +518,26 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
+  categoryBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  categoryBadgeText: { fontSize: 12, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 
   // Task
   taskRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 10,
     paddingVertical: 13,
     marginHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  taskRowActive: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 100,
   },
   checkbox: {
     width: 24,
@@ -714,12 +550,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
     flexShrink: 0,
   },
-  checkmark: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 16,
-  },
+  checkmark: { color: "#FFFFFF", fontSize: 13, fontWeight: "700", lineHeight: 16 },
   taskTextContainer: { flex: 1, gap: 3 },
   taskText: { fontSize: 15, lineHeight: 22 },
   optionalBadge: {
@@ -732,25 +563,24 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
 
-  // Empty state
-  emptyState: {
-    flex: 1,
+  // Drag handle (on task rows)
+  dragHandle: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 40,
-    gap: 10,
+    gap: 4,
+    marginLeft: 6,
+    marginTop: 1,
+    opacity: 0.35,
+    cursor: "grab" as any,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptyHint: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    fontFamily: "Inter_400Regular",
-  },
+  dragLine: { width: 14, height: 2, borderRadius: 1 },
+
+  // Empty
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, gap: 10 },
+  emptyTitle: { fontSize: 18, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  emptyHint: { fontSize: 14, textAlign: "center", lineHeight: 20, fontFamily: "Inter_400Regular" },
 
   // Completion banner
   completionBanner: {
@@ -764,63 +594,20 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 8,
   },
-  bannerLogo: { width: 22, height: 22 },
-  bannerText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
+  bannerLogo: { width: 24, height: 24 },
+  bannerText: { color: "#fff", fontSize: 14, fontWeight: "700", fontFamily: "Inter_700Bold" },
 
   // Name modal
-  nameModalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 28,
-  },
-  nameModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  nameModalBox: {
-    borderRadius: 16,
-    padding: 22,
-    gap: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  nameModalTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  nameModalInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-  },
-  nameModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  nameModalBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  nameModalBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
+  nameModalOverlay: { flex: 1, justifyContent: "center" },
+  nameModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
+  nameModalBox: { margin: 28, borderRadius: 18, padding: 22, gap: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 },
+  nameModalTitle: { fontSize: 18, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  nameModalInput: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
+  nameModalActions: { flexDirection: "row", gap: 10 },
+  nameModalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center" },
+  nameModalBtnText: { fontSize: 15, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 });

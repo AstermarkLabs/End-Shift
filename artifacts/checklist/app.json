@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Pizza Hut Closing Checklist",
-    "slug": "checklist",
+    "name": "Shift",
+    "slug": "shift",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "checklist",
+    "scheme": "shift",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,12 @@
       "backgroundColor": "#C8102E"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.shift.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.shift.app"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
