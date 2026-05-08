@@ -104,6 +104,7 @@ interface ChecklistContextValue {
   addChecklist: (name: string) => void;
   updateChecklistName: (id: string, name: string) => void;
   removeChecklist: (id: string) => void;
+  reorderChecklists: (newChecklists: ChecklistMeta[]) => void;
 
   // Active checklist data (derived)
   tasks: Task[];
@@ -300,6 +301,11 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     [updateActiveSections, updateActiveTasks]
   );
 
+  const reorderChecklists = useCallback(
+    (newChecklists: ChecklistMeta[]) => setChecklists(newChecklists),
+    []
+  );
+
   const reorderSections = useCallback(
     (newSections: string[]) => updateActiveSections(() => newSections),
     [updateActiveSections]
@@ -329,6 +335,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         addChecklist,
         updateChecklistName,
         removeChecklist,
+        reorderChecklists,
         tasks,
         sections,
         toggleTask,

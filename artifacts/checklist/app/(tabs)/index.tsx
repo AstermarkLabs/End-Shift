@@ -19,7 +19,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Task, useChecklist } from "@/context/ChecklistContext";
+import { SortableList } from "@/components/SortableList";
+import { ChecklistMeta, Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
 // ─── Name Modal (for creating / renaming checklists) ─────────────────────────
@@ -119,13 +120,13 @@ function ChecklistTabBar() {
     addChecklist,
     updateChecklistName,
     removeChecklist,
+    reorderChecklists,
   } = useChecklist();
 
   const [modal, setModal] = useState<
     { kind: "new" } | { kind: "rename"; id: string; name: string } | null
   >(null);
-
-  const scrollRef = useRef<ScrollView>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const handleTabPress = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -135,10 +136,7 @@ function ChecklistTabBar() {
   const handleTabLongPress = (id: string, name: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(name, undefined, [
-      {
-        text: "Rename",
-        onPress: () => setModal({ kind: "rename", id, name }),
-      },
+      { text: "Rename", onPress: () => setModal({ kind: "rename", id, name }) },
       {
         text: "Delete",
         style: "destructive",
@@ -164,51 +162,72 @@ function ChecklistTabBar() {
     ]);
   };
 
+  const renderTab = ({
+    item: cl,
+    isActive: isDragging,
+    dragHandleProps,
+  }: {
+    item: ChecklistMeta;
+    index: number;
+    isActive: boolean;
+    dragHandleProps: object;
+  }) => {
+    const active = cl.id === activeChecklistId;
+    return (
+      <View
+        {...dragHandleProps}
+        style={[
+          styles.tab,
+          active ? { backgroundColor: "#fff" } : { backgroundColor: "transparent" },
+          isDragging && styles.tabDragging,
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => handleTabPress(cl.id)}
+          onLongPress={() => handleTabLongPress(cl.id, cl.name)}
+          delayLongPress={450}
+          style={styles.tabTouchable}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color: active ? colors.primary : "rgba(255,255,255,0.75)",
+                fontFamily: active ? "Inter_700Bold" : "Inter_400Regular",
+                fontWeight: active ? "700" : "400",
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {cl.name}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.tabBarContainer, { backgroundColor: "#A0102A" }]}>
       <ScrollView
-        ref={scrollRef}
         horizontal
+        scrollEnabled={scrollEnabled}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabBarScroll}
       >
-        {checklists.map((cl) => {
-          const active = cl.id === activeChecklistId;
-          return (
-            <TouchableOpacity
-              key={cl.id}
-              onPress={() => handleTabPress(cl.id)}
-              onLongPress={() => handleTabLongPress(cl.id, cl.name)}
-              delayLongPress={400}
-              style={[
-                styles.tab,
-                active
-                  ? { backgroundColor: "#fff" }
-                  : { backgroundColor: "transparent" },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color: active ? colors.primary : "rgba(255,255,255,0.75)",
-                    fontFamily: active ? "Inter_700Bold" : "Inter_400Regular",
-                    fontWeight: active ? "700" : "400",
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {cl.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <SortableList
+          data={checklists}
+          keyExtractor={(cl) => cl.id}
+          direction="horizontal"
+          claimOnStart={false}
+          itemSize={110}
+          onDragStart={() => setScrollEnabled(false)}
+          onDragEnd={() => setScrollEnabled(true)}
+          onReorder={reorderChecklists}
+          renderItem={renderTab}
+        />
 
         {/* Add button */}
-        <TouchableOpacity
-          onPress={() => setModal({ kind: "new" })}
-          style={styles.addTabBtn}
-        >
+        <TouchableOpacity onPress={() => setModal({ kind: "new" })} style={styles.addTabBtn}>
           <Text style={styles.addTabText}>＋</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -218,11 +237,8 @@ function ChecklistTabBar() {
         initial={modal?.kind === "rename" ? modal.name : ""}
         title={modal?.kind === "rename" ? "Rename Checklist" : "New Checklist"}
         onSave={(name) => {
-          if (modal?.kind === "rename") {
-            updateChecklistName(modal.id, name);
-          } else {
-            addChecklist(name);
-          }
+          if (modal?.kind === "rename") updateChecklistName(modal.id, name);
+          else addChecklist(name);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }}
         onClose={() => setModal(null)}
@@ -643,10 +659,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
     borderRadius: 20,
     maxWidth: 180,
+    overflow: "hidden",
+  },
+  tabTouchable: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  tabDragging: {
+    opacity: 0.85,
+    transform: [{ scale: 1.05 }],
   },
   tabText: {
     fontSize: 13,
