@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider, useAuthRedirect } from "@/context/AuthContext";
 import { ChecklistProvider } from "@/context/ChecklistContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -21,9 +22,13 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  useAuthRedirect();
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="profile" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="admin" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen
         name="settings"
         options={{ headerShown: false, presentation: "modal" }}
@@ -63,7 +68,9 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <ChecklistProvider>
-                <RootLayoutNav />
+                <AuthProvider>
+                  <RootLayoutNav />
+                </AuthProvider>
               </ChecklistProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

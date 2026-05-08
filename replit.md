@@ -10,6 +10,16 @@ A mobile app for managing end-of-shift closing checklists, with multiple named c
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Auth env (optional, have sensible dev defaults):
+  - `JWT_SECRET`, `JWT_REFRESH_SECRET` — sign access/refresh tokens (required in production)
+  - `WEBAUTHN_RP_ID` — domain used as WebAuthn relying party ID (default: `localhost`)
+  - `WEBAUTHN_ORIGIN` — expected web origin (default: `http://localhost`)
+  - `WEBAUTHN_RP_NAME` — display name shown in passkey dialogs (default: `End Shift`)
+- Native passkey env (required for fingerprint/Face ID on Android & iOS):
+  - `WEBAUTHN_ANDROID_SHA256` — app signing cert SHA-256 fingerprint, colon-separated hex (e.g. `AA:BB:CC:…`); find it in Play Console → App Integrity, or run `keytool -list -v -keystore release.jks`
+  - `WEBAUTHN_ANDROID_PACKAGE` — Android package name matching `app.json` android.package (e.g. `com.endshift.app`)
+  - `WEBAUTHN_IOS_TEAM_ID` — 10-character Apple Team ID from developer.apple.com
+  - `WEBAUTHN_IOS_BUNDLE_ID` — iOS bundle identifier matching `app.json` ios.bundleIdentifier (e.g. `com.endshift.app`)
 
 ## Stack
 

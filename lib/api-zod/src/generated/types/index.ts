@@ -6,4 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./authResult";
+export * from "./createProfileRequest";
+export * from "./createRoleRequest";
 export * from "./healthStatus";
+export * from "./jsonObject";
+export * from "./loginRequest";
+export * from "./passkeyAuthOptionsRequest";
+export * from "./passkeyAuthVerifyRequest";
+export * from "./passkeyCredential";
+export * from "./passkeyRegisterVerifyRequest";
+export * from "./profile";
+export * from "./refreshRequest";
+export * from "./right";
+export * from "./role";
+export * from "./updateMeRequest";
+export * from "./updateProfileRequest";
+export * from "./updateRoleRequest";

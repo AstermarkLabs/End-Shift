@@ -7,6 +7,7 @@ export type ErrorType<T = unknown> = ApiError<T>;
 export type BodyType<T> = T;
 
 export type AuthTokenGetter = () => Promise<string | null> | string | null;
+export type AuthRefreshHandler = () => Promise<string | null>;
 
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
@@ -17,6 +18,13 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _authRefreshHandler: AuthRefreshHandler | null = null;
+// Re-entrancy guard: while we are inside the refresh handler, any 401
+// returned by requests it makes (e.g. the refresh endpoint itself returning
+// 401 because the refresh token is invalid) must NOT trigger another refresh
+// — that would cause customFetch to await the same in-flight refresh promise
+// from inside the refresh promise, deadlocking the auth client.
+let _refreshInFlight = false;
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -42,6 +50,19 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
+}
+
+/**
+ * Register an async handler invoked once when a request fails with HTTP 401.
+ * The handler should attempt to obtain a fresh access token (e.g. by calling a
+ * refresh endpoint) and resolve to that token, or `null` if refresh failed.
+ * On success, the original request is automatically retried once with the new
+ * token attached.
+ *
+ * Pass `null` to clear the handler.
+ */
+export function setAuthRefreshHandler(handler: AuthRefreshHandler | null): void {
+  _authRefreshHandler = handler;
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {
@@ -322,6 +343,21 @@ async function parseSuccessBody(
   }
 }
 
+async function performFetch(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  method: string,
+  headers: Headers,
+  bearer: string | null,
+): Promise<Response> {
+  // Bearer token is applied to a fresh Headers copy so retries can swap it in.
+  const finalHeaders = new Headers(headers);
+  if (bearer && !finalHeaders.has("authorization")) {
+    finalHeaders.set("authorization", `Bearer ${bearer}`);
+  }
+  return fetch(input, { ...init, method, headers: finalHeaders });
+}
+
 export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
@@ -349,18 +385,40 @@ export async function customFetch<T = unknown>(
     headers.set("accept", DEFAULT_JSON_ACCEPT);
   }
 
-  // Attach bearer token when an auth getter is configured and no
-  // Authorization header has been explicitly provided.
-  if (_authTokenGetter && !headers.has("authorization")) {
-    const token = await _authTokenGetter();
-    if (token) {
-      headers.set("authorization", `Bearer ${token}`);
-    }
+  // Initial bearer token fetched from the registered getter.
+  let bearer: string | null = null;
+  const callerProvidedAuth = headers.has("authorization");
+  if (_authTokenGetter && !callerProvidedAuth) {
+    bearer = await _authTokenGetter();
   }
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response = await performFetch(input, init, method, headers, bearer);
+
+  // Transparent token refresh: on 401 with a registered refresh handler and
+  // no caller-provided Authorization, try to refresh once and replay.  The
+  // `_refreshInFlight` guard prevents the refresh request itself (or any
+  // other request issued from within the handler) from re-entering this
+  // branch and awaiting its own in-flight refresh promise, which would
+  // deadlock the auth client.
+  if (
+    response.status === 401 &&
+    !callerProvidedAuth &&
+    _authRefreshHandler != null &&
+    !_refreshInFlight
+  ) {
+    _refreshInFlight = true;
+    let refreshed: string | null;
+    try {
+      refreshed = await _authRefreshHandler();
+    } finally {
+      _refreshInFlight = false;
+    }
+    if (refreshed) {
+      response = await performFetch(input, init, method, headers, refreshed);
+    }
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

@@ -8,3 +8,116 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface JsonObject {
+  [key: string]: unknown;
+}
+
+export type Right = (typeof Right)[keyof typeof Right];
+
+export const Right = {
+  manage_profiles: "manage_profiles",
+  assign_roles: "assign_roles",
+  manage_roles: "manage_roles",
+  create_checklists: "create_checklists",
+} as const;
+
+export interface Role {
+  id: number;
+  name: string;
+  level: number;
+  isSystem: boolean;
+  rights: Right[];
+}
+
+export interface CreateRoleRequest {
+  /** @minLength 1 */
+  name: string;
+  level: number;
+  rights: Right[];
+}
+
+export interface UpdateRoleRequest {
+  /** @minLength 1 */
+  name?: string;
+  level?: number;
+  rights?: Right[];
+}
+
+export interface Profile {
+  id: number;
+  username: string;
+  displayName: string;
+  roleId: number;
+  role: Role;
+  mustChangePassword: boolean;
+  isActive: boolean;
+}
+
+export interface CreateProfileRequest {
+  /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
+  displayName: string;
+  /** @minLength 8 */
+  password: string;
+  roleId: number;
+  mustChangePassword?: boolean;
+}
+
+export interface UpdateProfileRequest {
+  /** @minLength 1 */
+  username?: string;
+  /** @minLength 1 */
+  displayName?: string;
+  /** @minLength 8 */
+  password?: string;
+  roleId?: number;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+}
+
+export interface UpdateMeRequest {
+  /** @minLength 1 */
+  displayName?: string;
+  currentPassword?: string;
+  /** @minLength 8 */
+  newPassword?: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+export interface AuthResult {
+  accessToken: string;
+  refreshToken: string;
+  profile: Profile;
+}
+
+export interface PasskeyCredential {
+  id: number;
+  credentialId: string;
+  label?: string | null;
+  createdAt: string;
+  lastUsedAt?: string | null;
+}
+
+export interface PasskeyRegisterVerifyRequest {
+  response: JsonObject;
+  label?: string;
+}
+
+export interface PasskeyAuthOptionsRequest {
+  username?: string;
+}
+
+export interface PasskeyAuthVerifyRequest {
+  response: JsonObject;
+  username?: string;
+}

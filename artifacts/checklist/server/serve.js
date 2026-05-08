@@ -107,6 +107,68 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
+// ─── .well-known handlers ────────────────────────────────────────────────────
+// These files are required for native passkey support:
+//   iOS  → apple-app-site-association (Associated Domains)
+//   Android → assetlinks.json (Digital Asset Links)
+//
+// Configure with environment variables (see replit.md for details):
+//   WEBAUTHN_IOS_TEAM_ID      e.g. ABCDE12345
+//   WEBAUTHN_IOS_BUNDLE_ID    e.g. com.endshift.app
+//   WEBAUTHN_ANDROID_PACKAGE  e.g. com.endshift.app
+//   WEBAUTHN_ANDROID_SHA256   e.g. AA:BB:CC:DD:... (colon-separated hex)
+
+function serveAppleAppSiteAssociation(res) {
+  const teamId = process.env["WEBAUTHN_IOS_TEAM_ID"];
+  const bundleId = process.env["WEBAUTHN_IOS_BUNDLE_ID"];
+  if (!teamId || !bundleId) {
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error: "WEBAUTHN_IOS_TEAM_ID and WEBAUTHN_IOS_BUNDLE_ID are not set",
+      }),
+    );
+    return;
+  }
+  const body = JSON.stringify({
+    webcredentials: { apps: [`${teamId}.${bundleId}`] },
+  });
+  res.writeHead(200, { "content-type": "application/json" });
+  res.end(body);
+}
+
+function serveAssetLinks(res) {
+  const pkg = process.env["WEBAUTHN_ANDROID_PACKAGE"];
+  const sha256 = process.env["WEBAUTHN_ANDROID_SHA256"];
+  if (!pkg || !sha256) {
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          "WEBAUTHN_ANDROID_PACKAGE and WEBAUTHN_ANDROID_SHA256 are not set",
+      }),
+    );
+    return;
+  }
+  // Android expects colon-separated uppercase hex fingerprints.
+  const fingerprint = sha256.toUpperCase();
+  const body = JSON.stringify([
+    {
+      relation: [
+        "delegate_permission/common.handle_all_urls",
+        "delegate_permission/common.get_login_creds",
+      ],
+      target: {
+        namespace: "android_app",
+        package_name: pkg,
+        sha256_cert_fingerprints: [fingerprint],
+      },
+    },
+  ]);
+  res.writeHead(200, { "content-type": "application/json" });
+  res.end(body);
+}
+
 const server = http.createServer((req, res) => {
   let url;
   try {
@@ -120,6 +182,18 @@ const server = http.createServer((req, res) => {
 
   if (basePath && pathname.startsWith(basePath)) {
     pathname = pathname.slice(basePath.length) || "/";
+  }
+
+  // Native passkey domain-association files — must be served at the root
+  // domain (no base-path prefix) before the base-path stripping above would
+  // hide them.  We match on the raw URL pathname for these two well-known
+  // paths so they are always reachable regardless of BASE_PATH.
+  const rawPathname = url.pathname;
+  if (rawPathname === "/.well-known/apple-app-site-association") {
+    return serveAppleAppSiteAssociation(res);
+  }
+  if (rawPathname === "/.well-known/assetlinks.json") {
+    return serveAssetLinks(res);
   }
 
   if (pathname === "/" || pathname === "/manifest") {

@@ -8,9 +8,404 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary Sign in with username + password
+ */
+export const LoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  accessToken: zod.string(),
+  refreshToken: zod.string(),
+  profile: zod.object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    roleId: zod.number(),
+    role: zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      level: zod.number(),
+      isSystem: zod.boolean(),
+      rights: zod.array(
+        zod.enum([
+          "manage_profiles",
+          "assign_roles",
+          "manage_roles",
+          "create_checklists",
+        ]),
+      ),
+    }),
+    mustChangePassword: zod.boolean(),
+    isActive: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Refresh access token
+ */
+export const RefreshBody = zod.object({
+  refreshToken: zod.string(),
+});
+
+export const RefreshResponse = zod.object({
+  accessToken: zod.string(),
+  refreshToken: zod.string(),
+  profile: zod.object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    roleId: zod.number(),
+    role: zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      level: zod.number(),
+      isSystem: zod.boolean(),
+      rights: zod.array(
+        zod.enum([
+          "manage_profiles",
+          "assign_roles",
+          "manage_roles",
+          "create_checklists",
+        ]),
+      ),
+    }),
+    mustChangePassword: zod.boolean(),
+    isActive: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Generate passkey registration options
+ */
+export const PasskeyRegisterOptionsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+/**
+ * @summary Verify passkey registration
+ */
+export const PasskeyRegisterVerifyBody = zod.object({
+  response: zod.record(zod.string(), zod.unknown()),
+  label: zod.string().optional(),
+});
+
+export const PasskeyRegisterVerifyResponse = zod.object({
+  id: zod.number(),
+  credentialId: zod.string(),
+  label: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  lastUsedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Generate passkey assertion options
+ */
+export const PasskeyAuthOptionsBody = zod.object({
+  username: zod.string().optional(),
+});
+
+export const PasskeyAuthOptionsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+/**
+ * @summary Verify passkey assertion and sign in
+ */
+export const PasskeyAuthVerifyBody = zod.object({
+  response: zod.record(zod.string(), zod.unknown()),
+  username: zod.string().optional(),
+});
+
+export const PasskeyAuthVerifyResponse = zod.object({
+  accessToken: zod.string(),
+  refreshToken: zod.string(),
+  profile: zod.object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    roleId: zod.number(),
+    role: zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      level: zod.number(),
+      isSystem: zod.boolean(),
+      rights: zod.array(
+        zod.enum([
+          "manage_profiles",
+          "assign_roles",
+          "manage_roles",
+          "create_checklists",
+        ]),
+      ),
+    }),
+    mustChangePassword: zod.boolean(),
+    isActive: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Get current user profile
+ */
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  roleId: zod.number(),
+  role: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    level: zod.number(),
+    isSystem: zod.boolean(),
+    rights: zod.array(
+      zod.enum([
+        "manage_profiles",
+        "assign_roles",
+        "manage_roles",
+        "create_checklists",
+      ]),
+    ),
+  }),
+  mustChangePassword: zod.boolean(),
+  isActive: zod.boolean(),
+});
+
+/**
+ * @summary Update current user profile (e.g. password)
+ */
+
+export const updateMeBodyNewPasswordMin = 8;
+
+export const UpdateMeBody = zod.object({
+  displayName: zod.string().min(1).optional(),
+  currentPassword: zod.string().optional(),
+  newPassword: zod.string().min(updateMeBodyNewPasswordMin).optional(),
+});
+
+export const UpdateMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  roleId: zod.number(),
+  role: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    level: zod.number(),
+    isSystem: zod.boolean(),
+    rights: zod.array(
+      zod.enum([
+        "manage_profiles",
+        "assign_roles",
+        "manage_roles",
+        "create_checklists",
+      ]),
+    ),
+  }),
+  mustChangePassword: zod.boolean(),
+  isActive: zod.boolean(),
+});
+
+/**
+ * @summary List profiles
+ */
+export const ListProfilesResponseItem = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  roleId: zod.number(),
+  role: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    level: zod.number(),
+    isSystem: zod.boolean(),
+    rights: zod.array(
+      zod.enum([
+        "manage_profiles",
+        "assign_roles",
+        "manage_roles",
+        "create_checklists",
+      ]),
+    ),
+  }),
+  mustChangePassword: zod.boolean(),
+  isActive: zod.boolean(),
+});
+export const ListProfilesResponse = zod.array(ListProfilesResponseItem);
+
+/**
+ * @summary Create profile
+ */
+
+export const createProfileBodyPasswordMin = 8;
+
+export const CreateProfileBody = zod.object({
+  username: zod.string().min(1),
+  displayName: zod.string().min(1),
+  password: zod.string().min(createProfileBodyPasswordMin),
+  roleId: zod.number(),
+  mustChangePassword: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update profile
+ */
+export const UpdateProfileParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updateProfileBodyPasswordMin = 8;
+
+export const UpdateProfileBody = zod.object({
+  username: zod.string().min(1).optional(),
+  displayName: zod.string().min(1).optional(),
+  password: zod.string().min(updateProfileBodyPasswordMin).optional(),
+  roleId: zod.number().optional(),
+  isActive: zod.boolean().optional(),
+  mustChangePassword: zod.boolean().optional(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  roleId: zod.number(),
+  role: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    level: zod.number(),
+    isSystem: zod.boolean(),
+    rights: zod.array(
+      zod.enum([
+        "manage_profiles",
+        "assign_roles",
+        "manage_roles",
+        "create_checklists",
+      ]),
+    ),
+  }),
+  mustChangePassword: zod.boolean(),
+  isActive: zod.boolean(),
+});
+
+/**
+ * @summary Delete profile
+ */
+export const DeleteProfileParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List passkeys for a profile
+ */
+export const ListProfilePasskeysParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListProfilePasskeysResponseItem = zod.object({
+  id: zod.number(),
+  credentialId: zod.string(),
+  label: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  lastUsedAt: zod.coerce.date().nullish(),
+});
+export const ListProfilePasskeysResponse = zod.array(
+  ListProfilePasskeysResponseItem,
+);
+
+/**
+ * @summary Delete a passkey
+ */
+export const DeleteProfilePasskeyParams = zod.object({
+  id: zod.coerce.number(),
+  credentialId: zod.coerce.string(),
+});
+
+/**
+ * @summary List roles
+ */
+export const ListRolesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  level: zod.number(),
+  isSystem: zod.boolean(),
+  rights: zod.array(
+    zod.enum([
+      "manage_profiles",
+      "assign_roles",
+      "manage_roles",
+      "create_checklists",
+    ]),
+  ),
+});
+export const ListRolesResponse = zod.array(ListRolesResponseItem);
+
+/**
+ * @summary Create role
+ */
+
+export const CreateRoleBody = zod.object({
+  name: zod.string().min(1),
+  level: zod.number(),
+  rights: zod.array(
+    zod.enum([
+      "manage_profiles",
+      "assign_roles",
+      "manage_roles",
+      "create_checklists",
+    ]),
+  ),
+});
+
+/**
+ * @summary Update role
+ */
+export const UpdateRoleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateRoleBody = zod.object({
+  name: zod.string().min(1).optional(),
+  level: zod.number().optional(),
+  rights: zod
+    .array(
+      zod.enum([
+        "manage_profiles",
+        "assign_roles",
+        "manage_roles",
+        "create_checklists",
+      ]),
+    )
+    .optional(),
+});
+
+export const UpdateRoleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  level: zod.number(),
+  isSystem: zod.boolean(),
+  rights: zod.array(
+    zod.enum([
+      "manage_profiles",
+      "assign_roles",
+      "manage_roles",
+      "create_checklists",
+    ]),
+  ),
+});
+
+/**
+ * @summary Delete role
+ */
+export const DeleteRoleParams = zod.object({
+  id: zod.coerce.number(),
 });

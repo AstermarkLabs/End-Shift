@@ -10,13 +10,18 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: profiles
+    description: User profiles
+  - name: roles
+    description: Roles & rights
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +29,323 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in with username + password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Tokens + profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "204":
+          description: Signed out
+
+  /auth/refresh:
+    post:
+      operationId: refresh
+      tags: [auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+
+  /auth/passkey/register-options:
+    post:
+      operationId: passkeyRegisterOptions
+      tags: [auth]
+      summary: Generate passkey registration options
+      responses:
+        "200":
+          description: Options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+
+  /auth/passkey/register-verify:
+    post:
+      operationId: passkeyRegisterVerify
+      tags: [auth]
+      summary: Verify passkey registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyRegisterVerifyRequest"
+      responses:
+        "200":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyCredential"
+
+  /auth/passkey/auth-options:
+    post:
+      operationId: passkeyAuthOptions
+      tags: [auth]
+      summary: Generate passkey assertion options
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyAuthOptionsRequest"
+      responses:
+        "200":
+          description: Options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+
+  /auth/passkey/auth-verify:
+    post:
+      operationId: passkeyAuthVerify
+      tags: [auth]
+      summary: Verify passkey assertion and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyAuthVerifyRequest"
+      responses:
+        "200":
+          description: Tokens + profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+
+  /profiles/me:
+    get:
+      operationId: getMe
+      tags: [profiles]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    put:
+      operationId: updateMe
+      tags: [profiles]
+      summary: Update current user profile (e.g. password)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /profiles:
+    get:
+      operationId: listProfiles
+      tags: [profiles]
+      summary: List profiles
+      responses:
+        "200":
+          description: Profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+    post:
+      operationId: createProfile
+      tags: [profiles]
+      summary: Create profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProfileRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /profiles/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      operationId: updateProfile
+      tags: [profiles]
+      summary: Update profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    delete:
+      operationId: deleteProfile
+      tags: [profiles]
+      summary: Delete profile
+      responses:
+        "204":
+          description: Deleted
+
+  /profiles/{id}/passkeys:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: listProfilePasskeys
+      tags: [profiles]
+      summary: List passkeys for a profile
+      responses:
+        "200":
+          description: Passkeys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PasskeyCredential"
+
+  /profiles/{id}/passkeys/{credentialId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: credentialId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: deleteProfilePasskey
+      tags: [profiles]
+      summary: Delete a passkey
+      responses:
+        "204":
+          description: Deleted
+
+  /roles:
+    get:
+      operationId: listRoles
+      tags: [roles]
+      summary: List roles
+      responses:
+        "200":
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+    post:
+      operationId: createRole
+      tags: [roles]
+      summary: Create role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+
+  /roles/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      operationId: updateRole
+      tags: [roles]
+      summary: Update role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+    delete:
+      operationId: deleteRole
+      tags: [roles]
+      summary: Delete role
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +353,198 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    JsonObject:
+      type: object
+      additionalProperties: true
+
+    Right:
+      type: string
+      enum:
+        - manage_profiles
+        - assign_roles
+        - manage_roles
+        - create_checklists
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        level:
+          type: integer
+        isSystem:
+          type: boolean
+        rights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Right"
+      required: [id, name, level, isSystem, rights]
+
+    CreateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        level:
+          type: integer
+        rights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Right"
+      required: [name, level, rights]
+
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        level:
+          type: integer
+        rights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Right"
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        roleId:
+          type: integer
+        role:
+          $ref: "#/components/schemas/Role"
+        mustChangePassword:
+          type: boolean
+        isActive:
+          type: boolean
+      required: [id, username, displayName, roleId, role, mustChangePassword, isActive]
+
+    CreateProfileRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 8
+        roleId:
+          type: integer
+        mustChangePassword:
+          type: boolean
+      required: [username, displayName, password, roleId]
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 8
+        roleId:
+          type: integer
+        isActive:
+          type: boolean
+        mustChangePassword:
+          type: boolean
+
+    UpdateMeRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required: [refreshToken]
+
+    AuthResult:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        profile:
+          $ref: "#/components/schemas/Profile"
+      required: [accessToken, refreshToken, profile]
+
+    PasskeyCredential:
+      type: object
+      properties:
+        id:
+          type: integer
+        credentialId:
+          type: string
+        label:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, credentialId, createdAt]
+
+    PasskeyRegisterVerifyRequest:
+      type: object
+      properties:
+        response:
+          $ref: "#/components/schemas/JsonObject"
+        label:
+          type: string
+      required: [response]
+
+    PasskeyAuthOptionsRequest:
+      type: object
+      properties:
+        username:
+          type: string
+
+    PasskeyAuthVerifyRequest:
+      type: object
+      properties:
+        response:
+          $ref: "#/components/schemas/JsonObject"
+        username:
+          type: string
+      required: [response]

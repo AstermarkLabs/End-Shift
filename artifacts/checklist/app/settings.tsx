@@ -325,6 +325,20 @@ export default function AppSettingsScreen() {
           </View>
         </View>
 
+        {/* ── Account ── */}
+        <SectionLabel title="ACCOUNT" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <SettingsRow
+            icon="👤"
+            label="Profile & Passkeys"
+            subtitle="Change password, manage passkeys, sign out"
+            onPress={() => {
+              router.back();
+              setTimeout(() => router.push("/profile"), 50);
+            }}
+          />
+        </View>
+
         {/* ── Shift History ── */}
         <SectionLabel title="SHIFT HISTORY" />
         <View style={[styles.group, { borderColor: colors.border }]}>
