@@ -400,7 +400,10 @@ export default function ChecklistScreen() {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
   const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
-  const allDone = completedTasks === totalTasks && totalTasks > 0;
+
+  const requiredTasks = tasks.filter((t) => t.required);
+  const allRequiredDone = requiredTasks.length > 0 && requiredTasks.every((t) => t.completed);
+  const allDone = allRequiredDone;
 
   useEffect(() => {
     if (allDone) {
@@ -560,42 +563,40 @@ export default function ChecklistScreen() {
           return <TaskRow task={item.task} onToggle={handleToggle} />;
         }}
         contentContainerStyle={{
-          paddingBottom: (isWeb ? 34 : insets.bottom) + 80,
+          paddingBottom: 16,
         }}
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Completion Banner */}
+      {/* Completion Footer */}
       {allDone && (
         <Animated.View
           style={[
-            styles.completionBanner,
+            styles.completionFooter,
             {
-              backgroundColor: colors.primary,
-              bottom: (isWeb ? 34 : insets.bottom) + 20,
+              paddingBottom: (isWeb ? 16 : insets.bottom) + 8,
               opacity: completeBannerAnim,
               transform: [
                 {
                   translateY: completeBannerAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [20, 0],
+                    outputRange: [80, 0],
                   }),
                 },
               ],
             },
           ]}
         >
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.bannerLogo}
-            resizeMode="contain"
-          />
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerText}>Shift complete! Great job team!</Text>
-            <TouchableOpacity onPress={handleCompleteFromBanner} style={styles.bannerSaveBtn}>
-              <Text style={styles.bannerSaveBtnText}>Complete</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={[styles.footerMessage, { color: colors.primary }]}>
+            All required tasks complete!
+          </Text>
+          <TouchableOpacity
+            onPress={handleCompleteFromBanner}
+            style={[styles.footerCompleteBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.footerCompleteBtnText}>Complete</Text>
+          </TouchableOpacity>
         </Animated.View>
       )}
     </View>
@@ -835,42 +836,40 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
 
-  // Completion banner
-  completionBanner: {
-    position: "absolute",
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  // Completion footer
+  completionFooter: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    paddingTop: 14,
+    alignItems: "center",
+    gap: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.08)",
+    backgroundColor: "#fff",
   },
-  bannerLogo: { width: 22, height: 22, flexShrink: 0 },
-  bannerContent: { flex: 1, gap: 6 },
-  bannerText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  bannerSaveBtn: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignSelf: "flex-start",
-  },
-  bannerSaveBtnText: {
-    color: "#fff",
-    fontSize: 12,
+  footerMessage: {
+    fontSize: 14,
     fontWeight: "600",
     fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  footerCompleteBtn: {
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  footerCompleteBtnText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
   },
 
   // Name modal
