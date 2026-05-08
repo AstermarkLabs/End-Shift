@@ -184,3 +184,5 @@ overrides:
   "minimatch>brace-expansion": "^2.0.3"
   # Security: fix XSS in postcss (GHSA-qx2v-qp2m-jg93)
   postcss: "^8.5.10"
+  # Security: fix path traversal via percent-encoded dot segments in fast-uri (GHSA-q3j6-qgpj-74h6)
+  fast-uri: "^3.1.1"
