@@ -1,5 +1,5 @@
+import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
-import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -90,45 +90,33 @@ export default function AppSettingsScreen() {
   }, [appConfig.name]);
 
   const pickCustomIcon = async () => {
-    if (Platform.OS === "web") {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/svg+xml,image/jpeg,image/webp,image/png";
-      input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const uri = ev.target?.result as string;
-          if (uri) {
-            updateAppConfig({ customIconUri: uri });
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-        };
-        reader.readAsDataURL(file);
+    const MIME_TYPES = ["image/svg+xml", "image/jpeg", "image/webp", "image/png"];
+
+    const result = await DocumentPicker.getDocumentAsync({
+      type: MIME_TYPES,
+      copyToCacheDirectory: true,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+
+    try {
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUri = ev.target?.result as string;
+        if (dataUri) {
+          updateAppConfig({ customIconUri: dataUri });
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
       };
-      input.click();
-    } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow photo access to pick a custom icon.");
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.85,
-        base64: true,
-      });
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        const uri = asset.base64
-          ? `data:image/jpeg;base64,${asset.base64}`
-          : asset.uri;
-        updateAppConfig({ customIconUri: uri });
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      reader.readAsDataURL(blob);
+    } catch {
+      // Fallback: use URI directly (works for raster images on native)
+      updateAppConfig({ customIconUri: asset.uri });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
