@@ -125,6 +125,8 @@ function TabContextMenu({
   onDelete: () => void;
 }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === "web";
   if (!target) return null;
 
   return (
@@ -137,7 +139,13 @@ function TabContextMenu({
     >
       <Pressable style={styles.ctxBackdrop} onPress={onClose}>
         <Pressable
-          style={[styles.ctxSheet, { backgroundColor: colors.card }]}
+          style={[
+            styles.ctxSheet,
+            {
+              backgroundColor: colors.card,
+              paddingBottom: (isWeb ? 16 : insets.bottom) + 12,
+            },
+          ]}
           onPress={(e) => e.stopPropagation()}
         >
           <View style={[styles.ctxHandle, { backgroundColor: colors.border }]} />
