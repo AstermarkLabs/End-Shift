@@ -1,6 +1,6 @@
-# [Project name]
+# End Shift
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A mobile app for managing end-of-shift closing checklists, with multiple named checklists, required/optional tasks, shift history, and team-friendly task tracking.
 
 ## Run & Operate
 

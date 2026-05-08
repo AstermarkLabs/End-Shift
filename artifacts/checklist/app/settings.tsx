@@ -177,7 +177,7 @@ export default function AppSettingsScreen() {
               <Text style={styles.rowIconText}>🍕</Text>
             </View>
             <View style={styles.rowBody}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Pizza Hut Closing Checklist</Text>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>End Shift</Text>
               <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>Version 1.0</Text>
             </View>
           </View>

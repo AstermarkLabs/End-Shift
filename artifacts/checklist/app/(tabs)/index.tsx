@@ -596,8 +596,7 @@ export default function ChecklistScreen() {
               resizeMode="contain"
             />
             <View>
-              <Text style={styles.headerTitle}>Pizza Hut</Text>
-              <Text style={styles.headerSubtitle}>Shift Checklists</Text>
+              <Text style={styles.headerTitle}>End Shift</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
