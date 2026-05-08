@@ -593,7 +593,7 @@ export default function ChecklistScreen() {
           <View style={styles.bannerContent}>
             <Text style={styles.bannerText}>Shift complete! Great job team!</Text>
             <TouchableOpacity onPress={handleCompleteFromBanner} style={styles.bannerSaveBtn}>
-              <Text style={styles.bannerSaveBtnText}>Save to History</Text>
+              <Text style={styles.bannerSaveBtnText}>Complete</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
