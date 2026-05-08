@@ -1,345 +1,116 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { SortableList } from "@/components/SortableList";
-import { Task, useChecklist } from "@/context/ChecklistContext";
+import { useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Drag Handle ─────────────────────────────────────────────────────────────
+// ─── Row ──────────────────────────────────────────────────────────────────────
 
-function DragHandle({
-  panHandlers,
-  isActive,
+function SettingsRow({
+  label,
+  subtitle,
+  onPress,
+  destructive,
+  icon,
 }: {
-  panHandlers: object;
-  isActive: boolean;
+  label: string;
+  subtitle?: string;
+  onPress: () => void;
+  destructive?: boolean;
+  icon: string;
 }) {
   const colors = useColors();
   return (
-    <View
-      {...panHandlers}
-      style={[styles.dragHandle, { opacity: isActive ? 0.4 : 0.55 }]}
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.row, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
     >
-      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
-      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
-      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
-    </View>
-  );
-}
-
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
-
-type EditTarget =
-  | { kind: "section"; title: string }
-  | { kind: "task"; task: Task }
-  | { kind: "newTask"; category: string }
-  | { kind: "newSection" }
-  | null;
-
-function EditModal({
-  target,
-  onClose,
-}: {
-  target: NonNullable<EditTarget>;
-  onClose: () => void;
-}) {
-  const colors = useColors();
-  const { addSection, updateSection, addTask, updateTask } = useChecklist();
-
-  const isNewSection = target.kind === "newSection";
-  const isSection = target.kind === "section" || isNewSection;
-  const isTask = target.kind === "task";
-  const isNewTask = target.kind === "newTask";
-
-  const [text, setText] = useState(
-    target.kind === "section"
-      ? target.title
-      : target.kind === "task"
-      ? target.task.text
-      : ""
-  );
-  const [required, setRequired] = useState(
-    target.kind === "task" ? target.task.required : true
-  );
-
-  const valid = text.trim().length > 0;
-
-  const handleSave = () => {
-    if (!valid) return;
-    if (isNewSection) addSection(text.trim());
-    else if (target.kind === "section") updateSection(target.title, text.trim());
-    else if (isNewTask && target.kind === "newTask") addTask(target.category, text.trim(), required);
-    else if (isTask && target.kind === "task") updateTask(target.task.id, { text: text.trim(), required });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onClose();
-  };
-
-  return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.modalOverlay}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={onClose} />
-        <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
-          <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-            {isNewSection ? "Add Section" : target.kind === "section" ? "Edit Section" : isNewTask ? "Add Task" : "Edit Task"}
-          </Text>
-          <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>
-            {isSection ? "Section title" : "Task description"}
-          </Text>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={isSection ? "e.g. End of Night" : "Describe the task…"}
-            placeholderTextColor={colors.mutedForeground}
-            multiline={!isSection}
-            numberOfLines={isSection ? 1 : 3}
-            autoFocus
-            style={[
-              styles.textInput,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-                minHeight: isSection ? 44 : 88,
-              },
-            ]}
-          />
-          {!isSection && (
-            <View style={styles.requiredRow}>
-              <View>
-                <Text style={[styles.requiredLabel, { color: colors.foreground }]}>Required task</Text>
-                <Text style={[styles.requiredHint, { color: colors.mutedForeground }]}>Required tasks are shown in bold</Text>
-              </View>
-              <Switch
-                value={required}
-                onValueChange={setRequired}
-                trackColor={{ true: colors.primary, false: colors.border }}
-                thumbColor="#fff"
-              />
-            </View>
-          )}
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.muted }]} onPress={onClose}>
-              <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: valid ? colors.primary : colors.border, flex: 1.5 }]}
-              onPress={handleSave}
-              disabled={!valid}
-            >
-              <Text style={[styles.modalBtnText, { color: "#fff" }]}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-// ─── Task Row ─────────────────────────────────────────────────────────────────
-
-function TaskSettingsRow({
-  task,
-  isActive,
-  dragHandleProps,
-  onEdit,
-}: {
-  task: Task;
-  isActive: boolean;
-  dragHandleProps: object;
-  onEdit: () => void;
-}) {
-  const colors = useColors();
-  const { removeTask, updateTask } = useChecklist();
-
-  const handleRemove = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert("Remove Task", `Remove "${task.text}"?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => removeTask(task.id) },
-    ]);
-  };
-
-  const toggleRequired = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    updateTask(task.id, { required: !task.required });
-  };
-
-  return (
-    <View
-      style={[
-        styles.taskRow,
-        {
-          borderBottomColor: colors.border,
-          backgroundColor: isActive ? colors.accent : colors.card,
-        },
-      ]}
-    >
-      <DragHandle panHandlers={dragHandleProps} isActive={isActive} />
-      <TouchableOpacity onPress={toggleRequired} style={styles.taskContent}>
-        <View style={[styles.dot, { backgroundColor: task.required ? colors.primary : colors.border }]} />
-        <Text
-          style={[
-            styles.taskText,
-            {
-              color: task.required ? colors.foreground : colors.mutedForeground,
-              fontWeight: task.required ? "600" : "400",
-              flex: 1,
-            },
-          ]}
-          numberOfLines={2}
-        >
-          {task.text}
-        </Text>
-      </TouchableOpacity>
-      <View style={styles.rowActions}>
-        <TouchableOpacity onPress={onEdit} style={[styles.iconBtn, { backgroundColor: colors.muted }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.iconBtnText}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleRemove} style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.iconBtnText}>🗑️</Text>
-        </TouchableOpacity>
+      <View style={[styles.rowIcon, { backgroundColor: destructive ? "#fff0f0" : colors.muted }]}>
+        <Text style={styles.rowIconText}>{icon}</Text>
       </View>
-    </View>
+      <View style={styles.rowBody}>
+        <Text style={[styles.rowLabel, { color: destructive ? colors.destructive : colors.foreground }]}>
+          {label}
+        </Text>
+        {subtitle ? (
+          <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+      <Text style={[styles.chevron, { color: colors.border }]}>›</Text>
+    </TouchableOpacity>
   );
 }
 
-// ─── Section Card ─────────────────────────────────────────────────────────────
+// ─── Section header ───────────────────────────────────────────────────────────
 
-function SectionCard({
-  title,
-  isActive: sectionActive,
-  dragHandleProps,
-  onEdit,
-  onDragStart,
-  onDragEnd,
-}: {
-  title: string;
-  isActive: boolean;
-  dragHandleProps: object;
-  onEdit: (t: EditTarget) => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-}) {
+function SectionLabel({ title }: { title: string }) {
   const colors = useColors();
-  const { tasks, removeSection, reorderTasksInSection } = useChecklist();
-  const sectionTasks = tasks.filter((t) => t.category === title);
-  const [expanded, setExpanded] = useState(true);
+  return (
+    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{title}</Text>
+  );
+}
 
-  const handleRemoveSection = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+// ─── App-wide Settings Screen ─────────────────────────────────────────────────
+
+export default function AppSettingsScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { completionHistory, clearHistory, resetChecklist } = useChecklist();
+  const isWeb = Platform.OS === "web";
+  const topPadding = isWeb ? 67 : insets.top;
+
+  const handleClearHistory = () => {
+    if (completionHistory.length === 0) {
+      Alert.alert("No History", "There are no saved shifts to clear.");
+      return;
+    }
     Alert.alert(
-      "Remove Section",
-      `Remove "${title}" and all ${sectionTasks.length} task${sectionTasks.length !== 1 ? "s" : ""} in it?`,
+      "Clear Shift History",
+      `Delete all ${completionHistory.length} saved shift${completionHistory.length !== 1 ? "s" : ""}? This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: () => removeSection(title) },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: () => {
+            clearHistory();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
       ]
     );
   };
 
-  return (
-    <View
-      style={[
-        styles.sectionCard,
+  const handleResetTasks = () => {
+    Alert.alert(
+      "Reset All Tasks",
+      "Uncheck all tasks in the current checklist?",
+      [
+        { text: "Cancel", style: "cancel" },
         {
-          backgroundColor: colors.card,
-          borderColor: sectionActive ? colors.primary : colors.border,
-          borderWidth: sectionActive ? 1.5 : StyleSheet.hairlineWidth,
+          text: "Reset",
+          style: "destructive",
+          onPress: () => {
+            resetChecklist();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            router.back();
+          },
         },
-      ]}
-    >
-      {/* Section header */}
-      <View style={[styles.sectionHeader, { borderBottomColor: expanded ? colors.border : "transparent" }]}>
-        <DragHandle panHandlers={dragHandleProps} isActive={sectionActive} />
-        <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.sectionTitleRow}>
-          <Text style={[styles.chevron, { color: colors.mutedForeground }]}>{expanded ? "▾" : "▸"}</Text>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
-          <Text style={[styles.taskCount, { color: colors.mutedForeground }]}>
-            {sectionTasks.length} task{sectionTasks.length !== 1 ? "s" : ""}
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.rowActions}>
-          <TouchableOpacity onPress={() => onEdit({ kind: "section", title })} style={[styles.iconBtn, { backgroundColor: colors.muted }]}>
-            <Text style={styles.iconBtnText}>✏️</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleRemoveSection} style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]}>
-            <Text style={styles.iconBtnText}>🗑️</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Sortable tasks */}
-      {expanded && (
-        <View>
-          <SortableList
-            data={sectionTasks}
-            keyExtractor={(t) => String(t.id)}
-            rowHeight={48}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-            onReorder={(newData) => reorderTasksInSection(title, newData)}
-            renderItem={({ item, isActive, dragHandleProps: hp }) => (
-              <TaskSettingsRow
-                task={item}
-                isActive={isActive}
-                dragHandleProps={hp}
-                onEdit={() => onEdit({ kind: "task", task: item })}
-              />
-            )}
-          />
-          <TouchableOpacity
-            style={[styles.addTaskBtn, { borderColor: colors.border }]}
-            onPress={() => onEdit({ kind: "newTask", category: title })}
-          >
-            <Text style={[styles.addTaskBtnText, { color: colors.primary }]}>+ Add Task</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Settings Screen ──────────────────────────────────────────────────────────
-
-export default function SettingsScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { checklists, activeChecklistId, updateChecklistName, sections, tasks, reorderSections } = useChecklist();
-  const [editTarget, setEditTarget] = useState<EditTarget>(null);
-  const [scrollEnabled, setScrollEnabled] = useState(true);
-  const isWeb = Platform.OS === "web";
-  const topPadding = isWeb ? 67 : insets.top;
-
-  const activeMeta = checklists.find((c) => c.id === activeChecklistId);
-  const [nameValue, setNameValue] = useState(activeMeta?.name ?? "");
-  const [nameDirty, setNameDirty] = useState(false);
-
-  const handleNameSave = () => {
-    if (!nameValue.trim() || !activeMeta) return;
-    updateChecklistName(activeMeta.id, nameValue.trim());
-    setNameDirty(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      ]
+    );
   };
 
   return (
@@ -354,89 +125,64 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView
-        scrollEnabled={scrollEnabled}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          padding: 12,
-          paddingBottom: (isWeb ? 34 : insets.bottom) + 80,
-          gap: 12,
+          paddingVertical: 20,
+          paddingBottom: (isWeb ? 34 : insets.bottom) + 40,
+          gap: 4,
         }}
       >
-        {/* Checklist name card */}
-        <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.nameCardLabel, { color: colors.mutedForeground }]}>CHECKLIST NAME</Text>
-          <View style={styles.nameCardRow}>
-            <TextInput
-              value={nameValue}
-              onChangeText={(v) => {
-                setNameValue(v);
-                setNameDirty(v.trim() !== (activeMeta?.name ?? ""));
-              }}
-              placeholder="Checklist name"
-              placeholderTextColor={colors.mutedForeground}
-              returnKeyType="done"
-              onSubmitEditing={handleNameSave}
-              style={[
-                styles.nameCardInput,
-                { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
-              ]}
-            />
-            {nameDirty && (
-              <TouchableOpacity onPress={handleNameSave} style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.saveNameBtnText}>Save</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {/* History */}
+        <SectionLabel title="SHIFT HISTORY" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <SettingsRow
+            icon="🕐"
+            label="View Shift History"
+            subtitle={
+              completionHistory.length === 0
+                ? "No saved shifts yet"
+                : `${completionHistory.length} saved shift${completionHistory.length !== 1 ? "s" : ""}`
+            }
+            onPress={() => {
+              router.back();
+              setTimeout(() => router.push("/history"), 50);
+            }}
+          />
+          <SettingsRow
+            icon="🗑️"
+            label="Clear Shift History"
+            subtitle="Permanently delete all saved shifts"
+            onPress={handleClearHistory}
+            destructive
+          />
         </View>
 
-        {/* Legend */}
-        <View style={[styles.legend, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.legendText, { color: colors.foreground, fontWeight: "600" }]}>Required</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Optional</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <Text style={{ fontSize: 16, color: colors.mutedForeground }}>≡</Text>
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Hold to reorder</Text>
-          </View>
+        {/* Checklist */}
+        <SectionLabel title="CURRENT CHECKLIST" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <SettingsRow
+            icon="↺"
+            label="Reset All Tasks"
+            subtitle="Uncheck all tasks without saving"
+            onPress={handleResetTasks}
+            destructive
+          />
         </View>
 
-        {/* Sortable sections */}
-        <SortableList
-          data={sections}
-          keyExtractor={(s) => s}
-          rowHeight={56}
-          onDragStart={() => setScrollEnabled(false)}
-          onDragEnd={() => setScrollEnabled(true)}
-          onReorder={reorderSections}
-          style={{ gap: 12 }}
-          renderItem={({ item: section, isActive, dragHandleProps }) => (
-            <SectionCard
-              title={section}
-              isActive={isActive}
-              dragHandleProps={dragHandleProps}
-              onEdit={setEditTarget}
-              onDragStart={() => setScrollEnabled(false)}
-              onDragEnd={() => setScrollEnabled(true)}
-            />
-          )}
-        />
-
-        {/* Add section */}
-        <TouchableOpacity
-          style={[styles.addSectionBtn, { borderColor: colors.primary }]}
-          onPress={() => setEditTarget({ kind: "newSection" })}
-        >
-          <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>+ Add Section</Text>
-        </TouchableOpacity>
+        {/* About */}
+        <SectionLabel title="ABOUT" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <View style={[styles.row, { backgroundColor: colors.card, borderBottomColor: "transparent" }]}>
+            <View style={[styles.rowIcon, { backgroundColor: colors.muted }]}>
+              <Text style={styles.rowIconText}>🍕</Text>
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Pizza Hut Closing Checklist</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>Version 1.0</Text>
+            </View>
+          </View>
+        </View>
       </ScrollView>
-
-      {editTarget && <EditModal target={editTarget} onClose={() => setEditTarget(null)} />}
     </View>
   );
 }
@@ -467,139 +213,43 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
 
-  // Drag handle
-  dragHandle: {
-    width: 30,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    flexShrink: 0,
-    cursor: "grab" as any,
-  },
-  dragLine: {
-    width: 16,
-    height: 2,
-    borderRadius: 1,
-  },
-
-  // Name card
-  nameCard: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    gap: 8,
-  },
-  nameCardLabel: {
+  sectionLabel: {
     fontSize: 11,
     fontWeight: "600",
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
-  },
-  nameCardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  nameCardInput: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 6,
     fontFamily: "Inter_600SemiBold",
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
   },
-  saveNameBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8 },
-  saveNameBtnText: { color: "#fff", fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 
-  // Legend
-  legend: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 14,
-    flexWrap: "wrap",
-  },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendText: { fontSize: 13 },
-  dot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-
-  // Section card
-  sectionCard: {
+  group: {
+    marginHorizontal: 16,
     borderRadius: 12,
     overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingRight: 8,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 4,
-  },
-  sectionTitleRow: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 2,
-  },
-  chevron: { fontSize: 14, width: 14 },
-  sectionTitle: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_700Bold", flex: 1 },
-  taskCount: { fontSize: 12 },
-  rowActions: { flexDirection: "row", gap: 6 },
-  iconBtn: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  iconBtnText: { fontSize: 14 },
 
-  // Task row
-  taskRow: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingRight: 8,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 4,
-  },
-  taskContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  taskText: { fontSize: 13, lineHeight: 18 },
-
-  addTaskBtn: {
-    paddingVertical: 10,
     paddingHorizontal: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
     alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
-  addTaskBtnText: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-  addSectionBtn: {
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  addSectionBtnText: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
-
-  // Modal
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  modalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12 },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
-  modalTitle: { fontSize: 18, fontWeight: "700", fontFamily: "Inter_700Bold", marginBottom: 4 },
-  inputLabel: { fontSize: 12, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    textAlignVertical: "top",
-    lineHeight: 22,
-  },
-  requiredRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6 },
-  requiredLabel: { fontSize: 15, fontWeight: "500" },
-  requiredHint: { fontSize: 12, marginTop: 2 },
-  modalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
-  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
-  modalBtnText: { fontSize: 15, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  rowIconText: { fontSize: 18 },
+  rowBody: { flex: 1, gap: 2 },
+  rowLabel: { fontSize: 15, fontWeight: "500", fontFamily: "Inter_500Medium" },
+  rowSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  chevron: { fontSize: 20, fontWeight: "300" },
 });

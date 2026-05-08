@@ -113,6 +113,7 @@ function NameModal({
 
 function ChecklistTabBar() {
   const colors = useColors();
+  const router = useRouter();
   const {
     checklists,
     activeChecklistId,
@@ -136,6 +137,13 @@ function ChecklistTabBar() {
   const handleTabLongPress = (id: string, name: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(name, undefined, [
+      {
+        text: "Edit Tasks & Sections",
+        onPress: () => {
+          setActiveChecklistId(id);
+          router.push("/checklist-settings");
+        },
+      },
       { text: "Rename", onPress: () => setModal({ kind: "rename", id, name }) },
       {
         text: "Delete",

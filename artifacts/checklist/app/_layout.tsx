@@ -29,6 +29,10 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "modal" }}
       />
       <Stack.Screen
+        name="checklist-settings"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
+      <Stack.Screen
         name="history"
         options={{ headerShown: false, presentation: "modal" }}
       />
