@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
