@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,7 +15,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppIcon } from "@/components/AppIcon";
 import { useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -90,36 +90,31 @@ export default function AppSettingsScreen() {
   }, [appConfig.name]);
 
   const pickCustomIcon = async () => {
+    const MIME_TYPES = ["image/svg+xml", "image/jpeg", "image/webp", "image/png"];
+
     const result = await DocumentPicker.getDocumentAsync({
-      type: ["image/svg+xml", "image/jpeg", "image/webp", "image/png"],
+      type: MIME_TYPES,
       copyToCacheDirectory: true,
     });
 
     if (result.canceled || !result.assets?.[0]) return;
 
     const asset = result.assets[0];
-    const isSvg =
-      asset.mimeType === "image/svg+xml" ||
-      (asset.name?.toLowerCase().endsWith(".svg") ?? false);
 
     try {
       const response = await fetch(asset.uri);
-      if (isSvg) {
-        // Store raw SVG text so SvgXml can render it on native
-        const text = await response.text();
-        updateAppConfig({ customIconUri: `__svg__:${text}` });
-      } else {
-        // Store as data URI for Image component
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const dataUri = ev.target?.result as string;
-          if (dataUri) updateAppConfig({ customIconUri: dataUri });
-        };
-        reader.readAsDataURL(blob);
-      }
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUri = ev.target?.result as string;
+        if (dataUri) {
+          updateAppConfig({ customIconUri: dataUri });
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      };
+      reader.readAsDataURL(blob);
     } catch {
+      // Fallback: use URI directly (works for raster images on native)
       updateAppConfig({ customIconUri: asset.uri });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -263,15 +258,16 @@ export default function AppSettingsScreen() {
                       {
                         borderColor: colors.primary,
                         backgroundColor: colors.secondary,
+                        padding: 0,
                         overflow: "hidden",
                       },
                     ]}
                     activeOpacity={0.8}
                   >
-                    <AppIcon
-                      uri={appConfig.customIconUri}
-                      size={40}
-                      borderRadius={8}
+                    <Image
+                      source={{ uri: appConfig.customIconUri }}
+                      style={styles.customIconImage}
+                      resizeMode="cover"
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -488,6 +484,7 @@ const styles = StyleSheet.create({
   iconOptionText: { fontSize: 22 },
 
   customIconWrap: { position: "relative" },
+  customIconImage: { width: 40, height: 40, borderRadius: 8 },
   customIconRemove: {
     position: "absolute",
     top: -6,

@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,7 +19,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppIcon } from "@/components/AppIcon";
 import { SortableList } from "@/components/SortableList";
 import { ChecklistMeta, Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
@@ -591,12 +591,15 @@ export default function ChecklistScreen() {
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <View style={styles.headerIconWrap}>
-              <AppIcon
-                uri={appConfig.customIconUri}
-                emoji={appConfig.icon}
-                size={30}
-                borderRadius={8}
-              />
+              {appConfig.customIconUri ? (
+                <Image
+                  source={{ uri: appConfig.customIconUri }}
+                  style={styles.headerCustomIcon}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.headerIconText}>{appConfig.icon}</Text>
+              )}
             </View>
             <Text style={styles.headerTitle}>{appConfig.name}</Text>
           </View>
