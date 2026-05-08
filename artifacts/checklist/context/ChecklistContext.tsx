@@ -103,7 +103,7 @@ const DEFAULT_TASKS_BY_CHECKLIST: Record<string, Task[]> = {
 const DEFAULT_APP_CONFIG: AppConfig = {
   name: "End Shift",
   primaryColor: "#C8102E",
-  icon: "🍕",
+  icon: "🕐",
 };
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
