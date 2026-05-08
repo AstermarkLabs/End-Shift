@@ -109,6 +109,90 @@ function NameModal({
   );
 }
 
+// ─── Tab Context Menu ─────────────────────────────────────────────────────────
+
+function TabContextMenu({
+  target,
+  onClose,
+  onEdit,
+  onRename,
+  onDelete,
+}: {
+  target: { id: string; name: string } | null;
+  onClose: () => void;
+  onEdit: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const colors = useColors();
+  if (!target) return null;
+
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <Pressable style={styles.ctxBackdrop} onPress={onClose}>
+        <Pressable
+          style={[styles.ctxSheet, { backgroundColor: colors.card }]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={[styles.ctxHandle, { backgroundColor: colors.border }]} />
+          <Text style={[styles.ctxTitle, { color: colors.mutedForeground }]}>
+            {target.name}
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
+            onPress={onEdit}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>✏️</Text>
+            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>
+              Edit Tasks & Sections
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
+            onPress={onRename}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>🔤</Text>
+            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>
+              Rename
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: "transparent" }]}
+            onPress={onDelete}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>🗑️</Text>
+            <Text style={[styles.ctxRowText, { color: colors.destructive }]}>
+              Delete
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctxCancelBtn, { backgroundColor: colors.muted }]}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.ctxCancelText, { color: colors.foreground }]}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // ─── Tab Bar ──────────────────────────────────────────────────────────────────
 
 function ChecklistTabBar() {
@@ -127,6 +211,7 @@ function ChecklistTabBar() {
   const [modal, setModal] = useState<
     { kind: "new" } | { kind: "rename"; id: string; name: string } | null
   >(null);
+  const [ctxTarget, setCtxTarget] = useState<{ id: string; name: string } | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const handleTabPress = (id: string) => {
@@ -136,37 +221,41 @@ function ChecklistTabBar() {
 
   const handleTabLongPress = (id: string, name: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(name, undefined, [
-      {
-        text: "Edit Tasks & Sections",
-        onPress: () => {
-          setActiveChecklistId(id);
-          router.push("/checklist-settings");
-        },
-      },
-      { text: "Rename", onPress: () => setModal({ kind: "rename", id, name }) },
+    setCtxTarget({ id, name });
+  };
+
+  const handleCtxEdit = () => {
+    if (!ctxTarget) return;
+    setCtxTarget(null);
+    setActiveChecklistId(ctxTarget.id);
+    router.push("/checklist-settings");
+  };
+
+  const handleCtxRename = () => {
+    if (!ctxTarget) return;
+    const { id, name } = ctxTarget;
+    setCtxTarget(null);
+    setModal({ kind: "rename", id, name });
+  };
+
+  const handleCtxDelete = () => {
+    if (!ctxTarget) return;
+    const { id, name } = ctxTarget;
+    setCtxTarget(null);
+    if (checklists.length <= 1) {
+      Alert.alert("Can't delete", "You must keep at least one checklist.");
+      return;
+    }
+    Alert.alert("Delete Checklist", `Delete "${name}"? This cannot be undone.`, [
+      { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          if (checklists.length <= 1) {
-            Alert.alert("Can't delete", "You must keep at least one checklist.");
-            return;
-          }
-          Alert.alert("Delete Checklist", `Delete "${name}"? This cannot be undone.`, [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Delete",
-              style: "destructive",
-              onPress: () => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                removeChecklist(id);
-              },
-            },
-          ]);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          removeChecklist(id);
         },
       },
-      { text: "Cancel", style: "cancel" },
     ]);
   };
 
@@ -250,6 +339,14 @@ function ChecklistTabBar() {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }}
         onClose={() => setModal(null)}
+      />
+
+      <TabContextMenu
+        target={ctxTarget}
+        onClose={() => setCtxTarget(null)}
+        onEdit={handleCtxEdit}
+        onRename={handleCtxRename}
+        onDelete={handleCtxDelete}
       />
     </View>
   );
@@ -822,6 +919,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
     alignSelf: "flex-start",
+  },
+
+  // Tab context menu
+  ctxBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  ctxSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  ctxHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  ctxTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    paddingHorizontal: 10,
+    paddingBottom: 6,
+  },
+  ctxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  ctxRowIcon: { fontSize: 18, width: 24, textAlign: "center" },
+  ctxRowText: { fontSize: 16, fontFamily: "Inter_400Regular" },
+  ctxCancelBtn: {
+    marginTop: 8,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  ctxCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 
   // Empty state
