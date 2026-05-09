@@ -29,10 +29,15 @@ const ACCESS_KEY = "auth_access_token";
 const REFRESH_KEY = "auth_refresh_token";
 const PROFILE_KEY = "auth_profile";
 
+// On web, the short-lived access token is kept in memory only (never written to
+// any browser storage) so it cannot be read by same-origin scripts.  The
+// refresh token and profile are stored in sessionStorage; sessionStorage is
+// scoped to the browser tab and is not shared across sessions or windows.
 async function storageGet(key: string): Promise<string | null> {
   if (Platform.OS === "web") {
+    if (key === ACCESS_KEY) return null;
     try {
-      return globalThis.localStorage?.getItem(key) ?? null;
+      return globalThis.sessionStorage?.getItem(key) ?? null;
     } catch {
       return null;
     }
@@ -41,8 +46,9 @@ async function storageGet(key: string): Promise<string | null> {
 }
 async function storageSet(key: string, value: string): Promise<void> {
   if (Platform.OS === "web") {
+    if (key === ACCESS_KEY) return;
     try {
-      globalThis.localStorage?.setItem(key, value);
+      globalThis.sessionStorage?.setItem(key, value);
     } catch {}
     return;
   }
@@ -50,8 +56,9 @@ async function storageSet(key: string, value: string): Promise<void> {
 }
 async function storageDel(key: string): Promise<void> {
   if (Platform.OS === "web") {
+    if (key === ACCESS_KEY) return;
     try {
-      globalThis.localStorage?.removeItem(key);
+      globalThis.sessionStorage?.removeItem(key);
     } catch {}
     return;
   }

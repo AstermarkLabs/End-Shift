@@ -12,9 +12,11 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
+const QR_LIB_PATH = path.resolve(__dirname, "lib", "qr-code-styling.js");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
 const MIME_TYPES = {
@@ -72,12 +74,20 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
 
+  const nonce = crypto.randomBytes(16).toString("base64");
+
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
     .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
-    .replace(/APP_NAME_PLACEHOLDER/g, appName);
+    .replace(/APP_NAME_PLACEHOLDER/g, appName)
+    .replace(/NONCE_PLACEHOLDER/g, nonce)
+    .replace("QR_LIB_PLACEHOLDER", qrLibInline);
 
-  res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+  res.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "content-security-policy":
+      `script-src 'nonce-${nonce}'; object-src 'none'; base-uri 'self'`,
+  });
   res.end(html);
 }
 
@@ -105,6 +115,9 @@ function serveStaticFile(urlPath, res) {
 }
 
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
+const qrLibSource = fs.readFileSync(QR_LIB_PATH, "utf-8");
+// Strip any source-map comment so it is not inlined into HTML responses
+const qrLibInline = qrLibSource.replace(/\/\/# sourceMappingURL=\S+/g, "");
 const appName = getAppName();
 
 // ─── .well-known handlers ────────────────────────────────────────────────────
