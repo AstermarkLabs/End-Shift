@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -32,6 +33,18 @@ import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 const RIGHT_VALUES = Object.values(Right);
+
+function generateTempPassword(): string {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghjkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const all = upper + lower + digits;
+  let pwd = upper[Math.floor(Math.random() * upper.length)]
+    + lower[Math.floor(Math.random() * lower.length)]
+    + digits[Math.floor(Math.random() * digits.length)];
+  for (let i = 0; i < 7; i++) pwd += all[Math.floor(Math.random() * all.length)];
+  return pwd.split("").sort(() => Math.random() - 0.5).join("");
+}
 
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
@@ -168,6 +181,9 @@ function ProfileEditModal({
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetSection, setResetSection] = useState(false);
   const [roleId, setRoleId] = useState<number | null>(null);
   const [active, setActive] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -177,6 +193,9 @@ function ProfileEditModal({
     setUsername(state.editing?.username ?? "");
     setDisplayName(state.editing?.displayName ?? "");
     setPassword("");
+    setResetPassword("");
+    setShowResetPassword(false);
+    setResetSection(false);
     setRoleId(state.editing?.roleId ?? roles[0]?.id ?? null);
     setActive(state.editing?.isActive ?? true);
   }, [state.open, state.editing, roles]);
@@ -187,15 +206,14 @@ function ProfileEditModal({
     setBusy(true);
     try {
       if (state.editing) {
-        // Only send fields the operator actually changed.  This matters for
-        // users who only hold `assign_roles` (and not `manage_profiles`):
-        // sending unchanged username/displayName/isActive would still be
-        // treated by the server as a profile-field edit and rejected.
         const orig = state.editing;
         const patch: Parameters<typeof updateProfile>[1] = {};
         if (username && username !== orig.username) patch.username = username;
         if (displayName && displayName !== orig.displayName) patch.displayName = displayName;
-        if (password) patch.password = password;
+        if (resetSection && resetPassword) {
+          patch.password = resetPassword;
+          patch.mustChangePassword = true;
+        }
         if (roleId != null && roleId !== orig.roleId) patch.roleId = roleId;
         if (active !== orig.isActive) patch.isActive = active;
         if (Object.keys(patch).length === 0) {
@@ -203,6 +221,13 @@ function ProfileEditModal({
           return;
         }
         await updateProfile(orig.id, patch);
+        if (resetSection && resetPassword) {
+          Alert.alert(
+            "Password reset",
+            `${orig.displayName} must choose a new password on next sign-in.\n\nTemp password:\n${resetPassword}`,
+            [{ text: "OK" }]
+          );
+        }
       } else {
         if (!username || !displayName || !password || roleId == null) {
           Alert.alert("Required", "Username, name, password, role required.");
@@ -246,7 +271,75 @@ function ProfileEditModal({
 
         <Field label="Username" value={username} onChangeText={setUsername} editable={!busy} />
         <Field label="Display name" value={displayName} onChangeText={setDisplayName} editable={!busy} />
-        <Field label={state.editing ? "New password (optional)" : "Password"} value={password} onChangeText={setPassword} secureTextEntry editable={!busy} />
+
+        {/* ── Password: create vs reset ─────────────────────────────── */}
+        {state.editing ? (
+          <View style={[styles.resetCard, { borderColor: resetSection ? colors.primary : colors.border, backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={styles.resetCardHeader}
+              onPress={() => {
+                setResetSection((v) => !v);
+                if (!resetSection) {
+                  const tmp = generateTempPassword();
+                  setResetPassword(tmp);
+                  setShowResetPassword(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                } else {
+                  setResetPassword("");
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.resetCardTitle, { color: resetSection ? colors.primary : colors.foreground }]}>
+                🔑 Reset password
+              </Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                {resetSection ? "Cancel" : "Tap to set a new password"}
+              </Text>
+            </TouchableOpacity>
+
+            {resetSection && (
+              <View style={styles.resetCardBody}>
+                <View style={[styles.tempPwRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Text
+                    selectable
+                    style={[styles.tempPwText, { color: showResetPassword ? colors.foreground : colors.muted, letterSpacing: showResetPassword ? 2 : 0 }]}
+                  >
+                    {showResetPassword ? resetPassword : "••••••••••"}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowResetPassword((v) => !v)} style={styles.tempPwEye}>
+                    <Text style={{ fontSize: 18 }}>{showResetPassword ? "🙈" : "👁️"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const tmp = generateTempPassword();
+                      setResetPassword(tmp);
+                      setShowResetPassword(true);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={[styles.generateBtn, { backgroundColor: colors.secondary }]}
+                  >
+                    <Text style={[styles.generateBtnText, { color: colors.primary }]}>Generate</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  value={resetPassword}
+                  onChangeText={setResetPassword}
+                  placeholder="Or type a custom password"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry={!showResetPassword}
+                  editable={!busy}
+                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                />
+                <Text style={[styles.resetHint, { color: colors.mutedForeground }]}>
+                  Staff will be required to change this on next sign-in.
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry editable={!busy} />
+        )}
 
         <Text style={[styles.label, { color: colors.foreground }]}>Role</Text>
         <View style={{ gap: 6 }}>
@@ -421,4 +514,18 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
   primaryBtn: { height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 12 },
   dangerBtn: { height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 12 },
+
+  // Reset password card
+  resetCard: { borderWidth: 1.5, borderRadius: 12, overflow: "hidden", marginTop: 8 },
+  resetCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 },
+  resetCardTitle: { fontSize: 15, fontWeight: "600" },
+  resetCardBody: { paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
+
+  tempPwRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  tempPwText: { flex: 1, fontSize: 16, fontWeight: "600", fontFamily: "monospace" },
+  tempPwEye: { padding: 2 },
+  generateBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  generateBtnText: { fontSize: 13, fontWeight: "600" },
+
+  resetHint: { fontSize: 12, fontStyle: "italic" },
 });
