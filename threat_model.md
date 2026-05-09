@@ -2,45 +2,53 @@
 
 ## Project Overview
 
-This repository is a small pnpm monorepo containing two production-relevant surfaces: an Express API server and an Expo checklist application that can be deployed as a static build behind a lightweight Node.js server. Shared libraries provide generated API clients, Zod schemas, and optional PostgreSQL access via Drizzle. The mockup sandbox artifact is a development-only environment and is out of scope unless production reachability is demonstrated.
+This repository is a pnpm monorepo for End Shift, a checklist application with a production Express API server and an Expo-based checklist client that can run as mobile apps and as a web/static deployment. The production backend uses PostgreSQL via Drizzle, password-based login, refresh/access JWTs, WebAuthn passkeys, and role-based access control for user and role administration.
 
-Under the deployment assumptions for this scan, production traffic is protected in transit by platform-managed TLS, `NODE_ENV` is `production`, and mockup sandbox code is not deployed.
+Under the deployment assumptions for this scan, production traffic is protected in transit by platform-managed TLS, `NODE_ENV` is `production`, and `artifacts/mockup-sandbox/**` is not deployed unless production reachability is explicitly demonstrated.
 
 ## Assets
 
-- **Application availability** — the checklist web server and API must remain responsive to valid and invalid internet traffic. A remotely triggerable crash is a meaningful security issue even if little data is stored.
-- **Operational checklist data** — checklists, task completion state, and shift history are stored client-side in the Expo app. While not highly sensitive like payment data, they still describe internal store operations and should not be exposed unintentionally.
-- **Environment secrets and infrastructure access** — `DATABASE_URL` and any future API credentials or auth tokens must remain server-side and never leak to clients or logs.
-- **Shared API and schema contracts** — generated client/server contracts define trust boundaries for request validation. If they are bypassed or misused, future endpoints may accept unsafe input.
+- **Administrative accounts and role configuration** — the API exposes profile and role management operations. Compromise of an administrative account allows creation, deletion, promotion, and deactivation of other users.
+- **Authentication material** — passwords, passkey credentials, access tokens, refresh tokens, and JWT signing secrets protect all authenticated API access. Theft or forgery of these values would let an attacker impersonate users.
+- **Operational checklist data** — checklist content, task completion state, and shift history are business data for store operations. Even if not highly regulated, they should not be exposed or tampered with by unauthorized parties.
+- **Application availability** — the checklist web server and API must remain responsive to hostile and malformed public traffic. Public auth and static-serving routes are reachable from the internet.
+- **Environment secrets and infrastructure access** — `DATABASE_URL`, JWT secrets, and WebAuthn environment configuration must remain server-side and must never leak through client bundles, logs, or error responses.
 
 ## Trust Boundaries
 
-- **Browser/mobile client to server** — all requests to the Express API and the Expo static server cross from an untrusted client into server-side code. Request headers, URLs, and bodies must be treated as attacker-controlled.
-- **Server to file system** — the Expo static server maps URL paths to local files inside `static-build/`. Path handling must prevent traversal and must not crash on malformed input.
-- **Server to database** — shared DB code can connect directly to PostgreSQL when used by production code. Any future queries must remain parameterized and access-controlled.
-- **Public to internal/dev surfaces** — `artifacts/mockup-sandbox/**` and build-time scripts are considered dev-only and should normally be ignored during production scans unless code paths prove otherwise.
+- **Client to API boundary** — browser and mobile clients send attacker-controlled headers, paths, and JSON bodies to `/api/auth/**`, `/api/profiles/**`, and `/api/roles/**`. The server must authenticate, authorize, and validate every request.
+- **API to database boundary** — the API server reads and mutates users, roles, and passkey credentials in PostgreSQL. Broken access control or unsafe queries at the API layer directly impact the auth database.
+- **Client to static checklist server boundary** — the checklist web server handles untrusted URL paths and request headers for `/`, `/manifest`, `/.well-known/*`, and static assets under `static-build/`.
+- **Browser storage boundary** — on web, auth state crosses from server responses into browser `localStorage`; on native, it crosses into `expo-secure-store`. Script execution on the web origin must be treated as equivalent to token access.
+- **Public to admin boundary** — login, token refresh, passkey auth, and health routes are public, while profile and role administration are authenticated and often require elevated rights. That distinction must be enforced on the server, not in the Expo client.
+- **Public to internal/dev boundary** — `artifacts/mockup-sandbox/**` and build scripts are development-only and should usually be ignored during production scans unless code paths prove they are reachable in deployment.
 
 ## Scan Anchors
 
-- Production entry points: `artifacts/api-server/src/index.ts`, `artifacts/checklist/server/serve.js`, `artifacts/checklist/app/**`
-- Highest-risk code areas: `artifacts/checklist/server/serve.js`, any future files under `artifacts/api-server/src/routes/**`, and shared network helpers in `lib/api-client-react/**`
-- Public surfaces: `GET /api/healthz` and the checklist static server routes (`/`, `/manifest`, static assets)
+- Production entry points: `artifacts/api-server/src/index.ts`, `artifacts/api-server/src/app.ts`, `artifacts/checklist/server/serve.js`, `artifacts/checklist/app/_layout.tsx`, `artifacts/checklist/context/AuthContext.tsx`
+- Highest-risk code areas: `artifacts/api-server/src/routes/auth.ts`, `artifacts/api-server/src/routes/profiles.ts`, `artifacts/api-server/src/routes/roles.ts`, `artifacts/api-server/src/middlewares/auth.ts`, `artifacts/api-server/src/lib/seed.ts`, `artifacts/checklist/server/serve.js`
+- Public surfaces: `GET /api/healthz`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/passkey/auth-options`, `POST /api/auth/passkey/auth-verify`, checklist landing-page and manifest routes
+- Privileged surfaces: `POST /api/auth/passkey/register-*`, `GET/PUT /api/profiles/me`, all `/api/profiles/**` admin paths, all `/api/roles/**`
 - Dev-only areas to usually ignore: `artifacts/mockup-sandbox/**`, `artifacts/checklist/scripts/build.js`
 
 ## Threat Categories
 
+### Spoofing
+
+This project now has meaningful authentication surfaces. The system must ensure that only callers with valid passwords, passkeys, or signed tokens can assume a user identity, and that bootstrap paths do not create predictable credentials in production. JWT signing secrets must be strong and production-only; refresh and access tokens must not be forgeable or indefinitely reusable after logout or credential rotation.
+
 ### Tampering
 
-The main tampering risk in this project is unsafe use of attacker-controlled HTTP input at the static server boundary. URL paths, request headers, and any future API payloads must be validated before they affect filesystem access, HTML generation, or control flow. The system must guarantee that client-controlled input cannot alter files outside the intended static build root and cannot inject unsanitized values into server-generated responses.
+The most important tampering risks are unsafe acceptance of client-controlled role, profile, and password changes, plus improper handling of untrusted headers and paths at the checklist server boundary. The API must enforce role and profile mutation rules server-side with checks that match the intended rights model, and the checklist server must prevent hostile request input from altering generated responses or accessing files outside the static root.
 
 ### Information Disclosure
 
-Current data exposure risk is modest because the API surface is minimal and the checklist app stores most data locally. Even so, server logs and API responses must not reveal secrets, auth material, or internal stack traces, and any future database-backed endpoints must return only the minimum necessary fields. Client-side persisted checklist history should be treated as potentially sensitive operational data rather than harmless demo content.
+The biggest disclosure risks are leakage of tokens, secrets, or operational data through client-side storage, same-origin script execution, logs, or overly broad API responses. Web tokens should be treated as highly sensitive because any script running in the app origin can read them when stored in `localStorage`. Error responses and logs must avoid exposing stack traces, secrets, or unnecessary auth state.
 
 ### Denial of Service
 
-Availability is one of the most relevant security properties for this codebase. Public endpoints must handle malformed requests safely without throwing uncaught exceptions, consuming unbounded resources, or blocking on attacker-controlled input. In particular, the static Expo server must tolerate hostile header values and malformed paths because it is directly exposed to untrusted internet traffic.
+Availability is important for both the API and the checklist web server. Public endpoints must tolerate malformed URLs, malformed JSON, hostile headers, repeated auth attempts, and missing configuration without crashing or exhausting resources. The server should especially avoid unbounded work on unauthenticated routes such as login, refresh, passkey auth, landing-page rendering, and static file handling.
 
 ### Elevation of Privilege
 
-There is no meaningful role model or authenticated surface in the current production code, so classic privilege-escalation concerns are limited today. However, any future protected API routes must enforce authentication and authorization server-side rather than relying on the mobile client or generated API helpers. Shared DB access and custom fetch helpers should be treated as sensitive building blocks for future privileged operations.
+Elevation of privilege is a primary risk in this codebase because the API implements roles, rights, and user administration. All protected routes must enforce authorization on the server, and profile or role operations must not let a caller gain rights through self-service updates, inconsistent hierarchy checks, or assumptions that the client has already enforced restrictions. Shared DB and token-handling code should be treated as security-critical because flaws there can undermine every privileged endpoint.
