@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, rolesTable, passkeyCredentialsTable } from "@workspace/db";
+import { db, usersTable, rolesTable, passkeyCredentialsTable, refreshTokensTable, REFRESH_TOKEN_TTL_MS } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   LoginBody,
   RefreshBody,
+  LogoutBody,
   PasskeyRegisterVerifyBody,
   PasskeyAuthOptionsBody,
   PasskeyAuthVerifyBody,
@@ -29,6 +30,14 @@ import { consumeChallenge, rememberChallenge } from "../lib/passkey-challenges";
 
 const router: IRouter = Router();
 
+async function issueTokensForUser(user: { id: number; username: string }): Promise<{ accessToken: string; refreshToken: string }> {
+  const { token: refreshToken, jti } = signRefreshToken({ sub: user.id });
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+  await db.insert(refreshTokensTable).values({ userId: user.id, tokenId: jti, expiresAt });
+  const accessToken = signAccessToken({ sub: user.id, username: user.username });
+  return { accessToken, refreshToken };
+}
+
 router.post("/login", async (req, res) => {
   const body = LoginBody.parse(req.body);
   const rows = await db
@@ -51,8 +60,7 @@ router.post("/login", async (req, res) => {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
-  const accessToken = signAccessToken({ sub: user.id, username: user.username });
-  const refreshToken = signRefreshToken({ sub: user.id });
+  const { accessToken, refreshToken } = await issueTokensForUser(user);
   res.json({
     accessToken,
     refreshToken,
@@ -60,7 +68,24 @@ router.post("/login", async (req, res) => {
   });
 });
 
-router.post("/logout", (_req, res) => {
+router.post("/logout", async (req, res) => {
+  let body: { refreshToken?: string } | undefined;
+  try {
+    body = LogoutBody.parse(req.body ?? {});
+  } catch {
+    // Body is optional; ignore parse errors
+  }
+  if (body?.refreshToken) {
+    try {
+      const payload = verifyRefreshToken(body.refreshToken);
+      await db
+        .update(refreshTokensTable)
+        .set({ revokedAt: new Date() })
+        .where(eq(refreshTokensTable.tokenId, payload.jti));
+    } catch {
+      // Invalid token — treat logout as best-effort; still return 204
+    }
+  }
   res.status(204).end();
 });
 
@@ -73,6 +98,18 @@ router.post("/refresh", async (req, res) => {
     res.status(401).json({ error: "Invalid refresh token" });
     return;
   }
+
+  // Check that the token exists and has not been revoked
+  const tokenRows = await db
+    .select()
+    .from(refreshTokensTable)
+    .where(eq(refreshTokensTable.tokenId, payload.jti))
+    .limit(1);
+  if (tokenRows.length === 0 || tokenRows[0].revokedAt !== null) {
+    res.status(401).json({ error: "Refresh token has been revoked" });
+    return;
+  }
+
   const rows = await db
     .select({ user: usersTable, role: rolesTable })
     .from(usersTable)
@@ -84,8 +121,14 @@ router.post("/refresh", async (req, res) => {
     return;
   }
   const { user, role } = rows[0];
-  const accessToken = signAccessToken({ sub: user.id, username: user.username });
-  const refreshToken = signRefreshToken({ sub: user.id });
+
+  // Revoke the consumed token and issue a fresh pair (token rotation)
+  await db
+    .update(refreshTokensTable)
+    .set({ revokedAt: new Date() })
+    .where(eq(refreshTokensTable.tokenId, payload.jti));
+
+  const { accessToken, refreshToken } = await issueTokensForUser(user);
   res.json({ accessToken, refreshToken, profile: profileFor(user, role) });
 });
 
@@ -294,8 +337,7 @@ router.post("/passkey/auth-verify", async (req, res) => {
     .update(usersTable)
     .set({ currentChallenge: null })
     .where(eq(usersTable.id, user.id));
-  const accessToken = signAccessToken({ sub: user.id, username: user.username });
-  const refreshToken = signRefreshToken({ sub: user.id });
+  const { accessToken, refreshToken } = await issueTokensForUser(user);
   res.json({ accessToken, refreshToken, profile: profileFor(user, role) });
 });
 

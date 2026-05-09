@@ -10,6 +10,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 export const rolesTable = pgTable(
   "roles",
   {
@@ -76,12 +78,42 @@ export const passkeyCredentialsTable = pgTable(
   }),
 );
 
+export const refreshTokensTable = pgTable(
+  "refresh_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    tokenId: text("token_id").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    tokenIdIdx: uniqueIndex("refresh_tokens_token_id_idx").on(table.tokenId),
+  }),
+);
+
+export type RefreshToken = typeof refreshTokensTable.$inferSelect;
+export type InsertRefreshToken = typeof refreshTokensTable.$inferInsert;
+
+export const refreshTokensRelations = relations(refreshTokensTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [refreshTokensTable.userId],
+    references: [usersTable.id],
+  }),
+}));
+
 export const usersRelations = relations(usersTable, ({ one, many }) => ({
   role: one(rolesTable, {
     fields: [usersTable.roleId],
     references: [rolesTable.id],
   }),
   passkeys: many(passkeyCredentialsTable),
+  refreshTokens: many(refreshTokensTable),
 }));
 
 export const rolesRelations = relations(rolesTable, ({ many }) => ({

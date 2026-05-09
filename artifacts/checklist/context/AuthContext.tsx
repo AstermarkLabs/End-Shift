@@ -17,6 +17,7 @@ import {
   ApiError,
   type Profile,
   login as apiLogin,
+  logout as apiLogout,
   refresh as apiRefresh,
   getMe as apiGetMe,
   passkeyAuthOptions,
@@ -214,6 +215,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    const refreshToken = refreshRef.current;
+    // Best-effort server-side revocation: pass the current refresh token so
+    // the server can invalidate it immediately. Even if this call fails the
+    // local tokens are still cleared, ending the client session.
+    try {
+      await apiLogout(refreshToken ? { refreshToken } : undefined);
+    } catch {
+      // Ignore network errors — local sign-out proceeds regardless.
+    }
     await persistTokens(null, null, null);
   }, [persistTokens]);
 

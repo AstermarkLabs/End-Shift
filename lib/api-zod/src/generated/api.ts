@@ -50,6 +50,13 @@ export const LoginResponse = zod.object({
 });
 
 /**
+ * @summary Sign out
+ */
+export const LogoutBody = zod.object({
+  refreshToken: zod.string().optional(),
+});
+
+/**
  * @summary Refresh access token
  */
 export const RefreshBody = zod.object({

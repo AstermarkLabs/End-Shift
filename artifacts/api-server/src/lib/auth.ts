@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = "30d";
@@ -27,6 +28,7 @@ export interface AccessTokenPayload {
 
 export interface RefreshTokenPayload {
   sub: number;
+  jti: string;
   type: "refresh";
 }
 
@@ -50,13 +52,15 @@ export function signAccessToken(payload: Omit<AccessTokenPayload, "type">): stri
 }
 
 export function signRefreshToken(
-  payload: Omit<RefreshTokenPayload, "type">,
-): string {
-  return jwt.sign(
-    { ...payload, type: "refresh" } satisfies RefreshTokenPayload,
+  payload: Omit<RefreshTokenPayload, "type" | "jti">,
+): { token: string; jti: string } {
+  const jti = randomUUID();
+  const token = jwt.sign(
+    { ...payload, jti, type: "refresh" } satisfies RefreshTokenPayload,
     getSecret("JWT_REFRESH_SECRET"),
     { expiresIn: REFRESH_TOKEN_TTL },
   );
+  return { token, jti };
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
@@ -76,7 +80,8 @@ export function verifyRefreshToken(token: string): RefreshTokenPayload {
   if (
     typeof decoded !== "object" ||
     decoded === null ||
-    (decoded as RefreshTokenPayload).type !== "refresh"
+    (decoded as RefreshTokenPayload).type !== "refresh" ||
+    typeof (decoded as RefreshTokenPayload).jti !== "string"
   ) {
     throw new Error("Invalid refresh token");
   }

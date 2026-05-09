@@ -54,6 +54,12 @@ paths:
       operationId: logout
       tags: [auth]
       summary: Sign out
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
       responses:
         "204":
           description: Signed out
@@ -494,6 +500,12 @@ components:
         refreshToken:
           type: string
       required: [refreshToken]
+
+    LogoutRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
 
     AuthResult:
       type: object

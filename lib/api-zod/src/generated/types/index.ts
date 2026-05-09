@@ -12,6 +12,7 @@ export * from "./createRoleRequest";
 export * from "./healthStatus";
 export * from "./jsonObject";
 export * from "./loginRequest";
+export * from "./logoutRequest";
 export * from "./passkeyAuthOptionsRequest";
 export * from "./passkeyAuthVerifyRequest";
 export * from "./passkeyCredential";

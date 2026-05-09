@@ -94,6 +94,10 @@ export interface RefreshRequest {
   refreshToken: string;
 }
 
+export interface LogoutRequest {
+  refreshToken?: string;
+}
+
 export interface AuthResult {
   accessToken: string;
   refreshToken: string;
