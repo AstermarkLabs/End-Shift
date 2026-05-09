@@ -20,6 +20,27 @@ const router: IRouter = Router();
 // router.  /me GET and /me PUT are explicitly allowed by the middleware.
 router.use(requireAuth, blockIfMustChangePassword);
 
+/**
+ * Returns true when `callerRole` is permitted to assign `targetRole` to
+ * another account (or to itself).
+ *
+ * Two conditions must both hold:
+ *  1. The target role's level must not exceed the caller's level.
+ *  2. The target role must not carry any rights that the caller does not
+ *     already possess — this prevents lateral escalation into a same-level
+ *     role that happens to hold more powerful rights.
+ */
+function callerCanAssignRole(
+  callerRole: Pick<Role, "isSystem" | "level" | "rights">,
+  targetRole: Pick<Role, "level" | "rights">,
+): boolean {
+  if (callerRole.isSystem) return true;
+  if (targetRole.level > callerRole.level) return false;
+  const callerRights = new Set<string>(callerRole.rights);
+  if (targetRole.rights.some((r) => !callerRights.has(r))) return false;
+  return true;
+}
+
 export function profileFor(user: User, role: Role) {
   return {
     id: user.id,
@@ -112,8 +133,8 @@ router.post(
       res.status(400).json({ error: "Invalid role" });
       return;
     }
-    if (!u.role.isSystem && targetRole[0].level > u.role.level) {
-      res.status(403).json({ error: "Cannot assign role above your own" });
+    if (!callerCanAssignRole(u.role, targetRole[0])) {
+      res.status(403).json({ error: "Cannot assign a role with rights or level exceeding your own" });
       return;
     }
     const passwordHash = await hashPassword(body.password);
@@ -197,10 +218,18 @@ router.put("/:id", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Invalid role" });
       return;
     }
-    if (!u.role.isSystem && newRole[0].level > u.role.level) {
-      res.status(403).json({ error: "Cannot assign role above your own" });
+    if (!callerCanAssignRole(u.role, newRole[0])) {
+      res.status(403).json({ error: "Cannot assign a role with rights or level exceeding your own" });
       return;
     }
+  }
+  // Self-service password changes must go through PUT /me, which requires
+  // the current password for re-authentication.  Allowing password writes
+  // here would let anyone with a live session token permanently take over
+  // the account without ever knowing the original password.
+  if (isSelf && body.password) {
+    res.status(400).json({ error: "Use PUT /api/profiles/me to change your own password" });
+    return;
   }
   const updates: Partial<typeof usersTable.$inferInsert> = {};
   if (body.username) updates.username = body.username;
