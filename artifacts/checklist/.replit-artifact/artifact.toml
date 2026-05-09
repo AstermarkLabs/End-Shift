@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/"
-title = "Pizza Hut Closing Checklist"
+title = "End Shift"
 version = "1.0.0"
 id = "artifacts/checklist"
 router = "expo-domain"
