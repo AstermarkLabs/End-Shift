@@ -378,6 +378,17 @@ export async function customFetch<T = unknown>(
     headers.set("x-requested-with", "XMLHttpRequest");
   }
 
+  // Replit proxy also requires an origin/referer header from non-browser clients.
+  // Derive it from the configured base URL so it always matches the server.
+  if (!headers.has("origin") && !headers.has("referer") && _baseUrl) {
+    try {
+      const { origin } = new URL(_baseUrl);
+      headers.set("origin", origin);
+    } catch {
+      // _baseUrl is not a valid absolute URL — skip
+    }
+  }
+
   if (
     typeof init.body === "string" &&
     !headers.has("content-type") &&
