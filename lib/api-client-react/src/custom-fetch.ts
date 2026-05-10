@@ -373,6 +373,11 @@ export async function customFetch<T = unknown>(
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
 
+  // Required by the Replit reverse proxy on native clients (prevents 403).
+  if (!headers.has("x-requested-with")) {
+    headers.set("x-requested-with", "XMLHttpRequest");
+  }
+
   if (
     typeof init.body === "string" &&
     !headers.has("content-type") &&
