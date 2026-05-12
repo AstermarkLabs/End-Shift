@@ -15,6 +15,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
+const WEB_DIST = path.resolve(__dirname, "..", "dist");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const QR_LIB_PATH = path.resolve(__dirname, "lib", "qr-code-styling.js");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
@@ -114,6 +115,40 @@ function serveStaticFile(urlPath, res) {
   res.end(content);
 }
 
+// Serve the web SPA from dist/. Tries the exact file first; falls back to
+// dist/index.html so that client-side routing (expo-router) can handle the path.
+function serveWebSpa(urlPath, res) {
+  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const filePath = path.join(WEB_DIST, safePath);
+
+  if (!filePath.startsWith(WEB_DIST)) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
+
+  if (fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory()) {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || "application/octet-stream";
+    res.writeHead(200, { "content-type": contentType });
+    res.end(fs.readFileSync(filePath));
+    return;
+  }
+
+  // SPA fallback — let expo-router handle the path client-side.
+  const indexPath = path.join(WEB_DIST, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    res.end(fs.readFileSync(indexPath));
+    return;
+  }
+
+  res.writeHead(404);
+  res.end("Not Found");
+}
+
+const webDistReady = fs.existsSync(path.join(WEB_DIST, "index.html"));
+
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const qrLibSource = fs.readFileSync(QR_LIB_PATH, "utf-8");
 // Strip any source-map comment so it is not inlined into HTML responses
@@ -209,12 +244,19 @@ const server = http.createServer((req, res) => {
     return serveAssetLinks(res);
   }
 
-  if (pathname === "/" || pathname === "/manifest") {
-    const platform = req.headers["expo-platform"];
+  const platform = req.headers["expo-platform"];
+
+  if (pathname === "/manifest" || (pathname === "/" && (platform === "ios" || platform === "android"))) {
     if (platform === "ios" || platform === "android") {
       return serveManifest(platform, res);
     }
+  }
 
+  // Browser request (no expo-platform header) — serve the web SPA if built.
+  if (!platform) {
+    if (webDistReady) {
+      return serveWebSpa(pathname, res);
+    }
     if (pathname === "/") {
       return serveLandingPage(req, res, landingPageTemplate, appName);
     }

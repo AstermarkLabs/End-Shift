@@ -505,6 +505,27 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
   console.log("Manifests updated");
 }
 
+async function buildWebSpa(domain) {
+  console.log("Building web SPA...");
+  return new Promise((resolve, reject) => {
+    const env = { ...process.env, EXPO_PUBLIC_DOMAIN: domain };
+    const proc = spawn(
+      "pnpm",
+      ["exec", "expo", "export", "--platform", "web", "--output-dir", "dist"],
+      { stdio: "inherit", cwd: projectRoot, env },
+    );
+    proc.on("close", (code) => {
+      if (code === 0) {
+        console.log("Web SPA built successfully → dist/");
+        resolve();
+      } else {
+        reject(new Error(`expo export exited with code ${code}`));
+      }
+    });
+    proc.on("error", reject);
+  });
+}
+
 async function main() {
   console.log("Building static Expo Go deployment...");
 
@@ -517,6 +538,9 @@ async function main() {
 
   prepareDirectories(timestamp);
   clearMetroCache();
+
+  // Build web SPA first (no Metro needed)
+  await buildWebSpa(domain);
 
   await startMetro(domain, expoPublicReplId);
 
