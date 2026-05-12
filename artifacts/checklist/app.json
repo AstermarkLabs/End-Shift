@@ -15,13 +15,13 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.endshift.app",
+      "bundleIdentifier": "com.theappfoundry.endshift",
       "associatedDomains": [
         "webcredentials:REPLACE_WITH_YOUR_DOMAIN"
       ]
     },
     "android": {
-      "package": "com.endshift.app"
+      "package": "com.theappfoundry.endshift"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
