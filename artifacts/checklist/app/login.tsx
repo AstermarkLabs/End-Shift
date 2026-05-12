@@ -18,6 +18,12 @@ import { getMe, listProfilePasskeys } from "@workspace/api-client-react";
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
+function showAlert(title: string, message: string) {
+  if (Platform.OS !== "web") {
+    Alert.alert(title, message);
+  }
+}
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -26,14 +32,12 @@ export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const maybePromptForPasskey = async () => {
-    // After a successful password sign-in, offer to set up a passkey on this
-    // device when the user has none yet.  This is best-effort: if the lookup
-    // fails (network, etc.) we just skip the prompt rather than block sign-in.
     try {
       const me = await getMe();
-      if (me.mustChangePassword) return; // they'll be routed to /profile anyway
+      if (me.mustChangePassword) return;
       const list = await listProfilePasskeys(me.id);
       if (list.length > 0) return;
       Alert.alert(
@@ -50,8 +54,10 @@ export default function LoginScreen() {
   };
 
   const onSubmit = async () => {
+    setError(null);
     if (!username || !password) {
-      Alert.alert("Sign in", "Username and password are required.");
+      setError("Username and password are required.");
+      showAlert("Sign in", "Username and password are required.");
       return;
     }
     setBusy(true);
@@ -59,18 +65,23 @@ export default function LoginScreen() {
       await signIn(username.trim(), password);
       await maybePromptForPasskey();
     } catch (e) {
-      Alert.alert("Sign in failed", describeApiError(e));
+      const msg = describeApiError(e);
+      setError(msg);
+      showAlert("Sign in failed", msg);
     } finally {
       setBusy(false);
     }
   };
 
   const onPasskey = async () => {
+    setError(null);
     setBusy(true);
     try {
       await signInWithPasskey(username.trim() || undefined);
     } catch (e) {
-      Alert.alert("Passkey sign in failed", describeApiError(e));
+      const msg = describeApiError(e);
+      setError(msg);
+      showAlert("Passkey sign in failed", msg);
     } finally {
       setBusy(false);
     }
@@ -85,10 +96,16 @@ export default function LoginScreen() {
         <Text style={[styles.title, { color: colors.foreground }]}>End Shift</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Sign in to continue</Text>
 
+        {error ? (
+          <View style={[styles.errorBox, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive }]}>
+            <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+          </View>
+        ) : null}
+
         <Text style={[styles.label, { color: colors.foreground }]}>Username</Text>
         <TextInput
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(v) => { setUsername(v); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!busy}
@@ -100,7 +117,7 @@ export default function LoginScreen() {
         <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
         <TextInput
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(v) => { setPassword(v); setError(null); }}
           secureTextEntry
           editable={!busy}
           style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
@@ -137,6 +154,8 @@ const styles = StyleSheet.create({
   inner: { paddingHorizontal: 24, gap: 8, maxWidth: 480, width: "100%", alignSelf: "center" },
   title: { fontSize: 32, fontWeight: "700", marginBottom: 4 },
   subtitle: { fontSize: 16, marginBottom: 24 },
+  errorBox: { borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 4 },
+  errorText: { fontSize: 14, fontWeight: "500" },
   label: { fontSize: 14, fontWeight: "500", marginTop: 12, marginBottom: 6 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
   primaryBtn: { marginTop: 24, height: 50, borderRadius: 10, alignItems: "center", justifyContent: "center" },
