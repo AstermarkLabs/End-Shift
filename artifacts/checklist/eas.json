@@ -12,6 +12,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "node": "24.15.0",
       "android": {
         "buildType": "apk"
       }
