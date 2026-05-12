@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { seedAuth } from "./lib/seed";
+import { seedAuth, resetAdminIfRequested } from "./lib/seed";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -41,6 +41,11 @@ async function verifySchema(): Promise<void> {
 
 async function start() {
   await verifySchema();
+  try {
+    await resetAdminIfRequested();
+  } catch (err) {
+    logger.error({ err }, "Admin reset failed");
+  }
   try {
     await seedAuth();
   } catch (err) {

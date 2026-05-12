@@ -37,6 +37,48 @@ function resolveBootstrapCredentials(): { username: string; password: string; ge
   return { username, password: password ?? "changeme123", generated: false };
 }
 
+export async function resetAdminIfRequested(): Promise<void> {
+  const resetFlag = process.env["RESET_ADMIN_PASSWORD"];
+  if (!resetFlag || resetFlag !== "true") return;
+
+  const adminRole = await db
+    .select()
+    .from(rolesTable)
+    .where(eq(rolesTable.name, SYSTEM_ADMIN_ROLE_NAME))
+    .limit(1);
+
+  if (adminRole.length === 0) {
+    logger.warn("RESET_ADMIN_PASSWORD set but no system admin role found — skipping reset");
+    return;
+  }
+
+  const adminUser = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.roleId, adminRole[0].id))
+    .limit(1);
+
+  if (adminUser.length === 0) {
+    logger.warn("RESET_ADMIN_PASSWORD set but no admin user found — skipping reset");
+    return;
+  }
+
+  const newPassword = randomBytes(18).toString("base64url");
+  const passwordHash = await hashPassword(newPassword);
+  await db
+    .update(usersTable)
+    .set({ passwordHash, mustChangePassword: true })
+    .where(eq(usersTable.id, adminUser[0].id));
+
+  logger.warn(
+    {
+      resetUsername: adminUser[0].username,
+      resetPassword: newPassword,
+    },
+    "RESET_ADMIN_PASSWORD: admin password has been reset — retrieve credentials from logs and change immediately after login. Remove the RESET_ADMIN_PASSWORD env var after use.",
+  );
+}
+
 export async function seedAuth(): Promise<void> {
   const existingRole = await db
     .select()
