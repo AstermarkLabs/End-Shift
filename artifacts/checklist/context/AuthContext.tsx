@@ -67,14 +67,15 @@ async function storageDel(key: string): Promise<void> {
 
 // ─── API base URL setup ───────────────────────────────────────────────────────
 function configureApiBaseUrl() {
-  if (Platform.OS === "web") {
-    setBaseUrl(null);
-    return;
-  }
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) {
+    // Use the explicit domain on all platforms (native and EAS-hosted web).
+    // On web without a domain configured, fall back to relative URLs so the
+    // dev Metro server and Replit-hosted web build work without extra config.
     setBaseUrl(`https://${domain}`);
+    return;
   }
+  setBaseUrl(null);
 }
 
 // ─── Context type ─────────────────────────────────────────────────────────────
