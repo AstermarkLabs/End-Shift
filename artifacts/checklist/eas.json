@@ -7,9 +7,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
-      },
       "android": {
         "buildType": "apk"
       }
@@ -18,7 +15,6 @@
       "distribution": "internal",
       "node": "24.15.0",
       "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1",
         "EXPO_PUBLIC_DOMAIN": "end-shift.replit.app"
       },
       "android": {
@@ -27,7 +23,6 @@
     },
     "production": {
       "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1",
         "EXPO_PUBLIC_DOMAIN": "end-shift.replit.app"
       },
       "android": {
