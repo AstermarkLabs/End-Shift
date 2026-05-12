@@ -378,25 +378,19 @@ export async function customFetch<T = unknown>(
     headers.set("x-requested-with", "XMLHttpRequest");
   }
 
-  // Replit proxy requires one of: referrer, referer, or origin header.
-  // React Native's XHR implementation forbids setting "Referer" and "Origin"
-  // (they are silently dropped before hitting the network).  "Referrer"
-  // (double-r, non-standard) is NOT in React Native's forbidden list and the
-  // proxy accepts it.  We derive the value from the resolved request URL so
-  // this works even when _baseUrl is not configured.
-  if (
-    !headers.has("referrer") &&
-    !headers.has("referer") &&
-    !headers.has("origin")
-  ) {
+  // Replit's proxy rejects native-client requests with 403 unless one of
+  // Origin / Referer is present.  React Native does not enforce the browser
+  // fetch spec's forbidden-headers list: whatwg-fetch passes headers through
+  // to XHR, RN's XHR forwards them verbatim to native, and neither OkHttp
+  // (Android) nor NSURLSession (iOS, where Origin/Referer are not on the
+  // reserved list) strips them.  So set Origin directly, derived from the
+  // resolved request URL so it works whether or not _baseUrl is configured.
+  if (!headers.has("origin") && !headers.has("referer")) {
     const resolvedUrl = resolveUrl(input);
-    const base = resolvedUrl.startsWith("http")
-      ? resolvedUrl
-      : _baseUrl ?? null;
+    const base = resolvedUrl.startsWith("http") ? resolvedUrl : _baseUrl;
     if (base) {
       try {
-        const { origin } = new URL(base);
-        headers.set("referrer", `${origin}/`);
+        headers.set("origin", new URL(base).origin);
       } catch {
         // Not a valid absolute URL — skip
       }

@@ -13,11 +13,17 @@
     "preview": {
       "distribution": "internal",
       "node": "24.15.0",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "endshift.replit.app"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "endshift.replit.app"
+      },
       "android": {
         "buildType": "app-bundle"
       }
