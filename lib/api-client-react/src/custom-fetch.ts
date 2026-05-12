@@ -378,17 +378,25 @@ export async function customFetch<T = unknown>(
     headers.set("x-requested-with", "XMLHttpRequest");
   }
 
-  // Replit proxy requires an origin/referer header from non-browser clients.
-  // Derive from the resolved request URL (already made absolute by applyBaseUrl
-  // above) so this works even if _baseUrl was not explicitly configured.
-  // We send Referer rather than Origin because Android's HTTP stack forbids
-  // apps from setting the Origin header directly.
-  if (!headers.has("referer") && !headers.has("origin")) {
+  // Replit proxy requires one of: referrer, referer, or origin header.
+  // React Native's XHR implementation forbids setting "Referer" and "Origin"
+  // (they are silently dropped before hitting the network).  "Referrer"
+  // (double-r, non-standard) is NOT in React Native's forbidden list and the
+  // proxy accepts it.  We derive the value from the resolved request URL so
+  // this works even when _baseUrl is not configured.
+  if (
+    !headers.has("referrer") &&
+    !headers.has("referer") &&
+    !headers.has("origin")
+  ) {
     const resolvedUrl = resolveUrl(input);
-    if (resolvedUrl.startsWith("http")) {
+    const base = resolvedUrl.startsWith("http")
+      ? resolvedUrl
+      : _baseUrl ?? null;
+    if (base) {
       try {
-        const { origin } = new URL(resolvedUrl);
-        headers.set("referer", `${origin}/`);
+        const { origin } = new URL(base);
+        headers.set("referrer", `${origin}/`);
       } catch {
         // Not a valid absolute URL — skip
       }
