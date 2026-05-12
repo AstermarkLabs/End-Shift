@@ -379,14 +379,19 @@ export async function customFetch<T = unknown>(
   }
 
   // Replit proxy requires an origin/referer header from non-browser clients.
-  // Android's HTTP stack forbids setting the Origin header from JS, so we send
-  // Referer instead, which is always allowed by application code.
-  if (!headers.has("referer") && !headers.has("origin") && _baseUrl) {
-    try {
-      const { origin } = new URL(_baseUrl);
-      headers.set("referer", `${origin}/`);
-    } catch {
-      // _baseUrl is not a valid absolute URL — skip
+  // Derive from the resolved request URL (already made absolute by applyBaseUrl
+  // above) so this works even if _baseUrl was not explicitly configured.
+  // We send Referer rather than Origin because Android's HTTP stack forbids
+  // apps from setting the Origin header directly.
+  if (!headers.has("referer") && !headers.has("origin")) {
+    const resolvedUrl = resolveUrl(input);
+    if (resolvedUrl.startsWith("http")) {
+      try {
+        const { origin } = new URL(resolvedUrl);
+        headers.set("referer", `${origin}/`);
+      } catch {
+        // Not a valid absolute URL — skip
+      }
     }
   }
 
