@@ -45,4 +45,5 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.production]
-RESET_ADMIN_PASSWORD = "changeme123"
+JWT_ACCESS_SECRET = "v4EUIJnE_ecnC71HhLeY2MdnF52Psl9m0q380-6u_-8"
+JWT_REFRESH_SECRET = "PYGkqRzuHXUdOPqFH00b7WaJN0rf6xTZcEJ37Z3pk7Y"
