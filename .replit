@@ -45,4 +45,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.production]
-RESET_ADMIN_PASSWORD = "true"
