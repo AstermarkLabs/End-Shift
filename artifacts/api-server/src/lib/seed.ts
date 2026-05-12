@@ -38,8 +38,8 @@ function resolveBootstrapCredentials(): { username: string; password: string; ge
 }
 
 export async function resetAdminIfRequested(): Promise<void> {
-  const resetFlag = process.env["RESET_ADMIN_PASSWORD"];
-  if (!resetFlag || resetFlag !== "true") return;
+  const resetValue = process.env["RESET_ADMIN_PASSWORD"];
+  if (!resetValue) return;
 
   const adminRole = await db
     .select()
@@ -63,7 +63,12 @@ export async function resetAdminIfRequested(): Promise<void> {
     return;
   }
 
-  const newPassword = randomBytes(18).toString("base64url");
+  // Use the env var value as the password if it looks like a real password,
+  // otherwise generate a secure random one.
+  const newPassword = resetValue === "true" || resetValue === "1"
+    ? randomBytes(18).toString("base64url")
+    : resetValue;
+
   const passwordHash = await hashPassword(newPassword);
   await db
     .update(usersTable)
