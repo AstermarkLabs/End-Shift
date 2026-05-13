@@ -94,7 +94,9 @@ Build (`artifacts/api-server/build.mjs`): esbuild bundles to ESM with a banner t
 
 Routes are file-based: `(tabs)` for the main shell, modals for `profile`, `admin`, `settings`, `checklist-settings`, `history`, plus `login` and `+not-found`.
 
-Auth state lives in `context/AuthContext.tsx`. On native the access/refresh tokens go to `expo-secure-store`; on web they go to `localStorage` (treat the web origin as security-equivalent to those tokens — see `threat_model.md`).
+Auth state lives in `context/AuthContext.tsx`. On native the access/refresh tokens go to `expo-secure-store`; on web the access token is kept **in memory only** and the refresh token + profile go to `sessionStorage` (scoped to the tab, not shared across windows — treat the web origin as security-equivalent to those tokens — see `threat_model.md`).
+
+Checklist data (tasks, checklists, history, app config) is stored in `AsyncStorage` (local device only). `ChecklistContext` manages this state entirely client-side — there is no API endpoint backing it yet.
 
 Web/static deployment: `scripts/build.js` produces `static-build/`, and `server/serve.js` is a **zero-dependency Node http server** that serves it. It has two special routes — `GET /` or `/manifest` with an `expo-platform` header returns the platform manifest JSON; without it, `/` returns the landing page (template at `server/templates/landing-page.html`). All other paths fall through to static file serving from `static-build/`.
 
@@ -104,7 +106,7 @@ Web/static deployment: `scripts/build.js` produces `static-build/`, and `server/
 
 ## Operational notes
 
-- **Required env**: `DATABASE_URL` (Postgres). Production also requires `JWT_SECRET`, `JWT_REFRESH_SECRET`. WebAuthn dev defaults to `localhost` — native passkeys need `WEBAUTHN_ANDROID_SHA256`/`WEBAUTHN_ANDROID_PACKAGE`/`WEBAUTHN_IOS_TEAM_ID`/`WEBAUTHN_IOS_BUNDLE_ID` (full list in `replit.md`).
+- **Required env**: `DATABASE_URL` (Postgres). Production also requires `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`. WebAuthn dev defaults to `localhost` — native passkeys need `WEBAUTHN_ANDROID_SHA256`/`WEBAUTHN_ANDROID_PACKAGE`/`WEBAUTHN_IOS_TEAM_ID`/`WEBAUTHN_IOS_BUNDLE_ID` (full list in `replit.md`). Set `EXPO_PUBLIC_DOMAIN` on the Expo side when deploying native or EAS-hosted web so `custom-fetch.ts` prepends the correct base URL; omit it on Replit-hosted web builds (falls back to relative URLs).
 - **Replit hooks**: `scripts/post-merge.sh` (wired via `.replit` `[postMerge]`) runs `pnpm install --frozen-lockfile` then `pnpm --filter db push` after every merge — so DB schema drift is auto-applied on Replit but **not locally**; remember to `push` manually when pulling schema changes.
 - **pnpm catalog policy**: `minimumReleaseAge: 1440` (24 h) blocks brand-new releases; `@replit/*` and `stripe-replit-sync` are exempt. Many native binary subpackages are explicitly excluded (`'-'`) to keep the lockfile portable.
 - **Threat model**: `threat_model.md` is the authoritative scope doc — `artifacts/mockup-sandbox/**` is dev-only and out of scope unless production reachability is demonstrated. Highest-risk areas: `artifacts/api-server/src/routes/{auth,profiles,roles}.ts`, `middlewares/auth.ts`, `lib/seed.ts`, and `artifacts/checklist/server/serve.js`.

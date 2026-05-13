@@ -14,7 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider, useAuthRedirect } from "@/context/AuthContext";
+import { AuthProvider, useAuth, useAuthRedirect } from "@/context/AuthContext";
 import { ChecklistProvider } from "@/context/ChecklistContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -22,7 +22,9 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const { ready } = useAuth();
   useAuthRedirect();
+  if (!ready) return null;
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
