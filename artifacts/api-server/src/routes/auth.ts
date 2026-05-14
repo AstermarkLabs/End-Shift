@@ -8,7 +8,9 @@ import {
   PasskeyRegisterVerifyBody,
   PasskeyAuthOptionsBody,
   PasskeyAuthVerifyBody,
+  RegisterBody,
 } from "@workspace/api-zod";
+import { ALL_RIGHTS, SYSTEM_ADMIN_ROLE_NAME } from "@workspace/db";
 import {
   hashPassword,
   signAccessToken,
@@ -339,6 +341,55 @@ router.post("/passkey/auth-verify", async (req, res) => {
     .where(eq(usersTable.id, user.id));
   const { accessToken, refreshToken } = await issueTokensForUser(user);
   res.json({ accessToken, refreshToken, profile: profileFor(user, role) });
+});
+
+router.post("/register", async (req, res) => {
+  const body = RegisterBody.parse(req.body);
+
+  // Ensure the email isn't already taken
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.username, body.email))
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(409).json({ error: "Email already in use" });
+    return;
+  }
+
+  // Get or create the System Admin role
+  const existingRole = await db
+    .select()
+    .from(rolesTable)
+    .where(eq(rolesTable.name, SYSTEM_ADMIN_ROLE_NAME))
+    .limit(1);
+
+  let adminRoleId: number;
+  if (existingRole.length === 0) {
+    const [created] = await db
+      .insert(rolesTable)
+      .values({ name: SYSTEM_ADMIN_ROLE_NAME, level: 1000, isSystem: true, rights: [...ALL_RIGHTS] })
+      .returning();
+    adminRoleId = created.id;
+  } else {
+    adminRoleId = existingRole[0].id;
+  }
+
+  const passwordHash = await hashPassword(body.password);
+  const [user] = await db
+    .insert(usersTable)
+    .values({
+      username: body.email,
+      displayName: body.businessName,
+      passwordHash,
+      roleId: adminRoleId,
+      mustChangePassword: false,
+    })
+    .returning();
+
+  const role = existingRole[0] ?? (await db.select().from(rolesTable).where(eq(rolesTable.id, adminRoleId)).limit(1))[0];
+  const { accessToken, refreshToken } = await issueTokensForUser(user);
+  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, role) });
 });
 
 export default router;

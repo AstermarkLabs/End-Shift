@@ -50,6 +50,19 @@ export const LoginResponse = zod.object({
 });
 
 /**
+ * @summary Create a new account (onboarding)
+ */
+
+export const registerBodyPasswordMin = 8;
+
+export const RegisterBody = zod.object({
+  email: zod.string().min(1),
+  password: zod.string().min(registerBodyPasswordMin),
+  businessName: zod.string().min(1),
+  businessType: zod.enum(["single-unit", "multi-unit"]),
+});
+
+/**
  * @summary Sign out
  */
 export const LogoutBody = zod.object({

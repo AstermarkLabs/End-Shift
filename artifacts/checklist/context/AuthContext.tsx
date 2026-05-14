@@ -294,8 +294,10 @@ export function useAuthRedirect() {
   useEffect(() => {
     if (!ready) return;
     const inAuthScreen = segments[0] === "login";
+    const inOnboardingScreen = segments[0] === "onboarding";
     const inProfileScreen = segments[0] === "profile";
-    if (!profile && !inAuthScreen) {
+    const inPublicScreen = inAuthScreen || inOnboardingScreen;
+    if (!profile && !inPublicScreen) {
       router.replace("/login");
       return;
     }
@@ -307,7 +309,7 @@ export function useAuthRedirect() {
     // until they actually rotate their password.  The server also enforces
     // this with `blockIfMustChangePassword`, but redirecting here gives a
     // clean UX rather than a wall of 403s.
-    if (profile?.mustChangePassword && !inProfileScreen && !inAuthScreen) {
+    if (profile?.mustChangePassword && !inProfileScreen && !inPublicScreen) {
       router.replace("/profile");
     }
   }, [ready, profile, segments, router]);

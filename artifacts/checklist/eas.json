@@ -22,6 +22,7 @@
       }
     },
     "production": {
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_DOMAIN": "end-shift.replit.app"
       },

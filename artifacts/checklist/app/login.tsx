@@ -144,6 +144,24 @@ export default function LoginScreen() {
         >
           <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Use a passkey</Text>
         </TouchableOpacity>
+
+        <View style={styles.divider}>
+          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>OR</Text>
+          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.createBtn, { borderColor: colors.primary }]}
+          onPress={() => router.push("/onboarding")}
+          disabled={busy}
+        >
+          <Text style={[styles.createBtnText, { color: colors.primary }]}>Create an account</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.legalText, { color: colors.mutedForeground }]}>
+          By continuing you agree to the Terms and Privacy Policy.
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -162,4 +180,10 @@ const styles = StyleSheet.create({
   primaryBtnText: { fontSize: 16, fontWeight: "600" },
   secondaryBtn: { marginTop: 12, height: 50, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   secondaryBtnText: { fontSize: 16, fontWeight: "500" },
+  divider: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 24, marginBottom: 4 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  dividerText: { fontSize: 12, fontWeight: "600", letterSpacing: 0.5 },
+  createBtn: { height: 50, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1.5, marginTop: 8 },
+  createBtnText: { fontSize: 16, fontWeight: "600" },
+  legalText: { fontSize: 12, textAlign: "center", marginTop: 16 },
 });
