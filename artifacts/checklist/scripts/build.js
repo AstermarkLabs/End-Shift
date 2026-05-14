@@ -507,7 +507,7 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
 
 async function buildWebSpa(domain) {
   console.log("Building web SPA...");
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const env = { ...process.env, EXPO_PUBLIC_DOMAIN: domain };
     const proc = spawn(
       "pnpm",
@@ -515,15 +515,25 @@ async function buildWebSpa(domain) {
       { stdio: "inherit", cwd: projectRoot, env },
     );
     proc.on("close", (code) => {
-      if (code === 0) {
-        console.log("Web SPA built successfully → dist/");
-        resolve();
-      } else {
-        reject(new Error(`expo export exited with code ${code}`));
-      }
+      if (code === 0) resolve();
+      else reject(new Error(`expo export exited with code ${code}`));
     });
     proc.on("error", reject);
   });
+
+  // Inject SEO meta tags into the generated index.html.
+  const indexPath = path.join(projectRoot, "dist", "index.html");
+  if (fs.existsSync(indexPath)) {
+    let html = fs.readFileSync(indexPath, "utf-8");
+    const descTag = '<meta name="description" content="End Shift helps restaurant and retail teams close out shifts faster with structured, role-based closing checklists." />';
+    if (!html.includes('name="description"')) {
+      html = html.replace("</head>", `  ${descTag}\n  </head>`);
+      fs.writeFileSync(indexPath, html, "utf-8");
+      console.log("Injected meta description into dist/index.html");
+    }
+  }
+
+  console.log("Web SPA built successfully → dist/");
 }
 
 async function main() {

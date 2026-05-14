@@ -252,6 +252,13 @@ const server = http.createServer((req, res) => {
     }
   }
 
+  // robots.txt — allow all crawlers.
+  if (pathname === "/robots.txt") {
+    res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+    res.end("User-agent: *\nAllow: /\n");
+    return;
+  }
+
   // Browser request (no expo-platform header) — serve the web SPA if built.
   if (!platform) {
     if (webDistReady) {
