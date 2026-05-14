@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "End Shift",
-    "slug": "checklist",
-    "version": "1.0.0",
+    "slug": "end-shift",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "checklist",
@@ -49,7 +49,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "0496298b-7995-4a1a-b834-1d0ec1c9ed89"
+        "projectId": "a529d00e-72d2-479e-83d8-aee6f500092c"
       }
     }
   }
