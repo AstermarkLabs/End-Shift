@@ -1,4 +1,7 @@
 {
+  "expo": {
+    "version": "1.2.0"
+  },
   "cli": {
     "version": ">= 16.0.0",
     "appVersionSource": "remote"
