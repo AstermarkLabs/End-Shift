@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { register as apiRegister } from "@workspace/api-client-react";
+import { completeOnboarding, register as apiRegister } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useChecklist } from "@/context/ChecklistContext";
@@ -739,6 +739,8 @@ function StepConfirm({
   regions,
   locations,
   teamMembers,
+  isFinishing,
+  finishError,
   onOpen,
 }: {
   businessName: string;
@@ -746,6 +748,8 @@ function StepConfirm({
   regions: Region[];
   locations: OrgLocation[];
   teamMembers: TeamMember[];
+  isFinishing: boolean;
+  finishError: string | null;
   onOpen: () => void;
 }) {
   const colors = useColors();
@@ -785,11 +789,20 @@ function StepConfirm({
         </View>
       )}
 
+      {finishError && (
+        <Text style={[sh.errorText, { color: colors.destructive ?? "#ef4444" }]}>{finishError}</Text>
+      )}
+
       <TouchableOpacity
-        style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32 }]}
+        style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32, opacity: isFinishing ? 0.7 : 1 }]}
         onPress={onOpen}
+        disabled={isFinishing}
       >
-        <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Open End Shift</Text>
+        {isFinishing ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Open End Shift</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -826,6 +839,8 @@ export default function OnboardingScreen() {
 
   const [step, setStep] = useState<Step>("account");
   const [businessName, setBusinessName] = useState("");
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
 
   // Build the ordered list of steps based on business type + settings
   const buildSteps = useCallback(
@@ -870,10 +885,34 @@ export default function OnboardingScreen() {
     [setBusinessType, updateAppConfig, buildSteps],
   );
 
-  const handleFinish = useCallback(() => {
-    markComplete();
-    router.replace("/");
-  }, [markComplete, router]);
+  const handleFinish = useCallback(async () => {
+    setIsFinishing(true);
+    setFinishError(null);
+    try {
+      if (teamMembers.length > 0) {
+        const result = await completeOnboarding({
+          teamMembers: teamMembers.map((m) => ({
+            email: m.email,
+            role: m.role,
+            ...(m.scope ? { scope: m.scope } : {}),
+          })),
+        });
+        if (result.failed.length > 0) {
+          setFinishError(
+            `${result.failed.length} invite(s) could not be created: ${result.failed.map((f) => f.email).join(", ")}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+        }
+      }
+    } catch (e) {
+      setFinishError(describeApiError(e));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    } finally {
+      setIsFinishing(false);
+      markComplete();
+      router.replace("/");
+    }
+  }, [teamMembers, markComplete, router]);
 
   return (
     <View
@@ -935,6 +974,8 @@ export default function OnboardingScreen() {
           regions={regions}
           locations={locations}
           teamMembers={teamMembers}
+          isFinishing={isFinishing}
+          finishError={finishError}
           onOpen={handleFinish}
         />
       )}

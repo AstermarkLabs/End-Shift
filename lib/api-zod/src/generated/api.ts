@@ -429,3 +429,27 @@ export const UpdateRoleResponse = zod.object({
 export const DeleteRoleParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary Create team member accounts gathered during onboarding
+ */
+
+export const CompleteOnboardingBody = zod.object({
+  teamMembers: zod.array(
+    zod.object({
+      email: zod.string().min(1),
+      role: zod.string().min(1),
+      scope: zod.string().optional(),
+    }),
+  ),
+});
+
+export const CompleteOnboardingResponse = zod.object({
+  invited: zod.number(),
+  failed: zod.array(
+    zod.object({
+      email: zod.string(),
+      error: zod.string(),
+    }),
+  ),
+});

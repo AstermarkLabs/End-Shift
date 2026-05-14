@@ -24,6 +24,8 @@ import type {
   JsonObject,
   LoginRequest,
   LogoutRequest,
+  OnboardingCompleteRequest,
+  OnboardingCompleteResponse,
   PasskeyAuthOptionsRequest,
   PasskeyAuthVerifyRequest,
   PasskeyCredential,
@@ -1782,4 +1784,91 @@ export const useDeleteRole = <
   TContext
 > => {
   return useMutation(getDeleteRoleMutationOptions(options));
+};
+
+/**
+ * @summary Create team member accounts gathered during onboarding
+ */
+export const getCompleteOnboardingUrl = () => {
+  return `/api/onboarding/complete`;
+};
+
+export const completeOnboarding = async (
+  onboardingCompleteRequest: OnboardingCompleteRequest,
+  options?: RequestInit,
+): Promise<OnboardingCompleteResponse> => {
+  return customFetch<OnboardingCompleteResponse>(getCompleteOnboardingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(onboardingCompleteRequest),
+  });
+};
+
+export const getCompleteOnboardingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeOnboarding>>,
+    TError,
+    { data: BodyType<OnboardingCompleteRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeOnboarding>>,
+  TError,
+  { data: BodyType<OnboardingCompleteRequest> },
+  TContext
+> => {
+  const mutationKey = ["completeOnboarding"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeOnboarding>>,
+    { data: BodyType<OnboardingCompleteRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return completeOnboarding(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteOnboardingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeOnboarding>>
+>;
+export type CompleteOnboardingMutationBody =
+  BodyType<OnboardingCompleteRequest>;
+export type CompleteOnboardingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create team member accounts gathered during onboarding
+ */
+export const useCompleteOnboarding = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeOnboarding>>,
+    TError,
+    { data: BodyType<OnboardingCompleteRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeOnboarding>>,
+  TError,
+  { data: BodyType<OnboardingCompleteRequest> },
+  TContext
+> => {
+  return useMutation(getCompleteOnboardingMutationOptions(options));
 };

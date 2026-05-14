@@ -16,6 +16,8 @@ tags:
     description: User profiles
   - name: roles
     description: Roles & rights
+  - name: onboarding
+    description: Onboarding flow
 paths:
   /healthz:
     get:
@@ -373,6 +375,27 @@ paths:
         "204":
           description: Deleted
 
+  /onboarding/complete:
+    post:
+      operationId: completeOnboarding
+      tags: [onboarding]
+      summary: Create team member accounts gathered during onboarding
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingCompleteRequest"
+      responses:
+        "200":
+          description: Accounts created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingCompleteResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -598,3 +621,39 @@ components:
         username:
           type: string
       required: [response]
+
+    OnboardingCompleteRequest:
+      type: object
+      properties:
+        teamMembers:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+                minLength: 1
+              role:
+                type: string
+                minLength: 1
+              scope:
+                type: string
+            required: [email, role]
+      required: [teamMembers]
+
+    OnboardingCompleteResponse:
+      type: object
+      properties:
+        invited:
+          type: integer
+        failed:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+              error:
+                type: string
+            required: [email, error]
+      required: [invited, failed]

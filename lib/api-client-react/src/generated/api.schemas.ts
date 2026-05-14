@@ -143,3 +143,25 @@ export interface PasskeyAuthVerifyRequest {
   response: JsonObject;
   username?: string;
 }
+
+export type OnboardingCompleteRequestTeamMembersItem = {
+  /** @minLength 1 */
+  email: string;
+  /** @minLength 1 */
+  role: string;
+  scope?: string;
+};
+
+export interface OnboardingCompleteRequest {
+  teamMembers: OnboardingCompleteRequestTeamMembersItem[];
+}
+
+export type OnboardingCompleteResponseFailedItem = {
+  email: string;
+  error: string;
+};
+
+export interface OnboardingCompleteResponse {
+  invited: number;
+  failed: OnboardingCompleteResponseFailedItem[];
+}
