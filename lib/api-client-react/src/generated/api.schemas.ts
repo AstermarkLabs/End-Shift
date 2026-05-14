@@ -85,6 +85,24 @@ export interface UpdateMeRequest {
   newPassword?: string;
 }
 
+export type RegisterRequestBusinessType =
+  (typeof RegisterRequestBusinessType)[keyof typeof RegisterRequestBusinessType];
+
+export const RegisterRequestBusinessType = {
+  "single-unit": "single-unit",
+  "multi-unit": "multi-unit",
+} as const;
+
+export interface RegisterRequest {
+  /** @minLength 1 */
+  email: string;
+  /** @minLength 8 */
+  password: string;
+  /** @minLength 1 */
+  businessName: string;
+  businessType: RegisterRequestBusinessType;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;

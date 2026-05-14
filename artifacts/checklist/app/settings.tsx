@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useChecklist } from "@/context/ChecklistContext";
+import { useOnboarding } from "@/context/OnboardingContext";
 import { useColors } from "@/hooks/useColors";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -72,6 +74,41 @@ function SettingsRow({
   );
 }
 
+function ToggleRow({
+  label,
+  subtitle,
+  value,
+  onValueChange,
+  icon,
+}: {
+  label: string;
+  subtitle?: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  icon: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={[styles.row, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <View style={[styles.rowIcon, { backgroundColor: colors.muted }]}>
+        <Text style={styles.rowIconText}>{icon}</Text>
+      </View>
+      <View style={styles.rowBody}>
+        <Text style={[styles.rowLabel, { color: colors.foreground }]}>{label}</Text>
+        {subtitle ? (
+          <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ true: colors.primary }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+}
+
 // ─── App Settings Screen ──────────────────────────────────────────────────────
 
 export default function AppSettingsScreen() {
@@ -79,6 +116,7 @@ export default function AppSettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { completionHistory, clearHistory, resetChecklist, appConfig, updateAppConfig } = useChecklist();
+  const { settings: onboardingSettings, businessType, updateSettings } = useOnboarding();
   const isWeb = Platform.OS === "web";
   const topPadding = isWeb ? 67 : insets.top;
 
@@ -373,6 +411,45 @@ export default function AppSettingsScreen() {
             subtitle="Uncheck all tasks without saving"
             onPress={handleResetTasks}
             destructive
+          />
+        </View>
+
+        {/* ── Onboarding Steps ── */}
+        <SectionLabel title="ONBOARDING STEPS" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          {businessType === "multi-unit" && (
+            <ToggleRow
+              icon="🗺️"
+              label="Regions & Districts"
+              subtitle="Show the regions/districts step during onboarding"
+              value={onboardingSettings.showRegionsStep}
+              onValueChange={(v) => updateSettings({ showRegionsStep: v })}
+            />
+          )}
+          {businessType === "multi-unit" && (
+            <ToggleRow
+              icon="📍"
+              label="Locations"
+              subtitle="Show the locations step during onboarding"
+              value={onboardingSettings.showLocationsStep}
+              onValueChange={(v) => updateSettings({ showLocationsStep: v })}
+            />
+          )}
+          <ToggleRow
+            icon="👥"
+            label="Team Setup"
+            subtitle="Show the team invite step during onboarding"
+            value={onboardingSettings.showTeamStep}
+            onValueChange={(v) => updateSettings({ showTeamStep: v })}
+          />
+          <SettingsRow
+            icon="↩"
+            label="Run Onboarding Again"
+            subtitle="Restart the setup flow"
+            onPress={() => {
+              router.back();
+              setTimeout(() => router.push("/onboarding"), 50);
+            }}
           />
         </View>
 

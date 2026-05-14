@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, useAuthRedirect } from "@/context/AuthContext";
 import { ChecklistProvider } from "@/context/ChecklistContext";
+import { OnboardingProvider } from "@/context/OnboardingContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="admin" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen
@@ -70,9 +72,11 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <ChecklistProvider>
-                <AuthProvider>
-                  <RootLayoutNav />
-                </AuthProvider>
+                <OnboardingProvider>
+                  <AuthProvider>
+                    <RootLayoutNav />
+                  </AuthProvider>
+                </OnboardingProvider>
               </ChecklistProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

@@ -19,6 +19,8 @@ export * from "./passkeyCredential";
 export * from "./passkeyRegisterVerifyRequest";
 export * from "./profile";
 export * from "./refreshRequest";
+export * from "./registerRequest";
+export * from "./registerRequestBusinessType";
 export * from "./right";
 export * from "./role";
 export * from "./updateMeRequest";
