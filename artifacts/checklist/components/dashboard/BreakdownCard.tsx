@@ -204,6 +204,7 @@ const styles = StyleSheet.create({
   legend: {
     flex: 1,
     minWidth: 200,
+    maxWidth: 300,
     gap: 10,
   },
   legendRow: {
@@ -218,9 +219,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     flexShrink: 0,
   },
-  // MIDDLE: name + meta
+  // MIDDLE: name + meta — flex:1 so value aligns to a consistent right edge
   labelBlock: {
-    flexShrink: 1,
+    flex: 1,
     gap: 2,
   },
   legendName: {
@@ -234,7 +235,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 2,
     flexShrink: 0,
-    marginLeft: 12,
   },
   valRow: {
     flexDirection: 'row',
