@@ -17,10 +17,8 @@ import { useColors } from '@/hooks/useColors';
 
 import { BreakdownCard } from '@/components/dashboard/BreakdownCard';
 import { MissedStepsCard } from '@/components/dashboard/MissedStepsCard';
-import { TrendCard } from '@/components/dashboard/TrendCard';
 import { HistoryCard } from '@/components/dashboard/HistoryCard';
 import {
-  buildBuckets,
   computeMissedSteps,
   counts,
   fmtRange,
@@ -100,9 +98,6 @@ export default function ReportsScreen() {
     () => computeMissedSteps(currentRuns),
     [currentRuns]
   );
-
-  const buckets = useMemo(() => buildBuckets(currentRuns, win), [currentRuns, win]);
-  const prevBuckets = useMemo(() => buildBuckets(prevRuns, winPrev), [prevRuns, winPrev]);
 
   const historyItems = useMemo(() => {
     return currentRuns
@@ -288,14 +283,6 @@ export default function ReportsScreen() {
         <BreakdownCard
           current={cCounts}
           prev={pCounts}
-          compare={compare}
-          period={PERIOD_META[period].word}
-        />
-
-        {/* Trend chart */}
-        <TrendCard
-          buckets={buckets}
-          prevBuckets={prevBuckets}
           compare={compare}
           period={PERIOD_META[period].word}
         />
