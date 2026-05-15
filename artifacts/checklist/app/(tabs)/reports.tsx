@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 
 import { useChecklist } from '@/context/ChecklistContext';
 import { useColors } from '@/hooks/useColors';
+import { generateMockHistory } from '@/utils/mockData';
 
 import { BreakdownCard } from '@/components/dashboard/BreakdownCard';
 import { MissedStepsCard } from '@/components/dashboard/MissedStepsCard';
@@ -57,7 +58,7 @@ export default function ReportsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { completionHistory, checklists } = useChecklist();
+  const { completionHistory, checklists, seedHistory, clearHistory } = useChecklist();
 
   const [period, setPeriod] = useState<Period>('period');
   const [anchor, setAnchor] = useState<Date>(new Date());
@@ -279,6 +280,39 @@ export default function ReportsScreen() {
         showsVerticalScrollIndicator={false}
         accessibilityRole="none"
       >
+        {/* Sample data banner — shown when history is empty */}
+        {completionHistory.length === 0 && (
+          <View style={styles.sampleBanner}>
+            <View style={styles.sampleBannerLeft}>
+              <Text style={styles.sampleBannerTitle}>No shift history yet</Text>
+              <Text style={styles.sampleBannerSub}>Load sample data to preview the dashboard.</Text>
+            </View>
+            <Pressable
+              onPress={() => seedHistory(generateMockHistory())}
+              style={styles.sampleBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Load sample data"
+            >
+              <Text style={styles.sampleBtnText}>Load sample data</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Clear sample data — shown when seeded mock data is present */}
+        {completionHistory.length > 0 && completionHistory.some(e => e.id.startsWith('mock-')) && (
+          <View style={[styles.sampleBanner, styles.sampleBannerFilled]}>
+            <Text style={styles.sampleBannerSub}>Showing sample data</Text>
+            <Pressable
+              onPress={clearHistory}
+              style={styles.clearBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Clear sample data"
+            >
+              <Text style={styles.clearBtnText}>Clear</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Breakdown */}
         <BreakdownCard
           current={cCounts}
@@ -525,6 +559,27 @@ const styles = StyleSheet.create({
   bottomRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   bottomLeft: { flex: 1 },
   bottomRight: { flex: 1 },
+
+  // Sample data banner
+  sampleBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 12, padding: 14, borderRadius: 10,
+    backgroundColor: '#FFF0F2', borderWidth: 1, borderColor: '#FDD5DB',
+  },
+  sampleBannerFilled: {
+    backgroundColor: '#F5F5F5', borderColor: '#E5E5E5',
+  },
+  sampleBannerLeft: { flex: 1 },
+  sampleBannerTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
+  sampleBannerSub: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888', marginTop: 2 },
+  sampleBtn: {
+    backgroundColor: '#C8102E', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
+  },
+  sampleBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#FFFFFF' },
+  clearBtn: {
+    backgroundColor: '#E5E5E5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+  },
+  clearBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#888888' },
 
   // History card
   historyCard: {

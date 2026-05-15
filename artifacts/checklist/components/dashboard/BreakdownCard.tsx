@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   // RIGHT: value + delta pill
   valBlock: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: 2,
     flexShrink: 0,
   },

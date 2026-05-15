@@ -151,6 +151,7 @@ interface ChecklistContextValue {
   completeChecklist: () => void;
   deleteHistoryEntry: (id: string) => void;
   clearHistory: () => void;
+  seedHistory: (items: CompletedChecklist[]) => void;
 
   // App config
   appConfig: AppConfig;
@@ -390,6 +391,16 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setCompletionHistory([]);
   }, []);
 
+  const seedHistory = useCallback((items: CompletedChecklist[]) => {
+    setCompletionHistory((prev) => {
+      const existingIds = new Set(prev.map((e) => e.id));
+      const novel = items.filter((e) => !existingIds.has(e.id));
+      return [...novel, ...prev].sort(
+        (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+      );
+    });
+  }, []);
+
   const updateAppConfig = useCallback((updates: Partial<AppConfig>) => {
     setAppConfig((prev) => ({ ...prev, ...updates }));
   }, []);
@@ -420,6 +431,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         completeChecklist,
         deleteHistoryEntry,
         clearHistory,
+        seedHistory,
         appConfig,
         updateAppConfig,
       }}
