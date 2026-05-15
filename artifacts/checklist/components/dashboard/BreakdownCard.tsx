@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   // MIDDLE: name + meta
   labelBlock: {
-    flex: 1,
+    flexShrink: 1,
     gap: 2,
   },
   legendName: {
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 2,
     flexShrink: 0,
-    minWidth: 64,
+    marginLeft: 12,
   },
   valRow: {
     flexDirection: 'row',
