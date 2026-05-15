@@ -16,7 +16,6 @@ import { useChecklist } from '@/context/ChecklistContext';
 import { useColors } from '@/hooks/useColors';
 
 import { BreakdownCard } from '@/components/dashboard/BreakdownCard';
-import { KpiCard } from '@/components/dashboard/KpiCard';
 import { MissedStepsCard } from '@/components/dashboard/MissedStepsCard';
 import { TrendCard } from '@/components/dashboard/TrendCard';
 import { HistoryCard } from '@/components/dashboard/HistoryCard';
@@ -126,15 +125,6 @@ export default function ReportsScreen() {
   function goToday() {
     setAnchor(new Date());
   }
-
-  // ── KPI rows ─────────────────────────────────────────────────────────────────
-
-  const kpis = [
-    { kind: 'completed'  as const, label: 'Completed',  value: cCounts.completed,  prev: pCounts.completed  },
-    { kind: 'late'       as const, label: 'Late',        value: cCounts.late,       prev: pCounts.late       },
-    { kind: 'incomplete' as const, label: 'Incomplete',  value: cCounts.incomplete, prev: pCounts.incomplete },
-    { kind: 'missed'     as const, label: 'Missed',      value: cCounts.missed,     prev: pCounts.missed     },
-  ];
 
   return (
     <View style={[styles.root, { backgroundColor: '#F5F5F5' }]}>
@@ -294,20 +284,6 @@ export default function ReportsScreen() {
         showsVerticalScrollIndicator={false}
         accessibilityRole="none"
       >
-        {/* KPI row */}
-        <View style={[styles.kpiRow, isWide && styles.kpiRowWide]}>
-          {kpis.map(k => (
-            <KpiCard
-              key={k.kind}
-              kind={k.kind}
-              label={k.label}
-              value={k.value}
-              total={cCounts.total}
-              prev={k.prev}
-            />
-          ))}
-        </View>
-
         {/* Breakdown */}
         <BreakdownCard
           current={cCounts}
@@ -557,10 +533,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
-
-  // KPI row
-  kpiRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  kpiRowWide: { flexWrap: 'nowrap' },
 
   // Bottom row (wide layout)
   bottomRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
