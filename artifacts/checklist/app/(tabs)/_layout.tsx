@@ -5,6 +5,7 @@ export default function TabLayout() {
   return (
     <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: "none" } }}>
       <Tabs.Screen name="index" options={{ title: "Checklist" }} />
+      <Tabs.Screen name="reports" options={{ title: "Reports" }} />
     </Tabs>
   );
 }
