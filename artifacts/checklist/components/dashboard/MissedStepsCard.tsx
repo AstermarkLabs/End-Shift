@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MissedStep } from './types';
 
 interface MissedStepsCardProps {
@@ -13,7 +13,8 @@ export function MissedStepsCard({ rows }: MissedStepsCardProps) {
   return (
     <View style={styles.card} accessibilityLabel="Commonly Missed Required Steps">
       <View style={styles.header}>
-        <View>
+        {/* flex:1 on this wrapper prevents the count from being pushed off-screen */}
+        <View style={styles.headerLeft}>
           <Text style={styles.title}>Commonly Missed Required Steps</Text>
           <Text style={styles.sub}>Tasks left unchecked when a shift was saved incomplete</Text>
         </View>
@@ -27,7 +28,12 @@ export function MissedStepsCard({ rows }: MissedStepsCardProps) {
           <Text style={styles.emptyBody}>Every saved shift had all required tasks checked.</Text>
         </View>
       ) : (
-        <View style={styles.list}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={true}
+          nestedScrollEnabled={true}
+        >
           {top.map((r, i) => (
             <View key={r.id} style={[styles.row, i === 0 && styles.rowFirst]} accessibilityLabel={`Rank ${i + 1}: ${r.text}, missed ${r.count} times`}>
               <Text style={styles.rank}>{String(i + 1).padStart(2, '0')}</Text>
@@ -48,7 +54,7 @@ export function MissedStepsCard({ rows }: MissedStepsCardProps) {
               </View>
             </View>
           ))}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -56,6 +62,7 @@ export function MissedStepsCard({ rows }: MissedStepsCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E5E5',
@@ -69,13 +76,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  title: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#1A1A1A', flex: 1 },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#1A1A1A' },
   sub: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888', marginTop: 2 },
   eyebrow: {
     fontSize: 11, fontFamily: 'Inter_600SemiBold', color: '#888888',
     textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0,
   },
-  list: {},
+  scroll: { flex: 1 },
+  list: { gap: 0 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -110,7 +119,7 @@ const styles = StyleSheet.create({
     fontSize: 12, fontFamily: 'Inter_700Bold', color: '#EF4444',
     fontVariant: ['tabular-nums'],
   },
-  empty: { alignItems: 'center', paddingVertical: 24, gap: 6 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
   emptyIco: { fontSize: 28 },
   emptyTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
   emptyBody: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888', textAlign: 'center' },
