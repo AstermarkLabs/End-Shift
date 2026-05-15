@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -503,6 +503,15 @@ type ListItem =
   | { type: "task"; task: Task };
 
 export default function ChecklistScreen() {
+  // Web platform: dashboard is the primary view
+  if (Platform.OS === "web") {
+    return <Redirect href="/reports" />;
+  }
+
+  return <ChecklistScreenNative />;
+}
+
+function ChecklistScreenNative() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -604,6 +613,15 @@ export default function ChecklistScreen() {
             <Text style={styles.headerTitle}>{appConfig.name}</Text>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => router.push("/reports")}
+              style={styles.iconAction}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Shift Reports"
+            >
+              <Text style={styles.iconActionText}>📊</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/history")}
               style={styles.iconAction}
