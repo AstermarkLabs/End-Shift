@@ -401,9 +401,14 @@ function HistorySection({
           <Text style={styles.emptyBody}>Try a different filter or step back through the range.</Text>
         </View>
       ) : (
-        <View style={styles.historyList}>
+        <ScrollView
+          style={styles.historyScroll}
+          contentContainerStyle={styles.historyList}
+          showsVerticalScrollIndicator={true}
+          nestedScrollEnabled={true}
+        >
           {items.map(r => <HistoryCard key={r.id} run={r} />)}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -604,7 +609,8 @@ const styles = StyleSheet.create({
   filterSegBtnActive: { backgroundColor: '#FFF0F2' },
   filterSegBtnText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: '#888888' },
   filterSegBtnTextActive: { color: '#C8102E' },
-  historyList: { gap: 10 },
+  historyScroll: { maxHeight: 480 },
+  historyList: { gap: 10, paddingRight: 4 },
 
   // Empty
   empty: { alignItems: 'center', paddingVertical: 32, gap: 6 },
