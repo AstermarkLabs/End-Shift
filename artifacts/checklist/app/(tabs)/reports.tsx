@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
 
   // Bottom row (wide layout)
-  bottomRow: { flexDirection: 'row', gap: 16, alignItems: 'stretch' },
+  bottomRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   bottomLeft: { flex: 1 },
   bottomRight: { flex: 1 },
 
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
 
   // History card
   historyCard: {
-    flex: 1,
+    height: 480,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E5E5',
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
   filterSegBtnActive: { backgroundColor: '#FFF0F2' },
   filterSegBtnText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: '#888888' },
   filterSegBtnTextActive: { color: '#C8102E' },
-  historyScroll: { flex: 1 },
+  historyScroll: { flex: 1, minHeight: 0 },
   historyList: { gap: 10, paddingRight: 4 },
 
   // Empty

@@ -62,7 +62,7 @@ export function MissedStepsCard({ rows }: MissedStepsCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
+    height: 480,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E5E5',
