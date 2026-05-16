@@ -12,11 +12,11 @@ const router: IRouter = Router();
 // "System Admin" is reserved and not assignable via onboarding.
 
 const ROLE_PRESETS: Record<string, { level: number; rights: string[] }> = {
-  Admin: { level: 900, rights: ["manage_profiles", "assign_roles", "manage_roles", "create_checklists"] },
-  "Regional Manager": { level: 700, rights: ["manage_profiles", "assign_roles", "create_checklists"] },
-  "District Manager": { level: 500, rights: ["assign_roles", "create_checklists"] },
-  "Location Manager": { level: 300, rights: ["create_checklists"] },
-  Staff: { level: 100, rights: ["create_checklists"] },
+  Admin: { level: 900, rights: ["manage_profiles", "assign_roles", "manage_roles", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
+  "Regional Manager": { level: 700, rights: ["manage_profiles", "assign_roles", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
+  "District Manager": { level: 500, rights: ["assign_roles", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
+  "Location Manager": { level: 300, rights: ["create_checklists", "edit_checklists", "view_reports", "manage_checklist_settings"] },
+  Staff: { level: 100, rights: ["create_checklists", "view_reports"] },
 };
 
 const DEFAULT_PRESET = ROLE_PRESETS["Staff"];

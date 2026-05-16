@@ -90,13 +90,17 @@ Build (`artifacts/api-server/build.mjs`): esbuild bundles to ESM with a banner t
 
 ### Checklist app (Expo Router)
 
-`artifacts/checklist/app/_layout.tsx` is the root. Providers nest as: `SafeAreaProvider` → `ErrorBoundary` → `QueryClientProvider` → `GestureHandlerRootView` → `KeyboardProvider` → `ChecklistProvider` → `AuthProvider` → `Stack`. `useAuthRedirect()` runs inside the Stack and gates routes.
+`artifacts/checklist/app/_layout.tsx` is the root. Providers nest as: `SafeAreaProvider` → `ErrorBoundary` → `QueryClientProvider` → `GestureHandlerRootView` → `KeyboardProvider` → `ChecklistProvider` → `OnboardingProvider` → `AuthProvider` → `Stack`. `useAuthRedirect()` runs inside the Stack and gates routes.
 
-Routes are file-based: `(tabs)` for the main shell, modals for `profile`, `admin`, `settings`, `checklist-settings`, `history`, plus `login` and `+not-found`.
+Routes are file-based: `(tabs)` for the main shell (checklist index + reports/dashboard), modals for `profile`, `admin`, `settings`, `checklist-settings`, `history`, plus `login`, `onboarding`, and `+not-found`.
 
 Auth state lives in `context/AuthContext.tsx`. On native the access/refresh tokens go to `expo-secure-store`; on web the access token is kept **in memory only** and the refresh token + profile go to `sessionStorage` (scoped to the tab, not shared across windows — treat the web origin as security-equivalent to those tokens — see `threat_model.md`).
 
 Checklist data (tasks, checklists, history, app config) is stored in `AsyncStorage` (local device only). `ChecklistContext` manages this state entirely client-side — there is no API endpoint backing it yet.
+
+Onboarding flow (`context/OnboardingContext.tsx`, `app/onboarding.tsx`): persisted in AsyncStorage under `@end_shift_onboarding`. Captures business type (`single-unit` | `multi-unit`), org hierarchy (regions → districts → locations), and team members. `OnboardingSettings` flags control which steps are shown. `useAuthRedirect` in `AuthContext` gates all tabs behind `onboardingCompleted`.
+
+Dashboard (`app/(tabs)/reports.tsx`): reads `CompletedChecklist` history from `ChecklistContext` and renders analytics — KPI cards, donut breakdown, trend chart, and missed-steps ranking. Components live in `components/dashboard/`; utility functions in `components/dashboard/dashUtils.ts`. `utils/mockData.ts` exports `generateMockHistory` for dev/demo seeding. Theme colors come from `hooks/useColors.ts` (derives palette from `AppConfig.primaryColor`). The app uses the Inter font family (`@expo-google-fonts/inter`).
 
 Web/static deployment: `scripts/build.js` produces `static-build/`, and `server/serve.js` is a **zero-dependency Node http server** that serves it. It has two special routes — `GET /` or `/manifest` with an `expo-platform` header returns the platform manifest JSON; without it, `/` returns the landing page (template at `server/templates/landing-page.html`). All other paths fall through to static file serving from `static-build/`.
 

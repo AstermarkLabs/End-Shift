@@ -9,6 +9,8 @@
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "android": "expo run:android",
+    "start": "expo start",
+    "rel": "expo run:android --variant release",
     "ios": "expo run:ios"
   },
   "devDependencies": {

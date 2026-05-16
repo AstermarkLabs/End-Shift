@@ -31,6 +31,7 @@ import {
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { validatePassword } from "@/utils/passwordValidation";
 
 const RIGHT_VALUES = Object.values(Right);
 
@@ -38,11 +39,14 @@ function generateTempPassword(): string {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const lower = "abcdefghjkmnpqrstuvwxyz";
   const digits = "23456789";
-  const all = upper + lower + digits;
-  let pwd = upper[Math.floor(Math.random() * upper.length)]
-    + lower[Math.floor(Math.random() * lower.length)]
-    + digits[Math.floor(Math.random() * digits.length)];
-  for (let i = 0; i < 7; i++) pwd += all[Math.floor(Math.random() * all.length)];
+  const special = "!@#$%&*+-=";
+  const all = upper + lower + digits + special;
+  // Guarantee one character from each required class, then pad to 12 total
+  let pwd = upper[Math.floor(Math.random() * upper.length)]!
+    + lower[Math.floor(Math.random() * lower.length)]!
+    + digits[Math.floor(Math.random() * digits.length)]!
+    + special[Math.floor(Math.random() * special.length)]!;
+  for (let i = 0; i < 8; i++) pwd += all[Math.floor(Math.random() * all.length)]!;
   return pwd.split("").sort(() => Math.random() - 0.5).join("");
 }
 
@@ -178,6 +182,7 @@ function ProfileEditModal({
   onSaved: () => void;
 }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -234,6 +239,12 @@ function ProfileEditModal({
           setBusy(false);
           return;
         }
+        const pwCheck = validatePassword(password);
+        if (!pwCheck.valid) {
+          Alert.alert("Weak password", pwCheck.errors.join("\n"));
+          setBusy(false);
+          return;
+        }
         await createProfile({ username, displayName, password, roleId });
       }
       onSaved();
@@ -263,7 +274,7 @@ function ProfileEditModal({
 
   return (
     <Modal visible={state.open} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>{state.editing ? "Edit user" : "New user"}</Text>
           <TouchableOpacity onPress={onClose}><Text style={{ color: colors.primary }}>Cancel</Text></TouchableOpacity>
@@ -332,7 +343,7 @@ function ProfileEditModal({
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
                 />
                 <Text style={[styles.resetHint, { color: colors.mutedForeground }]}>
-                  Staff will be required to change this on next sign-in.
+                  Staff will be required to change this on next sign-in. Custom passwords must be 12+ characters with uppercase, lowercase, number, and special character.
                 </Text>
               </View>
             )}
@@ -395,6 +406,7 @@ function RoleEditModal({
   onSaved: () => void;
 }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [level, setLevel] = useState("0");
   const [rights, setRights] = useState<string[]>([]);
@@ -455,7 +467,7 @@ function RoleEditModal({
 
   return (
     <Modal visible={state.open} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>{state.editing ? "Edit role" : "New role"}</Text>
           <TouchableOpacity onPress={onClose}><Text style={{ color: colors.primary }}>Cancel</Text></TouchableOpacity>

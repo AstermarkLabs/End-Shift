@@ -13,4 +13,8 @@ export const Right = {
   assign_roles: "assign_roles",
   manage_roles: "manage_roles",
   create_checklists: "create_checklists",
+  edit_checklists: "edit_checklists",
+  delete_checklists: "delete_checklists",
+  view_reports: "view_reports",
+  manage_checklist_settings: "manage_checklist_settings",
 } as const;

@@ -10,7 +10,10 @@ import type { RegisterRequestBusinessType } from "./registerRequestBusinessType"
 export interface RegisterRequest {
   /** @minLength 1 */
   email: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   password: string;
   /** @minLength 1 */
   businessName: string;

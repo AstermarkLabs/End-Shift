@@ -60,6 +60,7 @@ function EditModal({
   onClose: () => void;
 }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { addSection, updateSection, addTask, updateTask } = useChecklist();
 
   const isNewSection = target.kind === "newSection";
@@ -97,7 +98,7 @@ function EditModal({
         style={styles.modalOverlay}
       >
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
-        <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
           <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>
             {isNewSection ? "Add Section" : target.kind === "section" ? "Edit Section" : isNewTask ? "Add Task" : "Edit Task"}

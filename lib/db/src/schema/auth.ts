@@ -142,6 +142,10 @@ export const ALL_RIGHTS = [
   "assign_roles",
   "manage_roles",
   "create_checklists",
+  "edit_checklists",
+  "delete_checklists",
+  "view_reports",
+  "manage_checklist_settings",
 ] as const;
 export type Right = (typeof ALL_RIGHTS)[number];
 

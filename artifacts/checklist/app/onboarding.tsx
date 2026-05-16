@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { completeOnboarding, register as apiRegister } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
+import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
 import { useChecklist } from "@/context/ChecklistContext";
 import {
   useOnboarding,
@@ -143,6 +144,7 @@ function StepAccount({
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [businessType, setLocalBusinessType] = useState<"single-unit" | "multi-unit">("single-unit");
@@ -152,7 +154,9 @@ function StepAccount({
   const onContinue = async () => {
     setError(null);
     if (!email.trim()) { setError("Work email is required."); return; }
-    if (!password || password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) { setError(pwCheck.errors[0]!); return; }
+    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
     if (!businessName.trim()) { setError("Business name is required."); return; }
 
     setBusy(true);
@@ -229,7 +233,32 @@ function StepAccount({
             </Text>
           </TouchableOpacity>
         </View>
-        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>At least 8 characters.</Text>
+        {password.length > 0 && (
+          <View style={sh.rulesBox}>
+            {PASSWORD_RULES.map((rule) => {
+              const met = rule.test(password);
+              return (
+                <Text
+                  key={rule.label}
+                  style={[sh.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}
+                >
+                  {met ? "✓" : "○"} {rule.label}
+                </Text>
+              );
+            })}
+          </View>
+        )}
+
+        <FieldLabel label="Confirm password" colors={colors} />
+        <TextInput
+          value={confirmPassword}
+          onChangeText={(v) => { setConfirmPassword(v); setError(null); }}
+          secureTextEntry={!showPassword}
+          editable={!busy}
+          style={[sh.input, { borderColor: confirmPassword && confirmPassword !== password ? colors.destructive : colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          placeholder="••••••••••••"
+          placeholderTextColor={colors.mutedForeground}
+        />
 
         <FieldLabel label="Business name" colors={colors} />
         <TextInput
@@ -1006,6 +1035,8 @@ const sh = StyleSheet.create({
   passwordInput: { flex: 1 },
   showToggle: { paddingVertical: 12, paddingHorizontal: 4 },
   showToggleText: { fontSize: 14, fontWeight: "500" },
+  rulesBox: { gap: 3, marginTop: 6, marginBottom: 2 },
+  ruleText: { fontSize: 12 },
 
   // Business type
   typeOption: {

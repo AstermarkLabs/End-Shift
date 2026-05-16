@@ -11,7 +11,10 @@ export interface CreateProfileRequest {
   username: string;
   /** @minLength 1 */
   displayName: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   password: string;
   roleId: number;
   mustChangePassword?: boolean;

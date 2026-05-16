@@ -10,6 +10,9 @@ export interface UpdateMeRequest {
   /** @minLength 1 */
   displayName?: string;
   currentPassword?: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   newPassword?: string;
 }

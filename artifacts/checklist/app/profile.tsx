@@ -24,6 +24,7 @@ import {
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([]);
 
@@ -52,8 +54,13 @@ export default function ProfileScreen() {
   if (!profile) return null;
 
   const onChangePassword = async () => {
-    if (!newPassword || newPassword.length < 8) {
-      Alert.alert("Password", "New password must be at least 8 characters.");
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      Alert.alert("Password", pwCheck.errors[0]!);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Password", "Passwords do not match.");
       return;
     }
     setBusy(true);
@@ -62,6 +69,7 @@ export default function ProfileScreen() {
       setProfile(updated);
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
       Alert.alert("Password", "Updated successfully.");
     } catch (e) {
       Alert.alert("Update failed", describeApiError(e));
@@ -120,12 +128,6 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const showAdminLink =
-    profile.role.isSystem ||
-    profile.role.rights.includes("manage_profiles") ||
-    profile.role.rights.includes("manage_roles") ||
-    profile.role.rights.includes("assign_roles");
-
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -175,6 +177,30 @@ export default function ProfileScreen() {
           placeholderTextColor={colors.mutedForeground}
           style={[styles.input, { borderColor: colors.input, color: colors.foreground }]}
         />
+        {newPassword.length > 0 && (
+          <View style={styles.rulesBox}>
+            {PASSWORD_RULES.map((rule) => {
+              const met = rule.test(newPassword);
+              return (
+                <Text
+                  key={rule.label}
+                  style={[styles.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}
+                >
+                  {met ? "✓" : "○"} {rule.label}
+                </Text>
+              );
+            })}
+          </View>
+        )}
+        <TextInput
+          placeholder="Confirm new password"
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          editable={!busy}
+          placeholderTextColor={colors.mutedForeground}
+          style={[styles.input, { borderColor: confirmPassword && confirmPassword !== newPassword ? colors.destructive : colors.input, color: colors.foreground }]}
+        />
         <TouchableOpacity
           style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
           onPress={onChangePassword}
@@ -215,15 +241,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {showAdminLink && (
-        <TouchableOpacity
-          style={[styles.secondaryBtn, { borderColor: colors.border, marginTop: 24 }]}
-          onPress={() => router.push("/admin")}
-        >
-          <Text style={{ color: colors.foreground, fontWeight: "500" }}>Admin · Users & Roles</Text>
-        </TouchableOpacity>
-      )}
-
       <TouchableOpacity
         style={[styles.dangerBtn, { backgroundColor: colors.destructive }]}
         onPress={async () => {
@@ -247,6 +264,8 @@ const styles = StyleSheet.create({
   banner: { borderRadius: 10, padding: 12, marginTop: 4 },
   section: { fontSize: 18, fontWeight: "600", marginTop: 16 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
+  rulesBox: { gap: 3, marginTop: 2, marginBottom: 2 },
+  ruleText: { fontSize: 12 },
   primaryBtn: { height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 4 },
   primaryBtnText: { fontSize: 16, fontWeight: "600" },
   secondaryBtn: { height: 44, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1, marginTop: 8 },

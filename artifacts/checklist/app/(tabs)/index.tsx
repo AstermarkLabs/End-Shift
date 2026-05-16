@@ -697,7 +697,7 @@ function ChecklistScreenNative() {
           return <TaskRow task={item.task} onToggle={handleToggle} />;
         }}
         contentContainerStyle={{
-          paddingBottom: 16,
+          paddingBottom: insets.bottom + 16,
         }}
         showsVerticalScrollIndicator={false}
       />

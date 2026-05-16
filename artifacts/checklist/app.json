@@ -41,7 +41,8 @@
             "minSdkVersion": 28
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

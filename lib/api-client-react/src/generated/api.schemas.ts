@@ -20,6 +20,10 @@ export const Right = {
   assign_roles: "assign_roles",
   manage_roles: "manage_roles",
   create_checklists: "create_checklists",
+  edit_checklists: "edit_checklists",
+  delete_checklists: "delete_checklists",
+  view_reports: "view_reports",
+  manage_checklist_settings: "manage_checklist_settings",
 } as const;
 
 export interface Role {
@@ -59,7 +63,10 @@ export interface CreateProfileRequest {
   username: string;
   /** @minLength 1 */
   displayName: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   password: string;
   roleId: number;
   mustChangePassword?: boolean;
@@ -70,7 +77,10 @@ export interface UpdateProfileRequest {
   username?: string;
   /** @minLength 1 */
   displayName?: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   password?: string;
   roleId?: number;
   isActive?: boolean;
@@ -81,7 +91,10 @@ export interface UpdateMeRequest {
   /** @minLength 1 */
   displayName?: string;
   currentPassword?: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   newPassword?: string;
 }
 
@@ -96,7 +109,10 @@ export const RegisterRequestBusinessType = {
 export interface RegisterRequest {
   /** @minLength 1 */
   email: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 12
+   * @pattern ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$
+   */
   password: string;
   /** @minLength 1 */
   businessName: string;

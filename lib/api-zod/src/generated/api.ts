@@ -41,6 +41,10 @@ export const LoginResponse = zod.object({
           "assign_roles",
           "manage_roles",
           "create_checklists",
+          "edit_checklists",
+          "delete_checklists",
+          "view_reports",
+          "manage_checklist_settings",
         ]),
       ),
     }),
@@ -53,11 +57,18 @@ export const LoginResponse = zod.object({
  * @summary Create a new account (onboarding)
  */
 
-export const registerBodyPasswordMin = 8;
+export const registerBodyPasswordMin = 12;
+
+export const registerBodyPasswordRegExp = new RegExp(
+  "^(?=.\*[A-Z])(?=.\*[a-z])(?=.\*\\d)(?=.\*[^A-Za-z0-9]).{12,}$",
+);
 
 export const RegisterBody = zod.object({
   email: zod.string().min(1),
-  password: zod.string().min(registerBodyPasswordMin),
+  password: zod
+    .string()
+    .min(registerBodyPasswordMin)
+    .regex(registerBodyPasswordRegExp),
   businessName: zod.string().min(1),
   businessType: zod.enum(["single-unit", "multi-unit"]),
 });
@@ -95,6 +106,10 @@ export const RefreshResponse = zod.object({
           "assign_roles",
           "manage_roles",
           "create_checklists",
+          "edit_checklists",
+          "delete_checklists",
+          "view_reports",
+          "manage_checklist_settings",
         ]),
       ),
     }),
@@ -166,6 +181,10 @@ export const PasskeyAuthVerifyResponse = zod.object({
           "assign_roles",
           "manage_roles",
           "create_checklists",
+          "edit_checklists",
+          "delete_checklists",
+          "view_reports",
+          "manage_checklist_settings",
         ]),
       ),
     }),
@@ -193,6 +212,10 @@ export const GetMeResponse = zod.object({
         "assign_roles",
         "manage_roles",
         "create_checklists",
+        "edit_checklists",
+        "delete_checklists",
+        "view_reports",
+        "manage_checklist_settings",
       ]),
     ),
   }),
@@ -204,12 +227,20 @@ export const GetMeResponse = zod.object({
  * @summary Update current user profile (e.g. password)
  */
 
-export const updateMeBodyNewPasswordMin = 8;
+export const updateMeBodyNewPasswordMin = 12;
+
+export const updateMeBodyNewPasswordRegExp = new RegExp(
+  "^(?=.\*[A-Z])(?=.\*[a-z])(?=.\*\\d)(?=.\*[^A-Za-z0-9]).{12,}$",
+);
 
 export const UpdateMeBody = zod.object({
   displayName: zod.string().min(1).optional(),
   currentPassword: zod.string().optional(),
-  newPassword: zod.string().min(updateMeBodyNewPasswordMin).optional(),
+  newPassword: zod
+    .string()
+    .min(updateMeBodyNewPasswordMin)
+    .regex(updateMeBodyNewPasswordRegExp)
+    .optional(),
 });
 
 export const UpdateMeResponse = zod.object({
@@ -228,6 +259,10 @@ export const UpdateMeResponse = zod.object({
         "assign_roles",
         "manage_roles",
         "create_checklists",
+        "edit_checklists",
+        "delete_checklists",
+        "view_reports",
+        "manage_checklist_settings",
       ]),
     ),
   }),
@@ -254,6 +289,10 @@ export const ListProfilesResponseItem = zod.object({
         "assign_roles",
         "manage_roles",
         "create_checklists",
+        "edit_checklists",
+        "delete_checklists",
+        "view_reports",
+        "manage_checklist_settings",
       ]),
     ),
   }),
@@ -266,12 +305,19 @@ export const ListProfilesResponse = zod.array(ListProfilesResponseItem);
  * @summary Create profile
  */
 
-export const createProfileBodyPasswordMin = 8;
+export const createProfileBodyPasswordMin = 12;
+
+export const createProfileBodyPasswordRegExp = new RegExp(
+  "^(?=.\*[A-Z])(?=.\*[a-z])(?=.\*\\d)(?=.\*[^A-Za-z0-9]).{12,}$",
+);
 
 export const CreateProfileBody = zod.object({
   username: zod.string().min(1),
   displayName: zod.string().min(1),
-  password: zod.string().min(createProfileBodyPasswordMin),
+  password: zod
+    .string()
+    .min(createProfileBodyPasswordMin)
+    .regex(createProfileBodyPasswordRegExp),
   roleId: zod.number(),
   mustChangePassword: zod.boolean().optional(),
 });
@@ -283,12 +329,20 @@ export const UpdateProfileParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const updateProfileBodyPasswordMin = 8;
+export const updateProfileBodyPasswordMin = 12;
+
+export const updateProfileBodyPasswordRegExp = new RegExp(
+  "^(?=.\*[A-Z])(?=.\*[a-z])(?=.\*\\d)(?=.\*[^A-Za-z0-9]).{12,}$",
+);
 
 export const UpdateProfileBody = zod.object({
   username: zod.string().min(1).optional(),
   displayName: zod.string().min(1).optional(),
-  password: zod.string().min(updateProfileBodyPasswordMin).optional(),
+  password: zod
+    .string()
+    .min(updateProfileBodyPasswordMin)
+    .regex(updateProfileBodyPasswordRegExp)
+    .optional(),
   roleId: zod.number().optional(),
   isActive: zod.boolean().optional(),
   mustChangePassword: zod.boolean().optional(),
@@ -310,6 +364,10 @@ export const UpdateProfileResponse = zod.object({
         "assign_roles",
         "manage_roles",
         "create_checklists",
+        "edit_checklists",
+        "delete_checklists",
+        "view_reports",
+        "manage_checklist_settings",
       ]),
     ),
   }),
@@ -364,6 +422,10 @@ export const ListRolesResponseItem = zod.object({
       "assign_roles",
       "manage_roles",
       "create_checklists",
+      "edit_checklists",
+      "delete_checklists",
+      "view_reports",
+      "manage_checklist_settings",
     ]),
   ),
 });
@@ -382,6 +444,10 @@ export const CreateRoleBody = zod.object({
       "assign_roles",
       "manage_roles",
       "create_checklists",
+      "edit_checklists",
+      "delete_checklists",
+      "view_reports",
+      "manage_checklist_settings",
     ]),
   ),
 });
@@ -403,6 +469,10 @@ export const UpdateRoleBody = zod.object({
         "assign_roles",
         "manage_roles",
         "create_checklists",
+        "edit_checklists",
+        "delete_checklists",
+        "view_reports",
+        "manage_checklist_settings",
       ]),
     )
     .optional(),
@@ -419,6 +489,10 @@ export const UpdateRoleResponse = zod.object({
       "assign_roles",
       "manage_roles",
       "create_checklists",
+      "edit_checklists",
+      "delete_checklists",
+      "view_reports",
+      "manage_checklist_settings",
     ]),
   ),
 });
