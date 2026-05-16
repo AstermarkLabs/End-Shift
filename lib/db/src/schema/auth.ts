@@ -150,3 +150,15 @@ export const ALL_RIGHTS = [
 export type Right = (typeof ALL_RIGHTS)[number];
 
 export const SYSTEM_ADMIN_ROLE_NAME = "System Admin";
+
+// Rights granted to self-registered business owners. Deliberately excludes
+// manage_profiles / assign_roles / manage_roles because those rights are
+// global (no tenant isolation) and would grant cross-business access.
+export const BUSINESS_OWNER_ROLE_NAME = "Business Owner";
+export const BUSINESS_OWNER_RIGHTS: Right[] = [
+  "create_checklists",
+  "edit_checklists",
+  "delete_checklists",
+  "view_reports",
+  "manage_checklist_settings",
+];

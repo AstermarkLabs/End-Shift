@@ -10,7 +10,7 @@ import {
   PasskeyAuthVerifyBody,
   RegisterBody,
 } from "@workspace/api-zod";
-import { ALL_RIGHTS, SYSTEM_ADMIN_ROLE_NAME } from "@workspace/db";
+import { BUSINESS_OWNER_RIGHTS, BUSINESS_OWNER_ROLE_NAME } from "@workspace/db";
 import {
   hashPassword,
   signAccessToken,
@@ -357,22 +357,23 @@ router.post("/register", async (req, res) => {
     return;
   }
 
-  // Get or create the System Admin role
+  // Get or create the Business Owner role. Self-registered accounts get this
+  // scoped role rather than System Admin to prevent cross-business access.
   const existingRole = await db
     .select()
     .from(rolesTable)
-    .where(eq(rolesTable.name, SYSTEM_ADMIN_ROLE_NAME))
+    .where(eq(rolesTable.name, BUSINESS_OWNER_ROLE_NAME))
     .limit(1);
 
-  let adminRoleId: number;
+  let ownerRoleId: number;
   if (existingRole.length === 0) {
     const [created] = await db
       .insert(rolesTable)
-      .values({ name: SYSTEM_ADMIN_ROLE_NAME, level: 1000, isSystem: true, rights: [...ALL_RIGHTS] })
+      .values({ name: BUSINESS_OWNER_ROLE_NAME, level: 100, isSystem: false, rights: BUSINESS_OWNER_RIGHTS })
       .returning();
-    adminRoleId = created.id;
+    ownerRoleId = created.id;
   } else {
-    adminRoleId = existingRole[0].id;
+    ownerRoleId = existingRole[0].id;
   }
 
   const passwordHash = await hashPassword(body.password);
@@ -382,12 +383,12 @@ router.post("/register", async (req, res) => {
       username: body.email,
       displayName: body.businessName,
       passwordHash,
-      roleId: adminRoleId,
+      roleId: ownerRoleId,
       mustChangePassword: false,
     })
     .returning();
 
-  const role = existingRole[0] ?? (await db.select().from(rolesTable).where(eq(rolesTable.id, adminRoleId)).limit(1))[0];
+  const role = existingRole[0] ?? (await db.select().from(rolesTable).where(eq(rolesTable.id, ownerRoleId)).limit(1))[0];
   const { accessToken, refreshToken } = await issueTokensForUser(user);
   res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, role) });
 });
