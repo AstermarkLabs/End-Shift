@@ -9,6 +9,7 @@
 export interface UpdateMeRequest {
   /** @minLength 1 */
   displayName?: string;
+  email?: string | null;
   currentPassword?: string;
   /**
    * @minLength 12

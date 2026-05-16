@@ -40,6 +40,7 @@ export const LoginResponse = zod.object({
       })
       .nullish(),
     username: zod.string(),
+    email: zod.string().email().nullish(),
     displayName: zod.string(),
     roleId: zod.number(),
     role: zod.object({
@@ -120,6 +121,7 @@ export const RefreshResponse = zod.object({
       })
       .nullish(),
     username: zod.string(),
+    email: zod.string().email().nullish(),
     displayName: zod.string(),
     roleId: zod.number(),
     role: zod.object({
@@ -209,6 +211,7 @@ export const PasskeyAuthVerifyResponse = zod.object({
       })
       .nullish(),
     username: zod.string(),
+    email: zod.string().email().nullish(),
     displayName: zod.string(),
     roleId: zod.number(),
     role: zod.object({
@@ -254,6 +257,7 @@ export const GetMeResponse = zod.object({
     })
     .nullish(),
   username: zod.string(),
+  email: zod.string().email().nullish(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
@@ -281,7 +285,7 @@ export const GetMeResponse = zod.object({
 });
 
 /**
- * @summary Update current user profile (e.g. password)
+ * @summary Update current user profile (e.g. password, email)
  */
 
 export const updateMeBodyNewPasswordMin = 12;
@@ -292,6 +296,7 @@ export const updateMeBodyNewPasswordRegExp = new RegExp(
 
 export const UpdateMeBody = zod.object({
   displayName: zod.string().min(1).optional(),
+  email: zod.string().email().nullish(),
   currentPassword: zod.string().optional(),
   newPassword: zod
     .string()
@@ -315,6 +320,7 @@ export const UpdateMeResponse = zod.object({
     })
     .nullish(),
   username: zod.string(),
+  email: zod.string().email().nullish(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
@@ -359,6 +365,7 @@ export const ListProfilesResponseItem = zod.object({
     })
     .nullish(),
   username: zod.string(),
+  email: zod.string().email().nullish(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
@@ -450,6 +457,7 @@ export const UpdateProfileResponse = zod.object({
     })
     .nullish(),
   username: zod.string(),
+  email: zod.string().email().nullish(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({

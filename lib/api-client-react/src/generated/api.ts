@@ -875,7 +875,7 @@ export function useGetMe<
 }
 
 /**
- * @summary Update current user profile (e.g. password)
+ * @summary Update current user profile (e.g. password, email)
  */
 export const getUpdateMeUrl = () => {
   return `/api/profiles/me`;
@@ -894,7 +894,7 @@ export const updateMe = async (
 };
 
 export const getUpdateMeMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -935,13 +935,13 @@ export type UpdateMeMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateMe>>
 >;
 export type UpdateMeMutationBody = BodyType<UpdateMeRequest>;
-export type UpdateMeMutationError = ErrorType<unknown>;
+export type UpdateMeMutationError = ErrorType<void>;
 
 /**
- * @summary Update current user profile (e.g. password)
+ * @summary Update current user profile (e.g. password, email)
  */
 export const useUpdateMe = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

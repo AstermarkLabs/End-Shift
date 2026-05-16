@@ -14,6 +14,7 @@ export interface Profile {
   orgUnitId?: number | null;
   orgUnit?: OrgUnit | null;
   username: string;
+  email?: string | null;
   displayName: string;
   roleId: number;
   role: Role;

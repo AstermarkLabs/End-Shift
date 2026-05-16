@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { profile, setProfile, signOut } = useAuth();
 
+  const [email, setEmail] = useState(profile?.email ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -52,6 +53,24 @@ export default function ProfileScreen() {
   }, [profile?.id]);
 
   if (!profile) return null;
+
+  const onSaveEmail = async () => {
+    const trimmed = email.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      Alert.alert("Email", "Please enter a valid email address.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const updated = await updateMe({ email: trimmed || null });
+      setProfile(updated);
+      Alert.alert("Email", "Updated successfully.");
+    } catch (e) {
+      Alert.alert("Update failed", describeApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onChangePassword = async () => {
     const pwCheck = validatePassword(newPassword);
@@ -147,6 +166,30 @@ export default function ProfileScreen() {
         <Text style={[styles.value, { color: colors.foreground }]}>{profile.username}</Text>
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Role</Text>
         <Text style={[styles.value, { color: colors.foreground }]}>{profile.role.name}</Text>
+      </View>
+
+      <Text style={[styles.section, { color: colors.foreground }]}>Email</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TextInput
+          placeholder="Email address"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          value={email}
+          onChangeText={setEmail}
+          editable={!busy}
+          placeholderTextColor={colors.mutedForeground}
+          style={[styles.input, { borderColor: colors.input, color: colors.foreground }]}
+        />
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
+          onPress={onSaveEmail}
+          disabled={busy}
+        >
+          {busy ? <ActivityIndicator color={colors.primaryForeground} /> : (
+            <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Save email</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {profile.mustChangePassword && (

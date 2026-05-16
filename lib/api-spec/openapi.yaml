@@ -193,7 +193,7 @@ paths:
     put:
       operationId: updateMe
       tags: [profiles]
-      summary: Update current user profile (e.g. password)
+      summary: Update current user profile (e.g. password, email)
       requestBody:
         required: true
         content:
@@ -207,6 +207,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Profile"
+        "409":
+          description: Email already in use
 
   /profiles:
     get:
@@ -602,6 +604,10 @@ components:
           nullable: true
         username:
           type: string
+        email:
+          type: string
+          format: email
+          nullable: true
         displayName:
           type: string
         roleId:
@@ -665,6 +671,10 @@ components:
         displayName:
           type: string
           minLength: 1
+        email:
+          type: string
+          format: email
+          nullable: true
         currentPassword:
           type: string
         newPassword:

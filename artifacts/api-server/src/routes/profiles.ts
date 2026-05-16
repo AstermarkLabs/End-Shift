@@ -62,6 +62,7 @@ export function profileFor(
         }
       : null,
     username: user.username,
+    email: user.email ?? null,
     displayName: user.displayName,
     roleId: user.roleId,
     role: {
@@ -117,6 +118,21 @@ router.put("/me", requireAuth, async (req, res) => {
   const body = UpdateMeBody.parse(req.body);
   const updates: Partial<typeof usersTable.$inferInsert> = {};
   if (body.displayName) updates.displayName = body.displayName;
+  if ("email" in body) {
+    const newEmail = body.email ?? null;
+    if (newEmail !== null) {
+      const existing = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.email, newEmail))
+        .limit(1);
+      if (existing.length > 0 && existing[0]!.id !== u.id) {
+        res.status(409).json({ error: "Email already in use" });
+        return;
+      }
+    }
+    updates.email = newEmail;
+  }
   if (body.newPassword) {
     if (!u.passwordHash || !body.currentPassword) {
       res.status(400).json({ error: "Current password required" });

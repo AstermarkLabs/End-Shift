@@ -86,6 +86,7 @@ export interface Profile {
   orgUnitId?: number | null;
   orgUnit?: OrgUnit | null;
   username: string;
+  email?: string | null;
   displayName: string;
   roleId: number;
   role: Role;
@@ -127,6 +128,7 @@ export interface UpdateProfileRequest {
 export interface UpdateMeRequest {
   /** @minLength 1 */
   displayName?: string;
+  email?: string | null;
   currentPassword?: string;
   /**
    * @minLength 12
