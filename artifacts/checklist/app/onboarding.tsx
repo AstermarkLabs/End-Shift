@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { completeOnboarding, register as apiRegister } from "@workspace/api-client-react";
+import { completeOnboarding, createOrgUnit, register as apiRegister } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
@@ -936,6 +936,38 @@ export default function OnboardingScreen() {
     setIsFinishing(true);
     setFinishError(null);
     try {
+      // 1. Create regions and map local IDs → DB IDs
+      const regionIdMap = new Map<string, number>();
+      for (const region of regions) {
+        const created = await createOrgUnit({ name: region.name, type: "region" });
+        regionIdMap.set(region.id, created.id);
+      }
+
+      // 2. Create districts under their regions
+      const districtIdMap = new Map<string, number>();
+      for (const region of regions) {
+        const regionDbId = regionIdMap.get(region.id);
+        for (const district of region.districts) {
+          const created = await createOrgUnit({
+            name: district.name,
+            type: "district",
+            parentId: regionDbId,
+          });
+          districtIdMap.set(district.id, created.id);
+        }
+      }
+
+      // 3. Create locations under their districts
+      for (const loc of locations) {
+        const districtDbId = districtIdMap.get(loc.districtId);
+        await createOrgUnit({
+          name: loc.name,
+          type: "location",
+          parentId: districtDbId,
+        });
+      }
+
+      // 4. Invite team members
       if (teamMembers.length > 0) {
         const result = await completeOnboarding({
           teamMembers: teamMembers.map((m) => ({
@@ -959,7 +991,7 @@ export default function OnboardingScreen() {
       markComplete();
       router.replace("/");
     }
-  }, [teamMembers, markComplete, router]);
+  }, [regions, locations, teamMembers, markComplete, router]);
 
   return (
     <View
