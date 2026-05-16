@@ -78,6 +78,7 @@ export const registerBodyPasswordRegExp = new RegExp(
 );
 
 export const RegisterBody = zod.object({
+  username: zod.string().min(1),
   email: zod.string().min(1),
   password: zod
     .string()

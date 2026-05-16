@@ -83,6 +83,7 @@ export const usersTable = pgTable(
       onDelete: "set null",
     }),
     username: text("username").notNull(),
+    email: text("email"),
     displayName: text("display_name").notNull(),
     passwordHash: text("password_hash"),
     roleId: integer("role_id")

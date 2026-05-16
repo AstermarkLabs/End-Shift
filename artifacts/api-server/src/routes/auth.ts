@@ -337,12 +337,22 @@ router.post("/passkey/auth-verify", async (req, res) => {
 router.post("/register", async (req, res) => {
   const body = RegisterBody.parse(req.body);
 
-  const existing = await db
+  const existingByUsername = await db
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(eq(usersTable.username, body.email))
+    .where(eq(usersTable.username, body.username))
     .limit(1);
-  if (existing.length > 0) {
+  if (existingByUsername.length > 0) {
+    res.status(409).json({ error: "Username already in use" });
+    return;
+  }
+
+  const existingByEmail = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, body.email))
+    .limit(1);
+  if (existingByEmail.length > 0) {
     res.status(409).json({ error: "Email already in use" });
     return;
   }
@@ -378,7 +388,8 @@ router.post("/register", async (req, res) => {
     .values({
       tenantId: tenant.id,
       orgUnitId: null, // tenant-wide scope — can see all users in the business
-      username: body.email,
+      username: body.username,
+      email: body.email,
       displayName: body.businessName,
       passwordHash,
       roleId: ownerRole.id,

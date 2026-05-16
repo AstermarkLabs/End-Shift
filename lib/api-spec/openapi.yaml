@@ -675,6 +675,9 @@ components:
     RegisterRequest:
       type: object
       properties:
+        username:
+          type: string
+          minLength: 1
         email:
           type: string
           minLength: 1
@@ -688,7 +691,7 @@ components:
         businessType:
           type: string
           enum: [single-unit, multi-unit]
-      required: [email, password, businessName, businessType]
+      required: [username, email, password, businessName, businessType]
 
     LoginRequest:
       type: object

@@ -142,6 +142,7 @@ function StepAccount({
   const { signIn } = useAuth();
   const { setBusinessType } = useOnboarding();
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -153,6 +154,7 @@ function StepAccount({
 
   const onContinue = async () => {
     setError(null);
+    if (!username.trim()) { setError("Username is required."); return; }
     if (!email.trim()) { setError("Work email is required."); return; }
     const pwCheck = validatePassword(password);
     if (!pwCheck.valid) { setError(pwCheck.errors[0]!); return; }
@@ -162,13 +164,14 @@ function StepAccount({
     setBusy(true);
     try {
       await apiRegister({
+        username: username.trim().toLowerCase(),
         email: email.trim().toLowerCase(),
         password,
         businessName: businessName.trim(),
         businessType,
       });
       // Sign in with the new credentials so AuthContext is hydrated
-      await signIn(email.trim().toLowerCase(), password);
+      await signIn(username.trim().toLowerCase(), password);
       setBusinessType(businessType);
       onDone(businessName.trim(), businessType);
     } catch (e) {
@@ -197,9 +200,24 @@ function StepAccount({
 
         {error ? <ErrorBox message={error} colors={colors} /> : null}
 
+        <FieldLabel label="Username" colors={colors} />
+        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+          This is how you'll sign in. Choose something short and easy to remember.
+        </Text>
+        <TextInput
+          value={username}
+          onChangeText={(v) => { setUsername(v); setError(null); }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!busy}
+          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          placeholder="yourname"
+          placeholderTextColor={colors.mutedForeground}
+        />
+
         <FieldLabel label="Work email" colors={colors} />
         <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
-          We'll use this to sign you in and bill your team.
+          Used for billing and account recovery only.
         </Text>
         <TextInput
           value={email}

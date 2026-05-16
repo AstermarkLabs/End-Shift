@@ -9,6 +9,8 @@ import type { RegisterRequestBusinessType } from "./registerRequestBusinessType"
 
 export interface RegisterRequest {
   /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
   email: string;
   /**
    * @minLength 12
