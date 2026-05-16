@@ -88,7 +88,8 @@ export default function AppSettingsScreen() {
       profile.role.isSystem ||
       profile.role.rights.includes("manage_profiles") ||
       profile.role.rights.includes("manage_roles") ||
-      profile.role.rights.includes("assign_roles")
+      profile.role.rights.includes("assign_roles") ||
+      profile.role.rights.includes("manage_org_units")
     );
   const topPadding = isWeb ? 67 : insets.top;
 
