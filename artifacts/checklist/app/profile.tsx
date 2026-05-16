@@ -164,6 +164,10 @@ export default function ProfileScreen() {
         <Text style={[styles.value, { color: colors.foreground }]}>{profile.displayName}</Text>
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Username</Text>
         <Text style={[styles.value, { color: colors.foreground }]}>{profile.username}</Text>
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>Email</Text>
+        <Text style={[styles.value, { color: profile.email ? colors.foreground : colors.mutedForeground }]}>
+          {profile.email ?? "No email set"}
+        </Text>
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Role</Text>
         <Text style={[styles.value, { color: colors.foreground }]}>{profile.role.name}</Text>
       </View>
