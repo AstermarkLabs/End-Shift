@@ -10,7 +10,7 @@ import {
   PasskeyAuthVerifyBody,
   RegisterBody,
 } from "@workspace/api-zod";
-import { TENANT_ADMIN_ROLE_NAME, TENANT_ADMIN_RIGHTS, TENANT_ADMIN_LEVEL } from "@workspace/db";
+import { STANDARD_TENANT_ROLES, TENANT_OWNER_ROLE_NAME } from "@workspace/db";
 import {
   hashPassword,
   signAccessToken,
@@ -353,18 +353,24 @@ router.post("/register", async (req, res) => {
     .values({ name: body.businessName })
     .returning();
 
-  // Create a tenant-scoped Admin role with full rights. Per-tenant roles are
-  // isolated by tenantId so they do not grant cross-business access.
-  const [adminRole] = await db
+  // Seed all five standard roles for this tenant. Every new business gets
+  // Owner, Regional Manager, District Manager, Location Manager, and Staff
+  // roles pre-created so the owner can immediately assign them to users
+  // without having to create roles manually first.
+  const seededRoles = await db
     .insert(rolesTable)
-    .values({
-      tenantId: tenant.id,
-      name: TENANT_ADMIN_ROLE_NAME,
-      level: TENANT_ADMIN_LEVEL,
-      isSystem: false,
-      rights: TENANT_ADMIN_RIGHTS,
-    })
+    .values(
+      STANDARD_TENANT_ROLES.map((r) => ({
+        tenantId: tenant.id,
+        name: r.name,
+        level: r.level,
+        isSystem: false,
+        rights: r.rights,
+      })),
+    )
     .returning();
+
+  const ownerRole = seededRoles.find((r) => r.name === TENANT_OWNER_ROLE_NAME)!;
 
   const passwordHash = await hashPassword(body.password);
   const [user] = await db
@@ -375,13 +381,13 @@ router.post("/register", async (req, res) => {
       username: body.email,
       displayName: body.businessName,
       passwordHash,
-      roleId: adminRole.id,
+      roleId: ownerRole.id,
       mustChangePassword: false,
     })
     .returning();
 
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, adminRole, null) });
+  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, ownerRole, null) });
 });
 
 export default router;

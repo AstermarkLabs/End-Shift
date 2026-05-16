@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, rolesTable, orgUnitsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { hashPassword } from "../lib/auth";
 import { requireAuth } from "../middlewares/auth";
@@ -65,7 +65,7 @@ router.post("/complete", requireAuth, async (req, res) => {
       ? await db
           .select({ id: rolesTable.id })
           .from(rolesTable)
-          .where(eq(rolesTable.tenantId, u.tenantId))
+          .where(and(eq(rolesTable.tenantId, u.tenantId), eq(rolesTable.name, roleName)))
           .limit(1)
       : await db
           .select({ id: rolesTable.id })

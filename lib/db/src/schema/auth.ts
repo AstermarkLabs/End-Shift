@@ -242,19 +242,90 @@ export type Right = (typeof ALL_RIGHTS)[number];
 
 export const SYSTEM_ADMIN_ROLE_NAME = "System Admin";
 
-// The full set of rights granted to the per-tenant Admin role created at
-// registration. These are now safe to include because all queries are tenant-
-// and org-unit-scoped, so they do not grant cross-business access.
-export const TENANT_ADMIN_ROLE_NAME = "Admin";
-export const TENANT_ADMIN_RIGHTS: Right[] = [
-  "manage_profiles",
-  "assign_roles",
-  "manage_roles",
-  "manage_org_units",
-  "create_checklists",
-  "edit_checklists",
-  "delete_checklists",
-  "view_reports",
-  "manage_checklist_settings",
+// ── Standard tenant roles ─────────────────────────────────────────────────────
+// Seeded automatically when a new tenant is created at registration.
+// All rights are tenant-scoped so there is no cross-business leakage.
+//
+// Visibility scope per role (enforced server-side via orgUnitId):
+//   Owner           — tenant-wide (orgUnitId = null)
+//   Regional Mgr    — their region + all districts/locations beneath it
+//   District Mgr    — their district + all locations beneath it
+//   Location Mgr    — their single location only
+//   Staff           — no user-listing access at all
+
+export interface StandardRole {
+  name: string;
+  level: number;
+  rights: Right[];
+}
+
+export const STANDARD_TENANT_ROLES: StandardRole[] = [
+  {
+    name: "Owner",
+    level: 950,
+    rights: [
+      "manage_profiles",
+      "assign_roles",
+      "manage_roles",
+      "manage_org_units",
+      "create_checklists",
+      "edit_checklists",
+      "delete_checklists",
+      "view_reports",
+      "manage_checklist_settings",
+    ],
+  },
+  {
+    // Can see and manage all users within their region; can create org units;
+    // cannot create or delete custom roles (that requires manage_roles).
+    name: "Regional Manager",
+    level: 700,
+    rights: [
+      "manage_profiles",
+      "assign_roles",
+      "manage_org_units",
+      "create_checklists",
+      "edit_checklists",
+      "delete_checklists",
+      "view_reports",
+      "manage_checklist_settings",
+    ],
+  },
+  {
+    // Can assign roles to users in their district and manage its org units;
+    // cannot create new users directly (no manage_profiles).
+    name: "District Manager",
+    level: 500,
+    rights: [
+      "assign_roles",
+      "manage_org_units",
+      "create_checklists",
+      "edit_checklists",
+      "delete_checklists",
+      "view_reports",
+      "manage_checklist_settings",
+    ],
+  },
+  {
+    // Can see staff at their location (assign_roles grants profile listing);
+    // cannot modify user accounts or org structure.
+    name: "Location Manager",
+    level: 300,
+    rights: [
+      "assign_roles",
+      "create_checklists",
+      "edit_checklists",
+      "view_reports",
+      "manage_checklist_settings",
+    ],
+  },
+  {
+    // No management rights; cannot list other users.
+    name: "Staff",
+    level: 100,
+    rights: ["create_checklists", "view_reports"],
+  },
 ];
-export const TENANT_ADMIN_LEVEL = 950;
+
+// Convenience reference to the owner role definition.
+export const TENANT_OWNER_ROLE_NAME = "Owner";
