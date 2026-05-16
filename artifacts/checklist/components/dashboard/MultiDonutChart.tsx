@@ -15,7 +15,8 @@ interface MultiDonutChartProps {
 export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonutChartProps) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const total = segments.reduce((s, x) => s + x.value, 0);
+  const arcTotal = total || 1;
   let acc = 0;
 
   return (
@@ -25,8 +26,8 @@ export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonu
       <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
         {segments.map((s, i) => {
           if (s.value === 0) return null;
-          const len = (s.value / total) * c;
-          const offset = -(acc / total) * c;
+          const len = (s.value / arcTotal) * c;
+          const offset = -(acc / arcTotal) * c;
           acc += s.value;
           return (
             <Circle key={i} cx={size / 2} cy={size / 2} r={r}
@@ -44,7 +45,7 @@ export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonu
         fontFamily="Inter_700Bold" fontWeight="700" fontSize="30"
         fill="#1A1A1A"
       >
-        {total}
+        {String(total)}
       </SvgText>
       <SvgText
         x={size / 2}

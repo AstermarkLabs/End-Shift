@@ -58,7 +58,7 @@ export default function ReportsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { completionHistory, checklists, seedHistory, clearHistory } = useChecklist();
+  const { completionHistory, checklists, seedHistory, clearMockHistory } = useChecklist();
 
   const [period, setPeriod] = useState<Period>('period');
   const [anchor, setAnchor] = useState<Date>(new Date());
@@ -303,7 +303,7 @@ export default function ReportsScreen() {
           <View style={[styles.sampleBanner, styles.sampleBannerFilled]}>
             <Text style={styles.sampleBannerSub}>Showing sample data</Text>
             <Pressable
-              onPress={clearHistory}
+              onPress={clearMockHistory}
               style={styles.clearBtn}
               accessibilityRole="button"
               accessibilityLabel="Clear sample data"

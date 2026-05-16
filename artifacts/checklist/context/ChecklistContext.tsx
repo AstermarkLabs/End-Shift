@@ -151,6 +151,7 @@ interface ChecklistContextValue {
   completeChecklist: () => void;
   deleteHistoryEntry: (id: string) => void;
   clearHistory: () => void;
+  clearMockHistory: () => void;
   seedHistory: (items: CompletedChecklist[]) => void;
 
   // App config
@@ -391,6 +392,10 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setCompletionHistory([]);
   }, []);
 
+  const clearMockHistory = useCallback(() => {
+    setCompletionHistory((prev) => prev.filter((e) => !e.id.startsWith('mock-')));
+  }, []);
+
   const seedHistory = useCallback((items: CompletedChecklist[]) => {
     setCompletionHistory((prev) => {
       const existingIds = new Set(prev.map((e) => e.id));
@@ -431,6 +436,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         completeChecklist,
         deleteHistoryEntry,
         clearHistory,
+        clearMockHistory,
         seedHistory,
         appConfig,
         updateAppConfig,
