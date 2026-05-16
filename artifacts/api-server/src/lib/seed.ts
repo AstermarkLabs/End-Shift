@@ -1,5 +1,13 @@
-import { db, rolesTable, usersTable, ALL_RIGHTS, SYSTEM_ADMIN_ROLE_NAME } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import {
+  db,
+  rolesTable,
+  usersTable,
+  tenantsTable,
+  ALL_RIGHTS,
+  SYSTEM_ADMIN_ROLE_NAME,
+  STANDARD_TENANT_ROLES,
+} from "@workspace/db";
+import { and, eq, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { hashPassword } from "./auth";
 import { logger } from "./logger";
@@ -82,6 +90,43 @@ export async function resetAdminIfRequested(): Promise<void> {
     },
     "RESET_ADMIN_PASSWORD: admin password has been reset — retrieve credentials from logs and change immediately after login. Remove the RESET_ADMIN_PASSWORD env var after use.",
   );
+}
+
+/**
+ * Idempotent: for every existing tenant, insert any standard roles that are
+ * missing by name. Safe to run on every startup — it is a no-op when all
+ * roles already exist. This ensures production tenants created before the
+ * standard-roles feature are automatically brought up to the full set.
+ */
+export async function seedTenantRoles(): Promise<void> {
+  const tenants = await db.select({ id: tenantsTable.id }).from(tenantsTable);
+  if (tenants.length === 0) return;
+
+  for (const tenant of tenants) {
+    const existing = await db
+      .select({ name: rolesTable.name })
+      .from(rolesTable)
+      .where(eq(rolesTable.tenantId, tenant.id));
+
+    const existingNames = new Set(existing.map((r) => r.name));
+    const missing = STANDARD_TENANT_ROLES.filter((r) => !existingNames.has(r.name));
+
+    if (missing.length === 0) continue;
+
+    await db.insert(rolesTable).values(
+      missing.map((r) => ({
+        tenantId: tenant.id,
+        name: r.name,
+        level: r.level,
+        isSystem: false,
+        rights: r.rights,
+      })),
+    );
+    logger.info(
+      { tenantId: tenant.id, added: missing.map((r) => r.name) },
+      "seedTenantRoles: filled in missing standard roles for tenant",
+    );
+  }
 }
 
 export async function seedAuth(): Promise<void> {

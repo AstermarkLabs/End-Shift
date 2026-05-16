@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { seedAuth, resetAdminIfRequested } from "./lib/seed";
+import { seedAuth, seedTenantRoles, resetAdminIfRequested } from "./lib/seed";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -50,6 +50,11 @@ async function start() {
     await seedAuth();
   } catch (err) {
     logger.error({ err }, "Auth seed failed");
+  }
+  try {
+    await seedTenantRoles();
+  } catch (err) {
+    logger.error({ err }, "Tenant role seed failed");
   }
   app.listen(port, (err) => {
     if (err) {
