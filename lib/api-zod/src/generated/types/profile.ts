@@ -5,10 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OrgUnit } from "./orgUnit";
 import type { Role } from "./role";
 
 export interface Profile {
   id: number;
+  tenantId?: number | null;
+  orgUnitId?: number | null;
+  orgUnit?: OrgUnit | null;
   username: string;
   displayName: string;
   roleId: number;

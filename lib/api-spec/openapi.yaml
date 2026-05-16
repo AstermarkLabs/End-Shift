@@ -18,6 +18,8 @@ tags:
     description: Roles & rights
   - name: onboarding
     description: Onboarding flow
+  - name: org-units
+    description: Organisational unit hierarchy
 paths:
   /healthz:
     get:
@@ -210,7 +212,7 @@ paths:
     get:
       operationId: listProfiles
       tags: [profiles]
-      summary: List profiles
+      summary: List profiles (scoped to caller's tenant and org unit)
       responses:
         "200":
           description: Profiles
@@ -315,7 +317,7 @@ paths:
     get:
       operationId: listRoles
       tags: [roles]
-      summary: List roles
+      summary: List roles (scoped to caller's tenant + system roles)
       responses:
         "200":
           description: Roles
@@ -396,7 +398,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/OnboardingCompleteResponse"
 
+  /org-units:
+    get:
+      operationId: listOrgUnits
+      tags: [org-units]
+      summary: List org units for the caller's tenant
+      responses:
+        "200":
+          description: Org units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgUnit"
+    post:
+      operationId: createOrgUnit
+      tags: [org-units]
+      summary: Create an org unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrgUnitRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgUnit"
+
+  /org-units/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      operationId: updateOrgUnit
+      tags: [org-units]
+      summary: Update an org unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrgUnitRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgUnit"
+    delete:
+      operationId: deleteOrgUnit
+      tags: [org-units]
+      summary: Delete an org unit (must have no children and no assigned users)
+      responses:
+        "204":
+          description: Deleted
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HealthStatus:
       type: object
@@ -415,17 +486,67 @@ components:
         - manage_profiles
         - assign_roles
         - manage_roles
+        - manage_org_units
         - create_checklists
         - edit_checklists
         - delete_checklists
         - view_reports
         - manage_checklist_settings
 
+    OrgUnitType:
+      type: string
+      enum: [region, district, location]
+
+    OrgUnit:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenantId:
+          type: integer
+        parentId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/OrgUnitType"
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, tenantId, name, type, createdAt]
+
+    CreateOrgUnitRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          $ref: "#/components/schemas/OrgUnitType"
+        parentId:
+          type: integer
+          nullable: true
+      required: [name, type]
+
+    UpdateOrgUnitRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        parentId:
+          type: integer
+          nullable: true
+
     Role:
       type: object
       properties:
         id:
           type: integer
+        tenantId:
+          type: integer
+          nullable: true
         name:
           type: string
         level:
@@ -470,6 +591,15 @@ components:
       properties:
         id:
           type: integer
+        tenantId:
+          type: integer
+          nullable: true
+        orgUnitId:
+          type: integer
+          nullable: true
+        orgUnit:
+          $ref: "#/components/schemas/OrgUnit"
+          nullable: true
         username:
           type: string
         displayName:
@@ -499,6 +629,9 @@ components:
           pattern: '^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$'
         roleId:
           type: integer
+        orgUnitId:
+          type: integer
+          nullable: true
         mustChangePassword:
           type: boolean
       required: [username, displayName, password, roleId]
@@ -518,6 +651,9 @@ components:
           pattern: '^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$'
         roleId:
           type: integer
+        orgUnitId:
+          type: integer
+          nullable: true
         isActive:
           type: boolean
         mustChangePassword:
@@ -644,8 +780,9 @@ components:
               role:
                 type: string
                 minLength: 1
-              scope:
-                type: string
+              orgUnitId:
+                type: integer
+                nullable: true
             required: [email, role]
       required: [teamMembers]
 

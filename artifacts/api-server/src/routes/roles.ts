@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, rolesTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { CreateRoleBody, UpdateRoleBody } from "@workspace/api-zod";
 import {
   blockIfMustChangePassword,
@@ -16,6 +16,7 @@ router.use(requireAuth, blockIfMustChangePassword);
 function shape(role: typeof rolesTable.$inferSelect) {
   return {
     id: role.id,
+    tenantId: role.tenantId ?? null,
     name: role.name,
     level: role.level,
     isSystem: role.isSystem,
@@ -23,14 +24,30 @@ function shape(role: typeof rolesTable.$inferSelect) {
   };
 }
 
-// Listing roles is needed by anyone with administrative rights over users or
-// roles (manage_roles to edit them, manage_profiles or assign_roles to assign
-// them when creating/updating profiles).
+// Listing roles returns:
+//   • system roles (isSystem = true, tenantId = null) — always visible
+//   • roles belonging to the caller's tenant
+// System Admins see all roles globally.
 router.get(
   "/",
   requireAnyRight("manage_roles", "manage_profiles", "assign_roles"),
-  async (_req, res) => {
-    const rows = await db.select().from(rolesTable);
+  async (req, res) => {
+    const u = req.user!;
+
+    if (u.role.isSystem) {
+      const rows = await db.select().from(rolesTable);
+      res.json(rows.map(shape));
+      return;
+    }
+
+    const conditions = u.tenantId
+      ? or(
+          and(isNull(rolesTable.tenantId), eq(rolesTable.isSystem, true)),
+          eq(rolesTable.tenantId, u.tenantId),
+        )
+      : and(isNull(rolesTable.tenantId), eq(rolesTable.isSystem, true));
+
+    const rows = await db.select().from(rolesTable).where(conditions);
     res.json(rows.map(shape));
   },
 );
@@ -38,14 +55,22 @@ router.get(
 router.post("/", requireAuth, requireRight("manage_roles"), async (req, res) => {
   const u = req.user!;
   const body = CreateRoleBody.parse(req.body);
+
   if (!u.role.isSystem && body.level >= u.role.level) {
     res.status(403).json({ error: "Cannot create role at or above your level" });
     return;
   }
+
+  if (!u.role.isSystem && !u.tenantId) {
+    res.status(403).json({ error: "No tenant associated with your account" });
+    return;
+  }
+
   try {
     const [created] = await db
       .insert(rolesTable)
       .values({
+        tenantId: u.role.isSystem ? null : u.tenantId,
         name: body.name,
         level: body.level,
         rights: body.rights,
@@ -78,6 +103,11 @@ router.put("/:id", requireAuth, requireRight("manage_roles"), async (req, res) =
     res.status(403).json({ error: "Cannot modify system role" });
     return;
   }
+  // Non-system callers may only edit roles within their own tenant.
+  if (!u.role.isSystem && existing[0].tenantId !== u.tenantId) {
+    res.status(404).end();
+    return;
+  }
   if (!u.role.isSystem && existing[0].level >= u.role.level) {
     res.status(403).json({ error: "Cannot edit role at or above your level" });
     return;
@@ -108,6 +138,10 @@ router.delete("/:id", requireAuth, requireRight("manage_roles"), async (req, res
   }
   if (existing[0].isSystem) {
     res.status(403).json({ error: "Cannot delete system role" });
+    return;
+  }
+  if (!u.role.isSystem && existing[0].tenantId !== u.tenantId) {
+    res.status(404).end();
     return;
   }
   if (!u.role.isSystem && existing[0].level >= u.role.level) {

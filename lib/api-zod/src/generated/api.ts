@@ -27,11 +27,24 @@ export const LoginResponse = zod.object({
   refreshToken: zod.string(),
   profile: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
+    orgUnitId: zod.number().nullish(),
+    orgUnit: zod
+      .object({
+        id: zod.number(),
+        tenantId: zod.number(),
+        parentId: zod.number().nullish(),
+        name: zod.string(),
+        type: zod.enum(["region", "district", "location"]),
+        createdAt: zod.coerce.date(),
+      })
+      .nullish(),
     username: zod.string(),
     displayName: zod.string(),
     roleId: zod.number(),
     role: zod.object({
       id: zod.number(),
+      tenantId: zod.number().nullish(),
       name: zod.string(),
       level: zod.number(),
       isSystem: zod.boolean(),
@@ -40,6 +53,7 @@ export const LoginResponse = zod.object({
           "manage_profiles",
           "assign_roles",
           "manage_roles",
+          "manage_org_units",
           "create_checklists",
           "edit_checklists",
           "delete_checklists",
@@ -92,11 +106,24 @@ export const RefreshResponse = zod.object({
   refreshToken: zod.string(),
   profile: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
+    orgUnitId: zod.number().nullish(),
+    orgUnit: zod
+      .object({
+        id: zod.number(),
+        tenantId: zod.number(),
+        parentId: zod.number().nullish(),
+        name: zod.string(),
+        type: zod.enum(["region", "district", "location"]),
+        createdAt: zod.coerce.date(),
+      })
+      .nullish(),
     username: zod.string(),
     displayName: zod.string(),
     roleId: zod.number(),
     role: zod.object({
       id: zod.number(),
+      tenantId: zod.number().nullish(),
       name: zod.string(),
       level: zod.number(),
       isSystem: zod.boolean(),
@@ -105,6 +132,7 @@ export const RefreshResponse = zod.object({
           "manage_profiles",
           "assign_roles",
           "manage_roles",
+          "manage_org_units",
           "create_checklists",
           "edit_checklists",
           "delete_checklists",
@@ -167,11 +195,24 @@ export const PasskeyAuthVerifyResponse = zod.object({
   refreshToken: zod.string(),
   profile: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
+    orgUnitId: zod.number().nullish(),
+    orgUnit: zod
+      .object({
+        id: zod.number(),
+        tenantId: zod.number(),
+        parentId: zod.number().nullish(),
+        name: zod.string(),
+        type: zod.enum(["region", "district", "location"]),
+        createdAt: zod.coerce.date(),
+      })
+      .nullish(),
     username: zod.string(),
     displayName: zod.string(),
     roleId: zod.number(),
     role: zod.object({
       id: zod.number(),
+      tenantId: zod.number().nullish(),
       name: zod.string(),
       level: zod.number(),
       isSystem: zod.boolean(),
@@ -180,6 +221,7 @@ export const PasskeyAuthVerifyResponse = zod.object({
           "manage_profiles",
           "assign_roles",
           "manage_roles",
+          "manage_org_units",
           "create_checklists",
           "edit_checklists",
           "delete_checklists",
@@ -198,11 +240,24 @@ export const PasskeyAuthVerifyResponse = zod.object({
  */
 export const GetMeResponse = zod.object({
   id: zod.number(),
+  tenantId: zod.number().nullish(),
+  orgUnitId: zod.number().nullish(),
+  orgUnit: zod
+    .object({
+      id: zod.number(),
+      tenantId: zod.number(),
+      parentId: zod.number().nullish(),
+      name: zod.string(),
+      type: zod.enum(["region", "district", "location"]),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
   username: zod.string(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
     name: zod.string(),
     level: zod.number(),
     isSystem: zod.boolean(),
@@ -211,6 +266,7 @@ export const GetMeResponse = zod.object({
         "manage_profiles",
         "assign_roles",
         "manage_roles",
+        "manage_org_units",
         "create_checklists",
         "edit_checklists",
         "delete_checklists",
@@ -245,11 +301,24 @@ export const UpdateMeBody = zod.object({
 
 export const UpdateMeResponse = zod.object({
   id: zod.number(),
+  tenantId: zod.number().nullish(),
+  orgUnitId: zod.number().nullish(),
+  orgUnit: zod
+    .object({
+      id: zod.number(),
+      tenantId: zod.number(),
+      parentId: zod.number().nullish(),
+      name: zod.string(),
+      type: zod.enum(["region", "district", "location"]),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
   username: zod.string(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
     name: zod.string(),
     level: zod.number(),
     isSystem: zod.boolean(),
@@ -258,6 +327,7 @@ export const UpdateMeResponse = zod.object({
         "manage_profiles",
         "assign_roles",
         "manage_roles",
+        "manage_org_units",
         "create_checklists",
         "edit_checklists",
         "delete_checklists",
@@ -271,15 +341,28 @@ export const UpdateMeResponse = zod.object({
 });
 
 /**
- * @summary List profiles
+ * @summary List profiles (scoped to caller's tenant and org unit)
  */
 export const ListProfilesResponseItem = zod.object({
   id: zod.number(),
+  tenantId: zod.number().nullish(),
+  orgUnitId: zod.number().nullish(),
+  orgUnit: zod
+    .object({
+      id: zod.number(),
+      tenantId: zod.number(),
+      parentId: zod.number().nullish(),
+      name: zod.string(),
+      type: zod.enum(["region", "district", "location"]),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
   username: zod.string(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
     name: zod.string(),
     level: zod.number(),
     isSystem: zod.boolean(),
@@ -288,6 +371,7 @@ export const ListProfilesResponseItem = zod.object({
         "manage_profiles",
         "assign_roles",
         "manage_roles",
+        "manage_org_units",
         "create_checklists",
         "edit_checklists",
         "delete_checklists",
@@ -319,6 +403,7 @@ export const CreateProfileBody = zod.object({
     .min(createProfileBodyPasswordMin)
     .regex(createProfileBodyPasswordRegExp),
   roleId: zod.number(),
+  orgUnitId: zod.number().nullish(),
   mustChangePassword: zod.boolean().optional(),
 });
 
@@ -344,17 +429,31 @@ export const UpdateProfileBody = zod.object({
     .regex(updateProfileBodyPasswordRegExp)
     .optional(),
   roleId: zod.number().optional(),
+  orgUnitId: zod.number().nullish(),
   isActive: zod.boolean().optional(),
   mustChangePassword: zod.boolean().optional(),
 });
 
 export const UpdateProfileResponse = zod.object({
   id: zod.number(),
+  tenantId: zod.number().nullish(),
+  orgUnitId: zod.number().nullish(),
+  orgUnit: zod
+    .object({
+      id: zod.number(),
+      tenantId: zod.number(),
+      parentId: zod.number().nullish(),
+      name: zod.string(),
+      type: zod.enum(["region", "district", "location"]),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
   username: zod.string(),
   displayName: zod.string(),
   roleId: zod.number(),
   role: zod.object({
     id: zod.number(),
+    tenantId: zod.number().nullish(),
     name: zod.string(),
     level: zod.number(),
     isSystem: zod.boolean(),
@@ -363,6 +462,7 @@ export const UpdateProfileResponse = zod.object({
         "manage_profiles",
         "assign_roles",
         "manage_roles",
+        "manage_org_units",
         "create_checklists",
         "edit_checklists",
         "delete_checklists",
@@ -409,10 +509,11 @@ export const DeleteProfilePasskeyParams = zod.object({
 });
 
 /**
- * @summary List roles
+ * @summary List roles (scoped to caller's tenant + system roles)
  */
 export const ListRolesResponseItem = zod.object({
   id: zod.number(),
+  tenantId: zod.number().nullish(),
   name: zod.string(),
   level: zod.number(),
   isSystem: zod.boolean(),
@@ -421,6 +522,7 @@ export const ListRolesResponseItem = zod.object({
       "manage_profiles",
       "assign_roles",
       "manage_roles",
+      "manage_org_units",
       "create_checklists",
       "edit_checklists",
       "delete_checklists",
@@ -443,6 +545,7 @@ export const CreateRoleBody = zod.object({
       "manage_profiles",
       "assign_roles",
       "manage_roles",
+      "manage_org_units",
       "create_checklists",
       "edit_checklists",
       "delete_checklists",
@@ -468,6 +571,7 @@ export const UpdateRoleBody = zod.object({
         "manage_profiles",
         "assign_roles",
         "manage_roles",
+        "manage_org_units",
         "create_checklists",
         "edit_checklists",
         "delete_checklists",
@@ -480,6 +584,7 @@ export const UpdateRoleBody = zod.object({
 
 export const UpdateRoleResponse = zod.object({
   id: zod.number(),
+  tenantId: zod.number().nullish(),
   name: zod.string(),
   level: zod.number(),
   isSystem: zod.boolean(),
@@ -488,6 +593,7 @@ export const UpdateRoleResponse = zod.object({
       "manage_profiles",
       "assign_roles",
       "manage_roles",
+      "manage_org_units",
       "create_checklists",
       "edit_checklists",
       "delete_checklists",
@@ -513,7 +619,7 @@ export const CompleteOnboardingBody = zod.object({
     zod.object({
       email: zod.string().min(1),
       role: zod.string().min(1),
-      scope: zod.string().optional(),
+      orgUnitId: zod.number().nullish(),
     }),
   ),
 });
@@ -526,4 +632,55 @@ export const CompleteOnboardingResponse = zod.object({
       error: zod.string(),
     }),
   ),
+});
+
+/**
+ * @summary List org units for the caller's tenant
+ */
+export const ListOrgUnitsResponseItem = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  parentId: zod.number().nullish(),
+  name: zod.string(),
+  type: zod.enum(["region", "district", "location"]),
+  createdAt: zod.coerce.date(),
+});
+export const ListOrgUnitsResponse = zod.array(ListOrgUnitsResponseItem);
+
+/**
+ * @summary Create an org unit
+ */
+
+export const CreateOrgUnitBody = zod.object({
+  name: zod.string().min(1),
+  type: zod.enum(["region", "district", "location"]),
+  parentId: zod.number().nullish(),
+});
+
+/**
+ * @summary Update an org unit
+ */
+export const UpdateOrgUnitParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOrgUnitBody = zod.object({
+  name: zod.string().min(1).optional(),
+  parentId: zod.number().nullish(),
+});
+
+export const UpdateOrgUnitResponse = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  parentId: zod.number().nullish(),
+  name: zod.string(),
+  type: zod.enum(["region", "district", "location"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an org unit (must have no children and no assigned users)
+ */
+export const DeleteOrgUnitParams = zod.object({
+  id: zod.coerce.number(),
 });

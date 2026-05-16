@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, rolesTable, passkeyCredentialsTable, refreshTokensTable, REFRESH_TOKEN_TTL_MS } from "@workspace/db";
+import { db, usersTable, rolesTable, passkeyCredentialsTable, refreshTokensTable, tenantsTable, REFRESH_TOKEN_TTL_MS } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   LoginBody,
@@ -10,7 +10,7 @@ import {
   PasskeyAuthVerifyBody,
   RegisterBody,
 } from "@workspace/api-zod";
-import { BUSINESS_OWNER_RIGHTS, BUSINESS_OWNER_ROLE_NAME } from "@workspace/db";
+import { TENANT_ADMIN_ROLE_NAME, TENANT_ADMIN_RIGHTS, TENANT_ADMIN_LEVEL } from "@workspace/db";
 import {
   hashPassword,
   signAccessToken,
@@ -66,7 +66,7 @@ router.post("/login", async (req, res) => {
   res.json({
     accessToken,
     refreshToken,
-    profile: profileFor(user, role),
+    profile: profileFor(user, role, null),
   });
 });
 
@@ -101,7 +101,6 @@ router.post("/refresh", async (req, res) => {
     return;
   }
 
-  // Check that the token exists and has not been revoked
   const tokenRows = await db
     .select()
     .from(refreshTokensTable)
@@ -124,14 +123,13 @@ router.post("/refresh", async (req, res) => {
   }
   const { user, role } = rows[0];
 
-  // Revoke the consumed token and issue a fresh pair (token rotation)
   await db
     .update(refreshTokensTable)
     .set({ revokedAt: new Date() })
     .where(eq(refreshTokensTable.tokenId, payload.jti));
 
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.json({ accessToken, refreshToken, profile: profileFor(user, role) });
+  res.json({ accessToken, refreshToken, profile: profileFor(user, role, null) });
 });
 
 // ── Passkey registration (requires auth) ────────────────────────────────────
@@ -234,24 +232,17 @@ router.post("/passkey/auth-options", async (req, res) => {
   }
   const opts = await buildAuthenticationOptions({ allowCredentials });
   if (body.username) {
-    // Bind challenge to the named user so a stolen challenge can't be reused
-    // against another account.
     await db
       .update(usersTable)
       .set({ currentChallenge: opts.challenge })
       .where(eq(usersTable.username, body.username));
   } else {
-    // Usernameless / discoverable-credential flow: keep a short-lived,
-    // single-use record of the issued challenge so verify can validate it
-    // regardless of which user the resident credential resolves to.
     rememberChallenge(opts.challenge);
   }
   res.json(opts);
 });
 
-function decodeChallengeFromAssertion(
-  response: unknown,
-): string | null {
+function decodeChallengeFromAssertion(response: unknown): string | null {
   const r = response as { response?: { clientDataJSON?: string } };
   const cdj = r?.response?.clientDataJSON;
   if (typeof cdj !== "string") return null;
@@ -292,10 +283,6 @@ router.post("/passkey/auth-verify", async (req, res) => {
   }
   const { user, role } = userRows[0];
 
-  // The challenge in the assertion's clientDataJSON is the source of truth for
-  // what the client signed.  Accept it if it matches either:
-  //   (a) the challenge we stored on the user (named flow), or
-  //   (b) a challenge we recently issued for the usernameless flow.
   const assertedChallenge = decodeChallengeFromAssertion(body.response);
   if (!assertedChallenge) {
     res.status(400).json({ error: "Malformed assertion" });
@@ -340,13 +327,16 @@ router.post("/passkey/auth-verify", async (req, res) => {
     .set({ currentChallenge: null })
     .where(eq(usersTable.id, user.id));
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.json({ accessToken, refreshToken, profile: profileFor(user, role) });
+  res.json({ accessToken, refreshToken, profile: profileFor(user, role, null) });
 });
+
+// ── Self-registration ────────────────────────────────────────────────────────
+// Creates a new tenant (business) and an Admin role scoped to that tenant,
+// then registers the owner as the first user with tenant-wide scope.
 
 router.post("/register", async (req, res) => {
   const body = RegisterBody.parse(req.body);
 
-  // Ensure the email isn't already taken
   const existing = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -357,40 +347,41 @@ router.post("/register", async (req, res) => {
     return;
   }
 
-  // Get or create the Business Owner role. Self-registered accounts get this
-  // scoped role rather than System Admin to prevent cross-business access.
-  const existingRole = await db
-    .select()
-    .from(rolesTable)
-    .where(eq(rolesTable.name, BUSINESS_OWNER_ROLE_NAME))
-    .limit(1);
+  // Create the tenant (business entity)
+  const [tenant] = await db
+    .insert(tenantsTable)
+    .values({ name: body.businessName })
+    .returning();
 
-  let ownerRoleId: number;
-  if (existingRole.length === 0) {
-    const [created] = await db
-      .insert(rolesTable)
-      .values({ name: BUSINESS_OWNER_ROLE_NAME, level: 100, isSystem: false, rights: BUSINESS_OWNER_RIGHTS })
-      .returning();
-    ownerRoleId = created.id;
-  } else {
-    ownerRoleId = existingRole[0].id;
-  }
+  // Create a tenant-scoped Admin role with full rights. Per-tenant roles are
+  // isolated by tenantId so they do not grant cross-business access.
+  const [adminRole] = await db
+    .insert(rolesTable)
+    .values({
+      tenantId: tenant.id,
+      name: TENANT_ADMIN_ROLE_NAME,
+      level: TENANT_ADMIN_LEVEL,
+      isSystem: false,
+      rights: TENANT_ADMIN_RIGHTS,
+    })
+    .returning();
 
   const passwordHash = await hashPassword(body.password);
   const [user] = await db
     .insert(usersTable)
     .values({
+      tenantId: tenant.id,
+      orgUnitId: null, // tenant-wide scope — can see all users in the business
       username: body.email,
       displayName: body.businessName,
       passwordHash,
-      roleId: ownerRoleId,
+      roleId: adminRole.id,
       mustChangePassword: false,
     })
     .returning();
 
-  const role = existingRole[0] ?? (await db.select().from(rolesTable).where(eq(rolesTable.id, ownerRoleId)).limit(1))[0];
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, role) });
+  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, adminRole, null) });
 });
 
 export default router;

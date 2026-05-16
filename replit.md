@@ -32,15 +32,26 @@ A mobile app for managing end-of-shift closing checklists, with multiple named c
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- **DB schema** — `lib/db/src/schema/auth.ts` (tables: tenants, org_units, roles, users, passkey_credentials, refresh_tokens)
+- **API contract** — `lib/api-spec/openapi.yaml` (source of truth; codegen writes to `lib/api-zod/` and `lib/api-client/`)
+- **API routes** — `artifacts/api-server/src/routes/` (auth, profiles, roles, org-units, onboarding)
+- **Tenant scoping utility** — `artifacts/api-server/src/lib/tenant-scope.ts` (recursive CTE subtree query)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Tenant isolation via DB columns** — Every `user` and `role` row carries a `tenantId` foreign key. All profile/role queries filter by this before returning data. System Admin (isSystem=true) is the only bypass.
+- **Org hierarchy as a self-referencing tree** — `org_units` has a nullable `parentId` referencing itself. Region → District → Location. Subtree visibility is resolved with a Postgres recursive CTE (`WITH RECURSIVE subtree AS …`), so the entire visible set is one round-trip regardless of depth.
+- **Three visibility scopes**: (1) `role.isSystem = true` → global, (2) `tenantId` set + `orgUnitId = null` → tenant-wide (owner/admin), (3) `tenantId` + `orgUnitId` set → org-unit subtree only.
+- **Per-tenant Admin role at registration** — Self-registration creates a `tenants` row and a tenant-scoped "Admin" role (level 950, all rights). Rights like `manage_profiles` are now safe because all queries are tenant-scoped.
+- **`manage_org_units` right** — Dedicated right controlling who can create/edit/delete org units. Separate from `manage_profiles` to allow finer-grained delegation.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Multi-tenant SaaS: each registered business is a fully isolated tenant
+- Hierarchical org structure (Region → District → Location) within a tenant
+- Role-based access with tenant-scoped roles; users are optionally pinned to an org unit
+- Admins manage their org tree via `/api/org-units`; assign users to units via `orgUnitId` on profile create/update
+- Visibility is enforced server-side: org-scoped users only see peers within their subtree
 
 ## User preferences
 

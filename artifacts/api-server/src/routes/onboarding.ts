@@ -1,20 +1,21 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, rolesTable } from "@workspace/db";
+import { db, usersTable, rolesTable, orgUnitsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { hashPassword } from "../lib/auth";
 import { requireAuth } from "../middlewares/auth";
+import { orgUnitSubtreeIds } from "../lib/tenant-scope";
 
 const router: IRouter = Router();
 
 // ─── Role presets ─────────────────────────────────────────────────────────────
 // Maps the friendly role names from the onboarding UI to level + rights.
-// "System Admin" is reserved and not assignable via onboarding.
+// Created roles are scoped to the caller's tenant.
 
 const ROLE_PRESETS: Record<string, { level: number; rights: string[] }> = {
-  Admin: { level: 900, rights: ["manage_profiles", "assign_roles", "manage_roles", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
-  "Regional Manager": { level: 700, rights: ["manage_profiles", "assign_roles", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
-  "District Manager": { level: 500, rights: ["assign_roles", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
+  Admin: { level: 900, rights: ["manage_profiles", "assign_roles", "manage_roles", "manage_org_units", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
+  "Regional Manager": { level: 700, rights: ["manage_profiles", "assign_roles", "manage_org_units", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
+  "District Manager": { level: 500, rights: ["assign_roles", "manage_org_units", "create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"] },
   "Location Manager": { level: 300, rights: ["create_checklists", "edit_checklists", "view_reports", "manage_checklist_settings"] },
   Staff: { level: 100, rights: ["create_checklists", "view_reports"] },
 };
@@ -28,7 +29,7 @@ const OnboardingCompleteBody = z.object({
     z.object({
       email: z.string().min(1),
       role: z.string().min(1),
-      scope: z.string().optional(),
+      orgUnitId: z.number().int().nullable().optional(),
     }),
   ),
 });
@@ -36,6 +37,7 @@ const OnboardingCompleteBody = z.object({
 // ─── POST /onboarding/complete ────────────────────────────────────────────────
 
 router.post("/complete", requireAuth, async (req, res) => {
+  const u = req.user!;
   const body = OnboardingCompleteBody.parse(req.body);
 
   if (body.teamMembers.length === 0) {
@@ -43,18 +45,33 @@ router.post("/complete", requireAuth, async (req, res) => {
     return;
   }
 
-  // Resolve or create each role up front, keyed by name, to avoid redundant DB
-  // round-trips when multiple team members share the same role.
+  // Tenant-scoped users must have a tenantId to assign to team members.
+  if (!u.role.isSystem && !u.tenantId) {
+    res.status(403).json({ error: "No tenant associated with your account" });
+    return;
+  }
+
+  // Precompute caller's org subtree once if they are org-scoped.
+  const callerSubtree = u.orgUnitId ? await orgUnitSubtreeIds(u.orgUnitId) : null;
+
+  // Resolve or create each role, keyed by name, to avoid redundant DB trips.
   const roleIdCache = new Map<string, number>();
 
   async function getRoleId(roleName: string): Promise<number> {
     if (roleIdCache.has(roleName)) return roleIdCache.get(roleName)!;
 
-    const existing = await db
-      .select({ id: rolesTable.id })
-      .from(rolesTable)
-      .where(eq(rolesTable.name, roleName))
-      .limit(1);
+    // Look for an existing role with this name scoped to the caller's tenant.
+    const existing = u.tenantId
+      ? await db
+          .select({ id: rolesTable.id })
+          .from(rolesTable)
+          .where(eq(rolesTable.tenantId, u.tenantId))
+          .limit(1)
+      : await db
+          .select({ id: rolesTable.id })
+          .from(rolesTable)
+          .where(eq(rolesTable.name, roleName))
+          .limit(1);
 
     if (existing.length > 0) {
       roleIdCache.set(roleName, existing[0].id);
@@ -64,7 +81,13 @@ router.post("/complete", requireAuth, async (req, res) => {
     const preset = ROLE_PRESETS[roleName] ?? DEFAULT_PRESET;
     const [created] = await db
       .insert(rolesTable)
-      .values({ name: roleName, level: preset.level, isSystem: false, rights: preset.rights })
+      .values({
+        tenantId: u.role.isSystem ? null : u.tenantId,
+        name: roleName,
+        level: preset.level,
+        isSystem: false,
+        rights: preset.rights,
+      })
       .returning({ id: rolesTable.id });
     roleIdCache.set(roleName, created.id);
     return created.id;
@@ -74,9 +97,26 @@ router.post("/complete", requireAuth, async (req, res) => {
   const failed: { email: string; error: string }[] = [];
 
   for (const member of body.teamMembers) {
+    // Validate orgUnitId if provided.
+    const orgUnitId = member.orgUnitId ?? null;
+    if (orgUnitId !== null && !u.role.isSystem) {
+      const orgUnit = await db
+        .select()
+        .from(orgUnitsTable)
+        .where(eq(orgUnitsTable.id, orgUnitId))
+        .limit(1);
+      if (orgUnit.length === 0 || orgUnit[0].tenantId !== u.tenantId) {
+        failed.push({ email: member.email, error: "Invalid org unit" });
+        continue;
+      }
+      if (callerSubtree !== null && !callerSubtree.includes(orgUnitId)) {
+        failed.push({ email: member.email, error: "Org unit is outside your scope" });
+        continue;
+      }
+    }
+
     try {
       const roleId = await getRoleId(member.role);
-      // Generate a random temp password; the user must change it on first login.
       const tempPassword = Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString("base64url");
       const passwordHash = await hashPassword(tempPassword);
       const displayName = member.email.split("@")[0] ?? member.email;
@@ -84,6 +124,8 @@ router.post("/complete", requireAuth, async (req, res) => {
       const [created] = await db
         .insert(usersTable)
         .values({
+          tenantId: u.role.isSystem ? null : u.tenantId,
+          orgUnitId,
           username: member.email,
           displayName,
           passwordHash,

@@ -7,6 +7,7 @@
  */
 
 export * from "./authResult";
+export * from "./createOrgUnitRequest";
 export * from "./createProfileRequest";
 export * from "./createRoleRequest";
 export * from "./healthStatus";
@@ -17,6 +18,8 @@ export * from "./onboardingCompleteRequest";
 export * from "./onboardingCompleteRequestTeamMembersItem";
 export * from "./onboardingCompleteResponse";
 export * from "./onboardingCompleteResponseFailedItem";
+export * from "./orgUnit";
+export * from "./orgUnitType";
 export * from "./passkeyAuthOptionsRequest";
 export * from "./passkeyAuthVerifyRequest";
 export * from "./passkeyCredential";
@@ -28,5 +31,6 @@ export * from "./registerRequestBusinessType";
 export * from "./right";
 export * from "./role";
 export * from "./updateMeRequest";
+export * from "./updateOrgUnitRequest";
 export * from "./updateProfileRequest";
 export * from "./updateRoleRequest";

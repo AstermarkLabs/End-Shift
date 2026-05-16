@@ -17,6 +17,7 @@ export interface UpdateProfileRequest {
    */
   password?: string;
   roleId?: number;
+  orgUnitId?: number | null;
   isActive?: boolean;
   mustChangePassword?: boolean;
 }

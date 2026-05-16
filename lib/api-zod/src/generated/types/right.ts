@@ -12,6 +12,7 @@ export const Right = {
   manage_profiles: "manage_profiles",
   assign_roles: "assign_roles",
   manage_roles: "manage_roles",
+  manage_org_units: "manage_org_units",
   create_checklists: "create_checklists",
   edit_checklists: "edit_checklists",
   delete_checklists: "delete_checklists",

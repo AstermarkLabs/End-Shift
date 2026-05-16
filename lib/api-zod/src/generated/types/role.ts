@@ -9,6 +9,7 @@ import type { Right } from "./right";
 
 export interface Role {
   id: number;
+  tenantId?: number | null;
   name: string;
   level: number;
   isSystem: boolean;

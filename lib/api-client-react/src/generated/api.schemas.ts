@@ -19,6 +19,7 @@ export const Right = {
   manage_profiles: "manage_profiles",
   assign_roles: "assign_roles",
   manage_roles: "manage_roles",
+  manage_org_units: "manage_org_units",
   create_checklists: "create_checklists",
   edit_checklists: "edit_checklists",
   delete_checklists: "delete_checklists",
@@ -26,8 +27,39 @@ export const Right = {
   manage_checklist_settings: "manage_checklist_settings",
 } as const;
 
+export type OrgUnitType = (typeof OrgUnitType)[keyof typeof OrgUnitType];
+
+export const OrgUnitType = {
+  region: "region",
+  district: "district",
+  location: "location",
+} as const;
+
+export interface OrgUnit {
+  id: number;
+  tenantId: number;
+  parentId?: number | null;
+  name: string;
+  type: OrgUnitType;
+  createdAt: string;
+}
+
+export interface CreateOrgUnitRequest {
+  /** @minLength 1 */
+  name: string;
+  type: OrgUnitType;
+  parentId?: number | null;
+}
+
+export interface UpdateOrgUnitRequest {
+  /** @minLength 1 */
+  name?: string;
+  parentId?: number | null;
+}
+
 export interface Role {
   id: number;
+  tenantId?: number | null;
   name: string;
   level: number;
   isSystem: boolean;
@@ -50,6 +82,9 @@ export interface UpdateRoleRequest {
 
 export interface Profile {
   id: number;
+  tenantId?: number | null;
+  orgUnitId?: number | null;
+  orgUnit?: OrgUnit | null;
   username: string;
   displayName: string;
   roleId: number;
@@ -69,6 +104,7 @@ export interface CreateProfileRequest {
    */
   password: string;
   roleId: number;
+  orgUnitId?: number | null;
   mustChangePassword?: boolean;
 }
 
@@ -83,6 +119,7 @@ export interface UpdateProfileRequest {
    */
   password?: string;
   roleId?: number;
+  orgUnitId?: number | null;
   isActive?: boolean;
   mustChangePassword?: boolean;
 }
@@ -165,7 +202,7 @@ export type OnboardingCompleteRequestTeamMembersItem = {
   email: string;
   /** @minLength 1 */
   role: string;
-  scope?: string;
+  orgUnitId?: number | null;
 };
 
 export interface OnboardingCompleteRequest {

@@ -11,5 +11,5 @@ export type OnboardingCompleteRequestTeamMembersItem = {
   email: string;
   /** @minLength 1 */
   role: string;
-  scope?: string;
+  orgUnitId?: number | null;
 };

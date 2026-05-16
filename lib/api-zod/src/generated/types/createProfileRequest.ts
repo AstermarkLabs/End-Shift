@@ -17,5 +17,6 @@ export interface CreateProfileRequest {
    */
   password: string;
   roleId: number;
+  orgUnitId?: number | null;
   mustChangePassword?: boolean;
 }
