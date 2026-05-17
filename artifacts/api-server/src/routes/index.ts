@@ -5,6 +5,8 @@ import profilesRouter from "./profiles";
 import rolesRouter from "./roles";
 import onboardingRouter from "./onboarding";
 import orgUnitsRouter from "./org-units";
+import checklistsRouter from "./checklists";
+import shiftsRouter from "./shifts";
 
 const router: IRouter = Router();
 
@@ -14,5 +16,7 @@ router.use("/profiles", profilesRouter);
 router.use("/roles", rolesRouter);
 router.use("/onboarding", onboardingRouter);
 router.use("/org-units", orgUnitsRouter);
+router.use(checklistsRouter);
+router.use(shiftsRouter);
 
 export default router;

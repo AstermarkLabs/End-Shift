@@ -222,3 +222,120 @@ export interface OnboardingCompleteResponse {
   invited: number;
   failed: OnboardingCompleteResponseFailedItem[];
 }
+
+export interface Checklist {
+  id: number;
+  tenantId: number;
+  /** @nullable */
+  locationId?: number | null;
+  name: string;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChecklistInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  locationId?: number | null;
+}
+
+export interface ChecklistUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @nullable */
+  locationId?: number | null;
+}
+
+export interface ChecklistTask {
+  id: number;
+  checklistId: number;
+  section: string;
+  text: string;
+  required: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ChecklistTaskInput {
+  /** @minLength 1 */
+  section: string;
+  /** @minLength 1 */
+  text: string;
+  required?: boolean;
+  sortOrder?: number;
+}
+
+export interface ChecklistTaskUpdate {
+  /** @minLength 1 */
+  section?: string;
+  /** @minLength 1 */
+  text?: string;
+  required?: boolean;
+  sortOrder?: number;
+}
+
+export interface ChecklistWithTasks {
+  id: number;
+  tenantId: number;
+  /** @nullable */
+  locationId?: number | null;
+  name: string;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  tasks: ChecklistTask[];
+}
+
+export interface ShiftLog {
+  id: number;
+  tenantId: number;
+  /** @nullable */
+  checklistId?: number | null;
+  /** @nullable */
+  locationId?: number | null;
+  /** @nullable */
+  openedBy?: number | null;
+  /** @nullable */
+  submittedBy?: number | null;
+  openedAt: string;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ShiftTaskCompletion {
+  id: number;
+  shiftLogId: number;
+  taskId: number;
+  /** @nullable */
+  completedBy?: number | null;
+  completedAt: string;
+}
+
+export interface ShiftWithCompletions {
+  id: number;
+  tenantId: number;
+  /** @nullable */
+  checklistId?: number | null;
+  /** @nullable */
+  locationId?: number | null;
+  /** @nullable */
+  openedBy?: number | null;
+  /** @nullable */
+  submittedBy?: number | null;
+  openedAt: string;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  completions: ShiftTaskCompletion[];
+}
+
+export interface ShiftSubmitInput {
+  notes?: string;
+}

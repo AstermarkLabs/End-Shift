@@ -693,3 +693,253 @@ export const UpdateOrgUnitResponse = zod.object({
 export const DeleteOrgUnitParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary List checklists for the caller's tenant
+ */
+export const ListChecklistsResponseItem = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  locationId: zod.number().nullish(),
+  name: zod.string(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListChecklistsResponse = zod.array(ListChecklistsResponseItem);
+
+/**
+ * @summary Create a new checklist
+ */
+
+export const CreateChecklistBody = zod.object({
+  name: zod.string().min(1),
+  locationId: zod.number().nullish(),
+});
+
+/**
+ * @summary Get a checklist with its tasks
+ */
+export const GetChecklistParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetChecklistResponse = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  locationId: zod.number().nullish(),
+  name: zod.string(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  tasks: zod.array(
+    zod.object({
+      id: zod.number(),
+      checklistId: zod.number(),
+      section: zod.string(),
+      text: zod.string(),
+      required: zod.boolean(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a checklist's name or location
+ */
+export const UpdateChecklistParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateChecklistBody = zod.object({
+  name: zod.string().min(1).optional(),
+  locationId: zod.number().nullish(),
+});
+
+export const UpdateChecklistResponse = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  locationId: zod.number().nullish(),
+  name: zod.string(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a checklist and all its tasks
+ */
+export const DeleteChecklistParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List tasks for a checklist
+ */
+export const ListChecklistTasksParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListChecklistTasksResponseItem = zod.object({
+  id: zod.number(),
+  checklistId: zod.number(),
+  section: zod.string(),
+  text: zod.string(),
+  required: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListChecklistTasksResponse = zod.array(
+  ListChecklistTasksResponseItem,
+);
+
+/**
+ * @summary Add a task to a checklist
+ */
+export const CreateChecklistTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateChecklistTaskBody = zod.object({
+  section: zod.string().min(1),
+  text: zod.string().min(1),
+  required: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a checklist task
+ */
+export const UpdateChecklistTaskParams = zod.object({
+  id: zod.coerce.number(),
+  taskId: zod.coerce.number(),
+});
+
+export const UpdateChecklistTaskBody = zod.object({
+  section: zod.string().min(1).optional(),
+  text: zod.string().min(1).optional(),
+  required: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateChecklistTaskResponse = zod.object({
+  id: zod.number(),
+  checklistId: zod.number(),
+  section: zod.string(),
+  text: zod.string(),
+  required: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a checklist task
+ */
+export const DeleteChecklistTaskParams = zod.object({
+  id: zod.coerce.number(),
+  taskId: zod.coerce.number(),
+});
+
+/**
+ * @summary List shift logs for a checklist
+ */
+export const ListShiftsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListShiftsResponseItem = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  checklistId: zod.number().nullish(),
+  locationId: zod.number().nullish(),
+  openedBy: zod.number().nullish(),
+  submittedBy: zod.number().nullish(),
+  openedAt: zod.coerce.date(),
+  submittedAt: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+});
+export const ListShiftsResponse = zod.array(ListShiftsResponseItem);
+
+/**
+ * @summary Open a new shift for a checklist
+ */
+export const OpenShiftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get a shift log with its task completions
+ */
+export const GetShiftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetShiftResponse = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  checklistId: zod.number().nullish(),
+  locationId: zod.number().nullish(),
+  openedBy: zod.number().nullish(),
+  submittedBy: zod.number().nullish(),
+  openedAt: zod.coerce.date(),
+  submittedAt: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+  completions: zod.array(
+    zod.object({
+      id: zod.number(),
+      shiftLogId: zod.number(),
+      taskId: zod.number(),
+      completedBy: zod.number().nullish(),
+      completedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Submit (close out) a shift
+ */
+export const SubmitShiftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SubmitShiftBody = zod.object({
+  notes: zod.string().optional(),
+});
+
+export const SubmitShiftResponse = zod.object({
+  id: zod.number(),
+  tenantId: zod.number(),
+  checklistId: zod.number().nullish(),
+  locationId: zod.number().nullish(),
+  openedBy: zod.number().nullish(),
+  submittedBy: zod.number().nullish(),
+  openedAt: zod.coerce.date(),
+  submittedAt: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+  completions: zod.array(
+    zod.object({
+      id: zod.number(),
+      shiftLogId: zod.number(),
+      taskId: zod.number(),
+      completedBy: zod.number().nullish(),
+      completedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Mark a task complete in a shift
+ */
+export const CompleteShiftTaskParams = zod.object({
+  id: zod.coerce.number(),
+  taskId: zod.coerce.number(),
+});
+
+/**
+ * @summary Unmark a task completion in a shift
+ */
+export const UncompleteShiftTaskParams = zod.object({
+  id: zod.coerce.number(),
+  taskId: zod.coerce.number(),
+});

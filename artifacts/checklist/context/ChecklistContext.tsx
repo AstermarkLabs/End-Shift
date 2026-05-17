@@ -8,6 +8,33 @@ import React, {
   useState,
 } from "react";
 
+import {
+  listChecklists,
+  getChecklist,
+  createChecklist,
+  updateChecklist,
+  deleteChecklist,
+  createChecklistTask,
+  updateChecklistTask,
+  deleteChecklistTask,
+  openShift,
+  listShifts,
+  getShift,
+  submitShift,
+  completeShiftTask,
+  uncompleteShiftTask,
+} from "@workspace/api-client-react";
+
+import type {
+  Checklist,
+  ChecklistWithTasks,
+  ChecklistTask,
+  ShiftWithCompletions,
+  ShiftLog,
+} from "@workspace/api-client-react";
+
+// ─── Public types (kept identical for backward compat) ────────────────────────
+
 export interface Task {
   id: number;
   category: string;
@@ -33,7 +60,7 @@ export interface CompletedChecklist {
   id: string;
   checklistId: string;
   checklistName: string;
-  completedAt: string; // ISO string
+  completedAt: string;
   sections: string[];
   tasks: Array<{
     id: number;
@@ -44,61 +71,15 @@ export interface CompletedChecklist {
   }>;
 }
 
-// ─── Default data ────────────────────────────────────────────────────────────
+// ─── Storage keys ─────────────────────────────────────────────────────────────
 
-const DEFAULT_SECTIONS = [
-  "1 Hour Before Closing",
-  "30 Minutes Before Closing",
-  "Driver Area Cleaning",
-  "Final Walk-Through",
-];
+const KEY_ACTIVE = "@end_shift_v4_active_cl";
+const KEY_ACTIVE_SHIFTS = "@end_shift_v4_active_shifts"; // { [clId]: shiftId }
+const KEY_HIDDEN_SHIFTS = "@end_shift_v4_hidden_shifts"; // string[]
+const KEY_PENDING_SECTIONS = "@end_shift_v4_pending_sections"; // { [clId]: string[] }
+const KEY_APP_CONFIG = "@end_shift_app_config";
 
-const DEFAULT_TASKS: Task[] = [
-  { id: 1, category: "1 Hour Before Closing", text: "Begin the daily count sheet and complete inventory counts.", completed: false, required: true },
-  { id: 2, category: "1 Hour Before Closing", text: "Ensure all required labels are completed; pull any labels that need to be removed.", completed: false, required: true },
-  { id: 3, category: "1 Hour Before Closing", text: "Pull product as required at this time.", completed: false, required: true },
-  { id: 4, category: "1 Hour Before Closing", text: "Close the driver till.", completed: false, required: true },
-  { id: 5, category: "1 Hour Before Closing", text: "Remove all trash except one can; replace liners in all bins.", completed: false, required: true },
-  { id: 6, category: "1 Hour Before Closing", text: "Pull tea and thoroughly clean the coffee machine.", completed: false, required: true },
-  { id: 7, category: "1 Hour Before Closing", text: "Reduce operations to bare minimum.", completed: false, required: false },
-  { id: 8, category: "1 Hour Before Closing", text: "Wipe down countertops and the top of the make line.", completed: false, required: true },
-  { id: 9, category: "1 Hour Before Closing", text: "Place lids on the make line.", completed: false, required: true },
-  { id: 10, category: "1 Hour Before Closing", text: "Sweep floors.", completed: false, required: true },
-  { id: 11, category: "1 Hour Before Closing", text: "Check the lobby for trash and dirty tables.", completed: false, required: false },
-  { id: 12, category: "1 Hour Before Closing", text: "Check bathrooms for trash and debris.", completed: false, required: false },
-  { id: 13, category: "30 Minutes Before Closing", text: "Filter the fryer. When refilling, allow it to continue filling until you are ready to leave so no oil remains at the bottom.", completed: false, required: true },
-  { id: 14, category: "30 Minutes Before Closing", text: "Enter inventory counts and complete closing procedures on the tablet.", completed: false, required: true },
-  { id: 15, category: "30 Minutes Before Closing", text: "Pull any remaining labels that are no longer needed.", completed: false, required: true },
-  { id: 16, category: "30 Minutes Before Closing", text: "Remove sanitizer buckets.", completed: false, required: true },
-  { id: 17, category: "30 Minutes Before Closing", text: "Mop floors if time permits.", completed: false, required: false },
-  { id: 18, category: "30 Minutes Before Closing", text: "Close the front till. At this point, only the window till should remain open.", completed: false, required: true },
-  { id: 19, category: "Driver Area Cleaning", text: "Sweep the driver area, including under the sink and drying shelves.", completed: false, required: true },
-  { id: 20, category: "Driver Area Cleaning", text: "Clean the dishwasher.", completed: false, required: true },
-  { id: 21, category: "Driver Area Cleaning", text: "Spray out and clean all trash bins.", completed: false, required: true },
-  { id: 22, category: "Final Walk-Through", text: "Dishwasher is cleaned and turned off.", completed: false, required: true },
-  { id: 23, category: "Final Walk-Through", text: "Dish bins are sprayed out.", completed: false, required: true },
-  { id: 24, category: "Final Walk-Through", text: "Sink areas on both sides of the dishwasher are clean.", completed: false, required: true },
-  { id: 25, category: "Final Walk-Through", text: "Back door is locked.", completed: false, required: true },
-  { id: 26, category: "Final Walk-Through", text: "All lights are turned off.", completed: false, required: true },
-  { id: 27, category: "Final Walk-Through", text: "Labels have been pulled.", completed: false, required: true },
-  { id: 28, category: "Final Walk-Through", text: "Make line lids are on.", completed: false, required: true },
-  { id: 29, category: "Final Walk-Through", text: "Counters are wiped down. LIDS are on cut table.", completed: false, required: true },
-  { id: 30, category: "Final Walk-Through", text: "Trash has been taken out. (don't forget bathrooms)", completed: false, required: true },
-  { id: 31, category: "Final Walk-Through", text: "Buckets have been removed.", completed: false, required: true },
-  { id: 32, category: "Final Walk-Through", text: "TV, oven, proofer, and hot box are turned off.", completed: false, required: true },
-  { id: 33, category: "Final Walk-Through", text: "Window is locked.", completed: false, required: true },
-  { id: 34, category: "Final Walk-Through", text: "Safe is locked.", completed: false, required: true },
-  { id: 35, category: "Final Walk-Through", text: "Both doors are locked.", completed: false, required: true },
-  { id: 36, category: "Final Walk-Through", text: "Tea containers have been washed out.", completed: false, required: true },
-];
-
-const DEFAULT_CHECKLIST_ID = "closing";
-const DEFAULT_CHECKLISTS: ChecklistMeta[] = [
-  { id: DEFAULT_CHECKLIST_ID, name: "Closing Checklist", sections: DEFAULT_SECTIONS },
-];
-const DEFAULT_TASKS_BY_CHECKLIST: Record<string, Task[]> = {
-  [DEFAULT_CHECKLIST_ID]: DEFAULT_TASKS,
-};
+// ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_APP_CONFIG: AppConfig = {
   name: "End Shift",
@@ -106,19 +87,62 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   icon: "🕐",
 };
 
-// ─── Storage keys ─────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const KEY_CHECKLISTS = "@pizza_hut_v3_checklists";
-const KEY_TASKS = "@pizza_hut_v3_tasks";
-const KEY_ACTIVE = "@pizza_hut_v3_active";
-const KEY_HISTORY = "@pizza_hut_v3_history";
-const KEY_APP_CONFIG = "@end_shift_app_config";
+function deriveSections(tasks: ChecklistTask[], pendingSections: string[]): string[] {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const t of tasks) {
+    if (!seen.has(t.section)) {
+      seen.add(t.section);
+      ordered.push(t.section);
+    }
+  }
+  for (const s of pendingSections) {
+    if (!seen.has(s)) {
+      seen.add(s);
+      ordered.push(s);
+    }
+  }
+  return ordered;
+}
 
-// ─── ID generation ────────────────────────────────────────────────────────────
+function toTask(t: ChecklistTask, completedIds: Set<number>): Task {
+  return {
+    id: t.id,
+    category: t.section,
+    text: t.text,
+    completed: completedIds.has(t.id),
+    required: t.required,
+  };
+}
 
-let _nextTaskId = 200;
-function nextTaskId() { return _nextTaskId++; }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function toChecklistMeta(cl: Checklist, sections: string[]): ChecklistMeta {
+  return { id: String(cl.id), name: cl.name, sections };
+}
+
+function shiftToCompleted(
+  shift: ShiftWithCompletions,
+  clName: string,
+  tasks: ChecklistTask[],
+  sections: string[],
+): CompletedChecklist {
+  const completedIds = new Set(shift.completions.map((c) => c.taskId));
+  return {
+    id: String(shift.id),
+    checklistId: String(shift.checklistId ?? ""),
+    checklistName: clName,
+    completedAt: shift.submittedAt ?? shift.openedAt,
+    sections,
+    tasks: tasks.map((t) => ({
+      id: t.id,
+      category: t.section,
+      text: t.text,
+      completed: completedIds.has(t.id),
+      required: t.required,
+    })),
+  };
+}
 
 // ─── Context type ─────────────────────────────────────────────────────────────
 
@@ -146,7 +170,6 @@ interface ChecklistContextValue {
   reorderSections: (newSections: string[]) => void;
   reorderTasksInSection: (category: string, newSectionTasks: Task[]) => void;
 
-  // History
   completionHistory: CompletedChecklist[];
   completeChecklist: () => void;
   deleteHistoryEntry: (id: string) => void;
@@ -154,7 +177,6 @@ interface ChecklistContextValue {
   clearMockHistory: () => void;
   seedHistory: (items: CompletedChecklist[]) => void;
 
-  // App config
   appConfig: AppConfig;
   updateAppConfig: (updates: Partial<AppConfig>) => void;
 }
@@ -162,259 +184,463 @@ interface ChecklistContextValue {
 export const ChecklistContext = createContext<ChecklistContextValue | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
-  const [checklists, setChecklists] = useState<ChecklistMeta[]>(DEFAULT_CHECKLISTS);
-  const [activeId, setActiveId] = useState<string>(DEFAULT_CHECKLIST_ID);
-  const [tasksByChecklist, setTasksByChecklist] = useState<Record<string, Task[]>>(
-    DEFAULT_TASKS_BY_CHECKLIST
-  );
-  const [completionHistory, setCompletionHistory] = useState<CompletedChecklist[]>([]);
-  const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
-  const loaded = useRef(false);
+  // ── Raw API data ────────────────────────────────────────────────────────────
+  const [apiChecklists, setApiChecklists] = useState<Checklist[]>([]);
+  const [activeCl, setActiveCl] = useState<ChecklistWithTasks | null>(null);
+  const [activeShift, setActiveShift] = useState<ShiftWithCompletions | null>(null);
+  const [historyShifts, setHistoryShifts] = useState<ShiftWithCompletions[]>([]);
 
-  // ── Load from storage ──────────────────────────────────────────────────────
+  // ── Local-only state ────────────────────────────────────────────────────────
+  const [activeId, setActiveId] = useState<number | null>(null);
+  // { [clId]: shiftId } — the currently open shift per checklist
+  const [activeShiftIds, setActiveShiftIds] = useState<Record<string, number>>({});
+  // Shift IDs hidden by deleteHistoryEntry / clearHistory
+  const [hiddenShiftIds, setHiddenShiftIds] = useState<Set<string>>(new Set());
+  // Sections with no tasks yet, per checklist
+  const [pendingSections, setPendingSections] = useState<Record<string, string[]>>({});
+  // Local reorder state: maps cl id (string) to section order override
+  const [sectionOrderOverride, setSectionOrderOverride] = useState<Record<string, string[]>>({});
+  const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
+
+  const loaded = useRef(false);
+  const loadingRef = useRef(false);
+
+  // ── Load persisted state ────────────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(KEY_CHECKLISTS),
-      AsyncStorage.getItem(KEY_TASKS),
-      AsyncStorage.getItem(KEY_ACTIVE),
-      AsyncStorage.getItem(KEY_HISTORY),
-      AsyncStorage.getItem(KEY_APP_CONFIG),
-    ]).then(([cl, tk, ac, hist, cfg]) => {
-      try {
-        if (cl) setChecklists(JSON.parse(cl));
-        if (tk) {
-          const parsed = JSON.parse(tk) as Record<string, Task[]>;
-          setTasksByChecklist(parsed);
-          let max = 200;
-          for (const arr of Object.values(parsed)) {
-            for (const t of arr) max = Math.max(max, t.id);
-          }
-          _nextTaskId = max + 1;
-        }
-        if (ac) setActiveId(JSON.parse(ac));
-        if (hist) setCompletionHistory(JSON.parse(hist));
-        if (cfg) setAppConfig({ ...DEFAULT_APP_CONFIG, ...JSON.parse(cfg) });
-      } catch {}
+    AsyncStorage.multiGet([
+      KEY_ACTIVE,
+      KEY_ACTIVE_SHIFTS,
+      KEY_HIDDEN_SHIFTS,
+      KEY_PENDING_SECTIONS,
+      KEY_APP_CONFIG,
+    ]).then((pairs) => {
+      const [active, shifts, hidden, pending, cfg] = pairs.map(([, v]) => v);
+      if (active) setActiveId(Number(active));
+      if (shifts) {
+        try { setActiveShiftIds(JSON.parse(shifts)); } catch {}
+      }
+      if (hidden) {
+        try { setHiddenShiftIds(new Set(JSON.parse(hidden))); } catch {}
+      }
+      if (pending) {
+        try { setPendingSections(JSON.parse(pending)); } catch {}
+      }
+      if (cfg) {
+        try { setAppConfig({ ...DEFAULT_APP_CONFIG, ...JSON.parse(cfg) }); } catch {}
+      }
       loaded.current = true;
     });
   }, []);
 
-  // ── Persist on change ──────────────────────────────────────────────────────
+  // ── Persist state changes ───────────────────────────────────────────────────
   useEffect(() => {
     if (!loaded.current) return;
-    AsyncStorage.setItem(KEY_CHECKLISTS, JSON.stringify(checklists));
-  }, [checklists]);
-
-  useEffect(() => {
-    if (!loaded.current) return;
-    AsyncStorage.setItem(KEY_TASKS, JSON.stringify(tasksByChecklist));
-  }, [tasksByChecklist]);
-
-  useEffect(() => {
-    if (!loaded.current) return;
-    AsyncStorage.setItem(KEY_ACTIVE, JSON.stringify(activeId));
+    if (activeId != null) AsyncStorage.setItem(KEY_ACTIVE, String(activeId));
   }, [activeId]);
 
   useEffect(() => {
     if (!loaded.current) return;
-    AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(completionHistory));
-  }, [completionHistory]);
+    AsyncStorage.setItem(KEY_ACTIVE_SHIFTS, JSON.stringify(activeShiftIds));
+  }, [activeShiftIds]);
+
+  useEffect(() => {
+    if (!loaded.current) return;
+    AsyncStorage.setItem(KEY_HIDDEN_SHIFTS, JSON.stringify([...hiddenShiftIds]));
+  }, [hiddenShiftIds]);
+
+  useEffect(() => {
+    if (!loaded.current) return;
+    AsyncStorage.setItem(KEY_PENDING_SECTIONS, JSON.stringify(pendingSections));
+  }, [pendingSections]);
 
   useEffect(() => {
     if (!loaded.current) return;
     AsyncStorage.setItem(KEY_APP_CONFIG, JSON.stringify(appConfig));
   }, [appConfig]);
 
-  // ── Derived active data ────────────────────────────────────────────────────
-  const activeMeta = checklists.find((c) => c.id === activeId) ?? checklists[0];
-  const tasks = tasksByChecklist[activeMeta?.id] ?? [];
-  const sections = activeMeta?.sections ?? [];
-
-  // ── Multi-checklist ops ────────────────────────────────────────────────────
-  const setActiveChecklistId = useCallback((id: string) => setActiveId(id), []);
-
-  const addChecklist = useCallback((name: string) => {
-    const id = uid();
-    setChecklists((prev) => [...prev, { id, name, sections: [] }]);
-    setTasksByChecklist((prev) => ({ ...prev, [id]: [] }));
-    setActiveId(id);
-  }, []);
-
-  const updateChecklistName = useCallback((id: string, name: string) => {
-    setChecklists((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
-  }, []);
-
-  const removeChecklist = useCallback(
-    (id: string) => {
-      setChecklists((prev) => {
-        const next = prev.filter((c) => c.id !== id);
-        if (next.length === 0) return prev;
-        return next;
-      });
-      setTasksByChecklist((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+  // ── Fetch all checklists on mount ───────────────────────────────────────────
+  const refreshChecklists = useCallback(async () => {
+    try {
+      const cls = await listChecklists();
+      setApiChecklists(cls);
+      // If no active id, pick first
       setActiveId((prev) => {
-        if (prev !== id) return prev;
-        const remaining = checklists.filter((c) => c.id !== id);
-        return remaining[0]?.id ?? prev;
+        if (prev != null) return prev;
+        return cls[0]?.id ?? null;
       });
-    },
-    [checklists]
-  );
+    } catch {
+      // Network unavailable — leave state as-is
+    }
+  }, []);
 
-  const reorderChecklists = useCallback(
-    (newChecklists: ChecklistMeta[]) => setChecklists(newChecklists),
-    []
-  );
+  useEffect(() => {
+    refreshChecklists();
+  }, [refreshChecklists]);
 
-  // ── Task ops ───────────────────────────────────────────────────────────────
-  const updateActiveTasks = useCallback(
-    (fn: (tasks: Task[]) => Task[]) => {
-      setTasksByChecklist((prev) => ({
+  // ── Fetch active checklist + manage shift when activeId changes ─────────────
+  useEffect(() => {
+    if (activeId == null) return;
+    let cancelled = false;
+
+    async function load() {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      try {
+        const cl = await getChecklist(activeId!);
+        if (cancelled) return;
+        setActiveCl(cl);
+
+        // Find or open the active shift for this checklist
+        const existingShiftId = activeShiftIds[String(activeId!)];
+        if (existingShiftId) {
+          // Try to fetch the existing shift
+          try {
+            const shift = await getShift(existingShiftId);
+            if (cancelled) return;
+            if (!shift.submittedAt) {
+              setActiveShift(shift);
+              await loadHistory(activeId!, cl);
+              return;
+            }
+          } catch {
+            // Shift not found — open a new one
+          }
+        }
+        // Open a new shift
+        const newShift = await openShift(activeId!);
+        if (cancelled) return;
+        setActiveShift(newShift);
+        setActiveShiftIds((prev) => ({ ...prev, [String(activeId!)]: newShift.id }));
+        await loadHistory(activeId!, cl);
+      } catch {
+        // API unavailable
+      } finally {
+        loadingRef.current = false;
+      }
+    }
+
+    async function loadHistory(clId: number, cl: ChecklistWithTasks) {
+      try {
+        const shifts = await listShifts(clId);
+        const submitted = shifts.filter((s) => s.submittedAt != null);
+        // Fetch full completions for each submitted shift
+        const full = await Promise.all(submitted.map((s) => getShift(s.id).catch(() => null)));
+        const valid = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
+        if (!cancelled) setHistoryShifts(valid);
+      } catch {}
+    }
+
+    load();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const clIdStr = activeId != null ? String(activeId) : "";
+  const rawSections = activeCl ? deriveSections(activeCl.tasks, pendingSections[clIdStr] ?? []) : [];
+  const sections = sectionOrderOverride[clIdStr] ?? rawSections;
+
+  const completedIds = new Set(activeShift?.completions.map((c) => c.taskId) ?? []);
+  const tasks: Task[] = activeCl ? activeCl.tasks.map((t) => toTask(t, completedIds)) : [];
+
+  // Checklist metas (with sections derived from tasks)
+  const checklistMetas: ChecklistMeta[] = apiChecklists.map((cl) => {
+    const clTasks = cl.id === activeCl?.id ? (activeCl?.tasks ?? []) : [];
+    const clSections = deriveSections(clTasks, pendingSections[String(cl.id)] ?? []);
+    const ordered = sectionOrderOverride[String(cl.id)] ?? clSections;
+    return toChecklistMeta(cl, ordered);
+  });
+
+  // Completion history
+  const completionHistory: CompletedChecklist[] = historyShifts
+    .filter((s) => !hiddenShiftIds.has(String(s.id)))
+    .map((s) => {
+      const clTasks = activeCl?.tasks ?? [];
+      const clSections = sections;
+      const name = apiChecklists.find((c) => c.id === s.checklistId)?.name ?? "Checklist";
+      return shiftToCompleted(s, name, clTasks, clSections);
+    });
+
+  // ── Checklist management ────────────────────────────────────────────────────
+  const setActiveChecklistId = useCallback((id: string) => {
+    setActiveId(Number(id));
+    setActiveCl(null);
+    setActiveShift(null);
+    setHistoryShifts([]);
+  }, []);
+
+  const addChecklist = useCallback(async (name: string) => {
+    try {
+      const created = await createChecklist({ name });
+      setApiChecklists((prev) => [...prev, created]);
+      setActiveId(created.id);
+      setActiveCl({ ...created, tasks: [] });
+      setActiveShift(null);
+      setHistoryShifts([]);
+    } catch {}
+  }, []);
+
+  const updateChecklistName = useCallback(async (id: string, name: string) => {
+    const numId = Number(id);
+    try {
+      const updated = await updateChecklist(numId, { name });
+      setApiChecklists((prev) => prev.map((c) => (c.id === numId ? updated : c)));
+      if (numId === activeId) {
+        setActiveCl((prev) => prev ? { ...prev, name: updated.name } : prev);
+      }
+    } catch {}
+  }, [activeId]);
+
+  const removeChecklist = useCallback(async (id: string) => {
+    const numId = Number(id);
+    try {
+      await deleteChecklist(numId);
+      setApiChecklists((prev) => {
+        const next = prev.filter((c) => c.id !== numId);
+        if (numId === activeId && next.length > 0) {
+          setActiveId(next[0].id);
+          setActiveCl(null);
+          setActiveShift(null);
+        }
+        return next;
+      });
+    } catch {}
+  }, [activeId]);
+
+  const reorderChecklists = useCallback((newChecklists: ChecklistMeta[]) => {
+    setApiChecklists((prev) => {
+      const map = new Map(prev.map((c) => [String(c.id), c]));
+      return newChecklists.map((m) => map.get(m.id)!).filter(Boolean);
+    });
+  }, []);
+
+  // ── Task operations ─────────────────────────────────────────────────────────
+  const toggleTask = useCallback(async (id: number) => {
+    if (!activeShift) return;
+    const isCompleted = completedIds.has(id);
+
+    // Optimistic update
+    setActiveShift((prev) => {
+      if (!prev) return prev;
+      if (isCompleted) {
+        return { ...prev, completions: prev.completions.filter((c) => c.taskId !== id) };
+      } else {
+        const now = new Date().toISOString();
+        return {
+          ...prev,
+          completions: [
+            ...prev.completions,
+            { id: -Date.now(), shiftLogId: prev.id, taskId: id, completedBy: null, completedAt: now },
+          ],
+        };
+      }
+    });
+
+    try {
+      if (isCompleted) {
+        await uncompleteShiftTask(activeShift.id, id);
+      } else {
+        await completeShiftTask(activeShift.id, id);
+      }
+    } catch {
+      // Revert optimistic update
+      setActiveShift((prev) => {
+        if (!prev) return prev;
+        if (isCompleted) {
+          const now = new Date().toISOString();
+          return {
+            ...prev,
+            completions: [
+              ...prev.completions,
+              { id: -Date.now(), shiftLogId: prev.id, taskId: id, completedBy: null, completedAt: now },
+            ],
+          };
+        } else {
+          return { ...prev, completions: prev.completions.filter((c) => c.taskId !== id) };
+        }
+      });
+    }
+  }, [activeShift, completedIds]);
+
+  const resetChecklist = useCallback(async () => {
+    if (activeId == null) return;
+    try {
+      const newShift = await openShift(activeId);
+      setActiveShift(newShift);
+      setActiveShiftIds((prev) => ({ ...prev, [String(activeId)]: newShift.id }));
+    } catch {}
+  }, [activeId]);
+
+  const addTask = useCallback(async (category: string, text: string, required: boolean) => {
+    if (activeId == null) return;
+    const sortOrder = (activeCl?.tasks.filter((t) => t.section === category).length ?? 0);
+    try {
+      const created = await createChecklistTask(activeId, { section: category, text, required, sortOrder });
+      setActiveCl((prev) => prev ? { ...prev, tasks: [...prev.tasks, created] } : prev);
+      // Remove from pending sections if it was there
+      setPendingSections((prev) => {
+        const key = String(activeId);
+        const cur = prev[key] ?? [];
+        return { ...prev, [key]: cur.filter((s) => s !== category) };
+      });
+    } catch {}
+  }, [activeId, activeCl]);
+
+  const updateTask = useCallback(async (id: number, updates: Partial<Omit<Task, "id">>) => {
+    if (activeId == null) return;
+    const apiUpdates: Record<string, unknown> = {};
+    if (updates.text !== undefined) apiUpdates.text = updates.text;
+    if (updates.required !== undefined) apiUpdates.required = updates.required;
+    if (updates.category !== undefined) apiUpdates.section = updates.category;
+    try {
+      const updated = await updateChecklistTask(activeId, id, apiUpdates);
+      setActiveCl((prev) => {
+        if (!prev) return prev;
+        return { ...prev, tasks: prev.tasks.map((t) => (t.id === id ? updated : t)) };
+      });
+    } catch {}
+  }, [activeId]);
+
+  const removeTask = useCallback(async (id: number) => {
+    if (activeId == null) return;
+    try {
+      await deleteChecklistTask(activeId, id);
+      setActiveCl((prev) => {
+        if (!prev) return prev;
+        return { ...prev, tasks: prev.tasks.filter((t) => t.id !== id) };
+      });
+    } catch {}
+  }, [activeId]);
+
+  // ── Section operations ──────────────────────────────────────────────────────
+  const addSection = useCallback((title: string) => {
+    const key = String(activeId ?? "");
+    setPendingSections((prev) => {
+      const cur = prev[key] ?? [];
+      if (cur.includes(title)) return prev;
+      return { ...prev, [key]: [...cur, title] };
+    });
+    setSectionOrderOverride((prev) => {
+      const cur = prev[key] ?? sections;
+      if (cur.includes(title)) return prev;
+      return { ...prev, [key]: [...cur, title] };
+    });
+  }, [activeId, sections]);
+
+  const updateSection = useCallback(async (oldTitle: string, newTitle: string) => {
+    if (activeId == null) return;
+    // Update all tasks in this section
+    const tasksToUpdate = (activeCl?.tasks ?? []).filter((t) => t.section === oldTitle);
+    await Promise.all(
+      tasksToUpdate.map((t) =>
+        updateChecklistTask(activeId, t.id, { section: newTitle }).catch(() => null)
+      )
+    );
+    setActiveCl((prev) => {
+      if (!prev) return prev;
+      return {
         ...prev,
-        [activeMeta.id]: fn(prev[activeMeta.id] ?? []),
+        tasks: prev.tasks.map((t) => (t.section === oldTitle ? { ...t, section: newTitle } : t)),
+      };
+    });
+    // Update pending sections
+    setPendingSections((prev) => {
+      const key = String(activeId);
+      const cur = prev[key] ?? [];
+      return { ...prev, [key]: cur.map((s) => (s === oldTitle ? newTitle : s)) };
+    });
+    setSectionOrderOverride((prev) => {
+      const key = String(activeId);
+      const cur = prev[key] ?? sections;
+      return { ...prev, [key]: cur.map((s) => (s === oldTitle ? newTitle : s)) };
+    });
+  }, [activeId, activeCl, sections]);
+
+  const removeSection = useCallback(async (title: string) => {
+    if (activeId == null) return;
+    // Delete all tasks in this section
+    const tasksToDelete = (activeCl?.tasks ?? []).filter((t) => t.section === title);
+    await Promise.all(
+      tasksToDelete.map((t) => deleteChecklistTask(activeId, t.id).catch(() => null))
+    );
+    setActiveCl((prev) => {
+      if (!prev) return prev;
+      return { ...prev, tasks: prev.tasks.filter((t) => t.section !== title) };
+    });
+    setPendingSections((prev) => {
+      const key = String(activeId);
+      return { ...prev, [key]: (prev[key] ?? []).filter((s) => s !== title) };
+    });
+    setSectionOrderOverride((prev) => {
+      const key = String(activeId);
+      return { ...prev, [key]: (prev[key] ?? sections).filter((s) => s !== title) };
+    });
+  }, [activeId, activeCl, sections]);
+
+  const reorderSections = useCallback((newSections: string[]) => {
+    const key = String(activeId ?? "");
+    setSectionOrderOverride((prev) => ({ ...prev, [key]: newSections }));
+  }, [activeId]);
+
+  const reorderTasksInSection = useCallback(async (category: string, newSectionTasks: Task[]) => {
+    if (activeId == null) return;
+    // Update sortOrder for each task
+    setActiveCl((prev) => {
+      if (!prev) return prev;
+      const otherTasks = prev.tasks.filter((t) => t.section !== category);
+      const reordered = newSectionTasks.map((t, i) => ({
+        ...prev.tasks.find((pt) => pt.id === t.id)!,
+        sortOrder: i,
       }));
-    },
-    [activeMeta?.id]
-  );
+      return { ...prev, tasks: [...otherTasks, ...reordered] };
+    });
+    // Persist sortOrder to API (fire-and-forget)
+    newSectionTasks.forEach((t, i) => {
+      updateChecklistTask(activeId, t.id, { sortOrder: i }).catch(() => null);
+    });
+  }, [activeId]);
 
-  const toggleTask = useCallback(
-    (id: number) =>
-      updateActiveTasks((ts) => ts.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))),
-    [updateActiveTasks]
-  );
-
-  const resetChecklist = useCallback(
-    () => updateActiveTasks((ts) => ts.map((t) => ({ ...t, completed: false }))),
-    [updateActiveTasks]
-  );
-
-  const addTask = useCallback(
-    (category: string, text: string, required: boolean) =>
-      updateActiveTasks((ts) => [
-        ...ts,
-        { id: nextTaskId(), category, text, completed: false, required },
-      ]),
-    [updateActiveTasks]
-  );
-
-  const updateTask = useCallback(
-    (id: number, updates: Partial<Omit<Task, "id">>) =>
-      updateActiveTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...updates } : t))),
-    [updateActiveTasks]
-  );
-
-  const removeTask = useCallback(
-    (id: number) => updateActiveTasks((ts) => ts.filter((t) => t.id !== id)),
-    [updateActiveTasks]
-  );
-
-  // ── Section ops ────────────────────────────────────────────────────────────
-  const updateActiveSections = useCallback(
-    (fn: (sections: string[]) => string[]) => {
-      setChecklists((prev) =>
-        prev.map((c) => (c.id === activeMeta.id ? { ...c, sections: fn(c.sections) } : c))
-      );
-    },
-    [activeMeta?.id]
-  );
-
-  const addSection = useCallback(
-    (title: string) => updateActiveSections((s) => [...s, title]),
-    [updateActiveSections]
-  );
-
-  const updateSection = useCallback(
-    (oldTitle: string, newTitle: string) => {
-      updateActiveSections((s) => s.map((x) => (x === oldTitle ? newTitle : x)));
-      updateActiveTasks((ts) =>
-        ts.map((t) => (t.category === oldTitle ? { ...t, category: newTitle } : t))
-      );
-    },
-    [updateActiveSections, updateActiveTasks]
-  );
-
-  const removeSection = useCallback(
-    (title: string) => {
-      updateActiveSections((s) => s.filter((x) => x !== title));
-      updateActiveTasks((ts) => ts.filter((t) => t.category !== title));
-    },
-    [updateActiveSections, updateActiveTasks]
-  );
-
-  const reorderSections = useCallback(
-    (newSections: string[]) => updateActiveSections(() => newSections),
-    [updateActiveSections]
-  );
-
-  const reorderTasksInSection = useCallback(
-    (category: string, newSectionTasks: Task[]) => {
-      updateActiveTasks((prev) => {
-        const categoryIndices: number[] = [];
-        prev.forEach((t, i) => { if (t.category === category) categoryIndices.push(i); });
-        const result = [...prev];
-        categoryIndices.forEach((idx, i) => { result[idx] = newSectionTasks[i]; });
-        return result;
-      });
-    },
-    [updateActiveTasks]
-  );
-
-  // ── History ops ────────────────────────────────────────────────────────────
-  const completeChecklist = useCallback(() => {
-    const snapshot: CompletedChecklist = {
-      id: uid(),
-      checklistId: activeMeta.id,
-      checklistName: activeMeta.name,
-      completedAt: new Date().toISOString(),
-      sections: [...sections],
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        category: t.category,
-        text: t.text,
-        completed: t.completed,
-        required: t.required,
-      })),
-    };
-    setCompletionHistory((prev) => [snapshot, ...prev]);
-    // Reset the checklist after saving
-    updateActiveTasks((ts) => ts.map((t) => ({ ...t, completed: false })));
-  }, [activeMeta, sections, tasks, updateActiveTasks]);
+  // ── History operations ──────────────────────────────────────────────────────
+  const completeChecklist = useCallback(async () => {
+    if (!activeShift || activeId == null) return;
+    try {
+      const submitted = await submitShift(activeShift.id, {});
+      setHistoryShifts((prev) => [submitted, ...prev]);
+      // Open a new shift
+      const newShift = await openShift(activeId);
+      setActiveShift(newShift);
+      setActiveShiftIds((prev) => ({ ...prev, [String(activeId)]: newShift.id }));
+    } catch {}
+  }, [activeShift, activeId]);
 
   const deleteHistoryEntry = useCallback((id: string) => {
-    setCompletionHistory((prev) => prev.filter((e) => e.id !== id));
+    setHiddenShiftIds((prev) => new Set([...prev, id]));
   }, []);
 
   const clearHistory = useCallback(() => {
-    setCompletionHistory([]);
-  }, []);
+    setHiddenShiftIds((prev) => new Set([...prev, ...historyShifts.map((s) => String(s.id))]));
+  }, [historyShifts]);
 
   const clearMockHistory = useCallback(() => {
-    setCompletionHistory((prev) => prev.filter((e) => !e.id.startsWith('mock-')));
+    // No-op for API-backed context (no mock data)
   }, []);
 
-  const seedHistory = useCallback((items: CompletedChecklist[]) => {
-    setCompletionHistory((prev) => {
-      const existingIds = new Set(prev.map((e) => e.id));
-      const novel = items.filter((e) => !existingIds.has(e.id));
-      return [...novel, ...prev].sort(
-        (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
-      );
-    });
+  const seedHistory = useCallback((_items: CompletedChecklist[]) => {
+    // No-op for API-backed context (history comes from server)
   }, []);
 
   const updateAppConfig = useCallback((updates: Partial<AppConfig>) => {
     setAppConfig((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  // ── Active checklist id (string for backward compat) ────────────────────────
+  const activeChecklistId = activeId != null ? String(activeId) : (checklistMetas[0]?.id ?? "");
+
   return (
     <ChecklistContext.Provider
       value={{
-        checklists,
-        activeChecklistId: activeMeta?.id ?? activeId,
+        checklists: checklistMetas,
+        activeChecklistId,
         setActiveChecklistId,
         addChecklist,
         updateChecklistName,

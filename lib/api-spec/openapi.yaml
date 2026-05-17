@@ -20,6 +20,10 @@ tags:
     description: Onboarding flow
   - name: org-units
     description: Organisational unit hierarchy
+  - name: checklists
+    description: Checklist templates owned by locations
+  - name: shifts
+    description: Shift logs and task completions
 paths:
   /healthz:
     get:
@@ -464,6 +468,348 @@ paths:
         "204":
           description: Deleted
 
+  # ── Checklists ──────────────────────────────────────────────────────────────
+
+  /checklists:
+    get:
+      operationId: listChecklists
+      tags: [checklists]
+      summary: List checklists for the caller's tenant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: List of checklists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Checklist"
+    post:
+      operationId: createChecklist
+      tags: [checklists]
+      summary: Create a new checklist
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checklist"
+
+  /checklists/{id}:
+    get:
+      operationId: getChecklist
+      tags: [checklists]
+      summary: Get a checklist with its tasks
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Checklist with tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistWithTasks"
+        "404":
+          description: Not found
+    put:
+      operationId: updateChecklist
+      tags: [checklists]
+      summary: Update a checklist's name or location
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistUpdate"
+      responses:
+        "200":
+          description: Updated checklist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checklist"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteChecklist
+      tags: [checklists]
+      summary: Delete a checklist and all its tasks
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /checklists/{id}/tasks:
+    get:
+      operationId: listChecklistTasks
+      tags: [checklists]
+      summary: List tasks for a checklist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChecklistTask"
+    post:
+      operationId: createChecklistTask
+      tags: [checklists]
+      summary: Add a task to a checklist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistTaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistTask"
+
+  /checklists/{id}/tasks/{taskId}:
+    put:
+      operationId: updateChecklistTask
+      tags: [checklists]
+      summary: Update a checklist task
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistTaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistTask"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteChecklistTask
+      tags: [checklists]
+      summary: Delete a checklist task
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /checklists/{id}/shifts:
+    get:
+      operationId: listShifts
+      tags: [shifts]
+      summary: List shift logs for a checklist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of shifts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShiftLog"
+    post:
+      operationId: openShift
+      tags: [shifts]
+      summary: Open a new shift for a checklist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Opened shift
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftWithCompletions"
+
+  # ── Shifts ───────────────────────────────────────────────────────────────────
+
+  /shifts/{id}:
+    get:
+      operationId: getShift
+      tags: [shifts]
+      summary: Get a shift log with its task completions
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shift with completions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftWithCompletions"
+        "404":
+          description: Not found
+
+  /shifts/{id}/submit:
+    post:
+      operationId: submitShift
+      tags: [shifts]
+      summary: Submit (close out) a shift
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShiftSubmitInput"
+      responses:
+        "200":
+          description: Submitted shift
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftWithCompletions"
+        "404":
+          description: Not found
+
+  /shifts/{id}/tasks/{taskId}/complete:
+    post:
+      operationId: completeShiftTask
+      tags: [shifts]
+      summary: Mark a task complete in a shift
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Task marked complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftTaskCompletion"
+        "404":
+          description: Not found
+        "409":
+          description: Already complete
+    delete:
+      operationId: uncompleteShiftTask
+      tags: [shifts]
+      summary: Unmark a task completion in a shift
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Completion removed
+        "404":
+          description: Not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -815,3 +1161,193 @@ components:
                 type: string
             required: [email, error]
       required: [invited, failed]
+
+    Checklist:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenantId:
+          type: integer
+        locationId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        createdBy:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, tenantId, name, createdAt, updatedAt]
+
+    ChecklistInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        locationId:
+          type: ["integer", "null"]
+      required: [name]
+
+    ChecklistUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        locationId:
+          type: ["integer", "null"]
+
+    ChecklistTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        checklistId:
+          type: integer
+        section:
+          type: string
+        text:
+          type: string
+        required:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, checklistId, section, text, required, sortOrder, createdAt]
+
+    ChecklistTaskInput:
+      type: object
+      properties:
+        section:
+          type: string
+          minLength: 1
+        text:
+          type: string
+          minLength: 1
+        required:
+          type: boolean
+        sortOrder:
+          type: integer
+      required: [section, text]
+
+    ChecklistTaskUpdate:
+      type: object
+      properties:
+        section:
+          type: string
+          minLength: 1
+        text:
+          type: string
+          minLength: 1
+        required:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    ChecklistWithTasks:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenantId:
+          type: integer
+        locationId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        createdBy:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistTask"
+      required: [id, tenantId, name, createdAt, updatedAt, tasks]
+
+    ShiftLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenantId:
+          type: integer
+        checklistId:
+          type: ["integer", "null"]
+        locationId:
+          type: ["integer", "null"]
+        openedBy:
+          type: ["integer", "null"]
+        submittedBy:
+          type: ["integer", "null"]
+        openedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: ["string", "null"]
+          format: date-time
+        notes:
+          type: ["string", "null"]
+      required: [id, tenantId, openedAt]
+
+    ShiftTaskCompletion:
+      type: object
+      properties:
+        id:
+          type: integer
+        shiftLogId:
+          type: integer
+        taskId:
+          type: integer
+        completedBy:
+          type: ["integer", "null"]
+        completedAt:
+          type: string
+          format: date-time
+      required: [id, shiftLogId, taskId, completedAt]
+
+    ShiftWithCompletions:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenantId:
+          type: integer
+        checklistId:
+          type: ["integer", "null"]
+        locationId:
+          type: ["integer", "null"]
+        openedBy:
+          type: ["integer", "null"]
+        submittedBy:
+          type: ["integer", "null"]
+        openedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: ["string", "null"]
+          format: date-time
+        notes:
+          type: ["string", "null"]
+        completions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShiftTaskCompletion"
+      required: [id, tenantId, openedAt, completions]
+
+    ShiftSubmitInput:
+      type: object
+      properties:
+        notes:
+          type: string
