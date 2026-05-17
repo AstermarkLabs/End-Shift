@@ -86,7 +86,23 @@ router.post(
       return;
     }
 
-    // Validate parent belongs to the same tenant.
+    // Regions must be top-level; districts need a region parent; locations need a district parent.
+    if (body.type === "region" && body.parentId) {
+      res.status(400).json({ error: "Regions cannot have a parent" });
+      return;
+    }
+
+    if (body.type === "district" && !body.parentId) {
+      res.status(400).json({ error: "Districts must be placed under a region" });
+      return;
+    }
+
+    if (body.type === "location" && !body.parentId) {
+      res.status(400).json({ error: "Locations must be placed under a district" });
+      return;
+    }
+
+    // Validate parent belongs to the same tenant and has the correct type.
     if (body.parentId !== null && body.parentId !== undefined) {
       const parent = await db
         .select()
@@ -95,6 +111,14 @@ router.post(
         .limit(1);
       if (parent.length === 0 || parent[0].tenantId !== tenantId) {
         res.status(400).json({ error: "Invalid parent org unit" });
+        return;
+      }
+      const expectedParentType =
+        body.type === "district" ? "region" : "district";
+      if (parent[0].type !== expectedParentType) {
+        res.status(400).json({
+          error: `${body.type}s can only be placed under ${expectedParentType}s`,
+        });
         return;
       }
     }
@@ -142,19 +166,35 @@ router.put(
     }
 
     // Validate new parent if changing it.
-    if ("parentId" in body && body.parentId !== null && body.parentId !== undefined) {
-      if (body.parentId === id) {
-        res.status(400).json({ error: "Org unit cannot be its own parent" });
+    if ("parentId" in body) {
+      const unitType = existing[0].type;
+
+      if (unitType === "region" && body.parentId) {
+        res.status(400).json({ error: "Regions cannot have a parent" });
         return;
       }
-      const parent = await db
-        .select()
-        .from(orgUnitsTable)
-        .where(eq(orgUnitsTable.id, body.parentId))
-        .limit(1);
-      if (parent.length === 0 || parent[0].tenantId !== existing[0].tenantId) {
-        res.status(400).json({ error: "Invalid parent org unit" });
-        return;
+
+      if (body.parentId !== null && body.parentId !== undefined) {
+        if (body.parentId === id) {
+          res.status(400).json({ error: "Org unit cannot be its own parent" });
+          return;
+        }
+        const parent = await db
+          .select()
+          .from(orgUnitsTable)
+          .where(eq(orgUnitsTable.id, body.parentId))
+          .limit(1);
+        if (parent.length === 0 || parent[0].tenantId !== existing[0].tenantId) {
+          res.status(400).json({ error: "Invalid parent org unit" });
+          return;
+        }
+        const expectedParentType = unitType === "district" ? "region" : "district";
+        if (unitType !== "region" && parent[0].type !== expectedParentType) {
+          res.status(400).json({
+            error: `${unitType}s can only be placed under ${expectedParentType}s`,
+          });
+          return;
+        }
       }
     }
 

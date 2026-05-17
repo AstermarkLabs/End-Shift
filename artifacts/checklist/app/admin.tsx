@@ -16,24 +16,22 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
-  createOrgUnit,
   createProfile,
   createRole,
-  deleteOrgUnit,
   deleteProfile,
   deleteRole,
   listOrgUnits,
   listProfiles,
   listRoles,
-  OrgUnitType,
   Right,
-  updateOrgUnit,
   updateProfile,
   updateRole,
   type OrgUnit,
   type Profile,
   type Role,
 } from "@workspace/api-client-react";
+
+import { OrgUnitTree } from "@/components/admin/OrgUnitTree";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -66,10 +64,10 @@ export default function AdminScreen() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const [profileModal, setProfileModal] = useState<{ open: boolean; editing: Profile | null }>({ open: false, editing: null });
   const [roleModal, setRoleModal] = useState<{ open: boolean; editing: Role | null }>({ open: false, editing: null });
-  const [orgUnitModal, setOrgUnitModal] = useState<{ open: boolean; editing: OrgUnit | null }>({ open: false, editing: null });
 
   const reload = async () => {
     setLoading(true);
@@ -105,7 +103,10 @@ export default function AdminScreen() {
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
+        <ScrollView
+          scrollEnabled={scrollEnabled}
+          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 12 }}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.section, { color: colors.foreground }]}>Users</Text>
             {canManageProfiles && (
@@ -157,35 +158,12 @@ export default function AdminScreen() {
 
           <View style={[styles.sectionHeader, { marginTop: 16 }]}>
             <Text style={[styles.section, { color: colors.foreground }]}>Org Units</Text>
-            {canManageOrgUnits && (
-              <TouchableOpacity onPress={() => setOrgUnitModal({ open: true, editing: null })}>
-                <Text style={{ color: colors.primary, fontWeight: "600" }}>+ New</Text>
-              </TouchableOpacity>
-            )}
           </View>
-          {orgUnits.length === 0 && (
-            <Text style={{ color: colors.mutedForeground, fontSize: 13, paddingHorizontal: 4 }}>
-              No org units yet. Add regions, districts, and locations.
-            </Text>
-          )}
-          {orgUnits.map((u) => {
-            const parent = u.parentId != null ? orgUnits.find((x) => x.id === u.parentId) : null;
-            return (
-              <TouchableOpacity
-                key={u.id}
-                style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => canManageOrgUnits && setOrgUnitModal({ open: true, editing: u })}
-                disabled={!canManageOrgUnits}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.foreground, fontWeight: "600" }}>{u.name}</Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-                    {u.type}{parent ? ` · under ${parent.name}` : ""}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          <OrgUnitTree
+            orgUnits={orgUnits}
+            canManage={canManageOrgUnits}
+            onScrollEnable={setScrollEnabled}
+          />
         </ScrollView>
       )}
 
@@ -202,12 +180,6 @@ export default function AdminScreen() {
         onClose={() => setRoleModal({ open: false, editing: null })}
         currentRoleLevel={profile.role.level}
         isSystem={profile.role.isSystem}
-        onSaved={reload}
-      />
-      <OrgUnitEditModal
-        state={orgUnitModal}
-        onClose={() => setOrgUnitModal({ open: false, editing: null })}
-        allUnits={orgUnits}
         onSaved={reload}
       />
     </View>
@@ -541,143 +513,6 @@ function RoleEditModal({
         {state.editing && (
           <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: colors.destructive }]} onPress={onDelete}>
             <Text style={{ color: colors.destructiveForeground, fontWeight: "600" }}>Delete role</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
-    </Modal>
-  );
-}
-
-const ORG_UNIT_TYPES = Object.values(OrgUnitType) as OrgUnit["type"][];
-
-function OrgUnitEditModal({
-  state,
-  onClose,
-  allUnits,
-  onSaved,
-}: {
-  state: { open: boolean; editing: OrgUnit | null };
-  onClose: () => void;
-  allUnits: OrgUnit[];
-  onSaved: () => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [name, setName] = useState("");
-  const [type, setType] = useState<OrgUnit["type"]>("region");
-  const [parentId, setParentId] = useState<number | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!state.open) return;
-    setName(state.editing?.name ?? "");
-    setType(state.editing?.type ?? "region");
-    setParentId(state.editing?.parentId ?? null);
-  }, [state.open, state.editing]);
-
-  const eligibleParents = allUnits.filter((u) =>
-    state.editing ? u.id !== state.editing.id : true
-  );
-
-  const onSubmit = async () => {
-    if (!name.trim()) {
-      Alert.alert("Required", "Name is required.");
-      return;
-    }
-    setBusy(true);
-    try {
-      if (state.editing) {
-        const patch: { name?: string; parentId?: number | null } = {};
-        if (name !== state.editing.name) patch.name = name;
-        if (parentId !== state.editing.parentId) patch.parentId = parentId;
-        if (Object.keys(patch).length === 0) { onClose(); return; }
-        await updateOrgUnit(state.editing.id, patch);
-      } else {
-        await createOrgUnit({ name: name.trim(), type, parentId: parentId ?? undefined });
-      }
-      onSaved();
-      onClose();
-    } catch (e) {
-      Alert.alert("Failed", describeApiError(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onDelete = () => {
-    if (!state.editing) return;
-    Alert.alert("Delete org unit", `Delete "${state.editing.name}"? This will fail if it has child units or assigned users.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete", style: "destructive", onPress: async () => {
-          try {
-            await deleteOrgUnit(state.editing!.id);
-            onSaved();
-            onClose();
-          } catch (e) { Alert.alert("Failed", describeApiError(e)); }
-        },
-      },
-    ]);
-  };
-
-  return (
-    <Modal visible={state.open} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.foreground }]}>{state.editing ? "Edit org unit" : "New org unit"}</Text>
-          <TouchableOpacity onPress={onClose}><Text style={{ color: colors.primary }}>Cancel</Text></TouchableOpacity>
-        </View>
-
-        <Field label="Name" value={name} onChangeText={setName} editable={!busy} />
-
-        {!state.editing && (
-          <>
-            <Text style={[styles.label, { color: colors.foreground }]}>Type</Text>
-            <View style={{ gap: 6 }}>
-              {ORG_UNIT_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.row, { backgroundColor: type === t ? colors.secondary : colors.card, borderColor: colors.border }]}
-                  onPress={() => setType(t)}
-                >
-                  <Text style={{ color: colors.foreground, textTransform: "capitalize" }}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        )}
-
-        <Text style={[styles.label, { color: colors.foreground }]}>Parent unit (optional)</Text>
-        <TouchableOpacity
-          style={[styles.row, { backgroundColor: parentId === null ? colors.secondary : colors.card, borderColor: colors.border }]}
-          onPress={() => setParentId(null)}
-        >
-          <Text style={{ color: colors.foreground }}>None (top-level)</Text>
-        </TouchableOpacity>
-        {eligibleParents.map((u) => (
-          <TouchableOpacity
-            key={u.id}
-            style={[styles.row, { backgroundColor: parentId === u.id ? colors.secondary : colors.card, borderColor: colors.border }]}
-            onPress={() => setParentId(u.id)}
-          >
-            <Text style={{ color: colors.foreground }}>{u.name}</Text>
-            <Text style={{ color: colors.mutedForeground, fontSize: 12, marginLeft: 6 }}>({u.type})</Text>
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
-          onPress={onSubmit}
-          disabled={busy}
-        >
-          {busy ? <ActivityIndicator color={colors.primaryForeground} /> : (
-            <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>Save</Text>
-          )}
-        </TouchableOpacity>
-
-        {state.editing && (
-          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: colors.destructive }]} onPress={onDelete}>
-            <Text style={{ color: colors.destructiveForeground, fontWeight: "600" }}>Delete org unit</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
