@@ -71,13 +71,13 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView>
             <KeyboardProvider>
-              <ChecklistProvider>
-                <OnboardingProvider>
-                  <AuthProvider>
+              <AuthProvider>
+                <ChecklistProvider>
+                  <OnboardingProvider>
                     <RootLayoutNav />
-                  </AuthProvider>
-                </OnboardingProvider>
-              </ChecklistProvider>
+                  </OnboardingProvider>
+                </ChecklistProvider>
+              </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

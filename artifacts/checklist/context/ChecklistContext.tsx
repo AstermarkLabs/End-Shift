@@ -8,6 +8,8 @@ import React, {
   useState,
 } from "react";
 
+import { useAuth } from "@/context/AuthContext";
+
 import {
   listChecklists,
   getChecklist,
@@ -184,6 +186,8 @@ interface ChecklistContextValue {
 export const ChecklistContext = createContext<ChecklistContextValue | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
+  const { ready, profile } = useAuth();
+
   // ── Raw API data ────────────────────────────────────────────────────────────
   const [apiChecklists, setApiChecklists] = useState<Checklist[]>([]);
   const [activeCl, setActiveCl] = useState<ChecklistWithTasks | null>(null);
@@ -203,7 +207,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
 
   const loaded = useRef(false);
-  const loadingRef = useRef(false);
+  const activeIdRef = useRef<number | null>(null);
+  activeIdRef.current = activeId;
 
   // ── Load persisted state ────────────────────────────────────────────────────
   useEffect(() => {
@@ -273,18 +278,29 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Only fetch once auth is ready and a user is signed in.
   useEffect(() => {
+    if (!ready || !profile) return;
     refreshChecklists();
-  }, [refreshChecklists]);
+  }, [ready, profile?.id, refreshChecklists]);
+
+  // Clear all checklist state when the user signs out.
+  useEffect(() => {
+    if (!ready || profile) return;
+    setApiChecklists([]);
+    setActiveCl(null);
+    setActiveShift(null);
+    setHistoryShifts([]);
+    setActiveId(null);
+    setActiveShiftIds({});
+  }, [ready, profile]);
 
   // ── Fetch active checklist + manage shift when activeId changes ─────────────
   useEffect(() => {
-    if (activeId == null) return;
+    if (!ready || !profile || activeId == null) return;
     let cancelled = false;
 
     async function load() {
-      if (loadingRef.current) return;
-      loadingRef.current = true;
       try {
         const cl = await getChecklist(activeId!);
         if (cancelled) return;
@@ -314,8 +330,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         await loadHistory(activeId!, cl);
       } catch {
         // API unavailable
-      } finally {
-        loadingRef.current = false;
       }
     }
 
@@ -333,7 +347,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     load();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId]);
+  }, [activeId, ready]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const clIdStr = activeId != null ? String(activeId) : "";
@@ -363,22 +377,26 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   // ── Checklist management ────────────────────────────────────────────────────
   const setActiveChecklistId = useCallback((id: string) => {
-    setActiveId(Number(id));
-    setActiveCl(null);
-    setActiveShift(null);
-    setHistoryShifts([]);
+    const numId = Number(id);
+    if (numId !== activeIdRef.current) {
+      setActiveCl(null);
+      setActiveShift(null);
+      setHistoryShifts([]);
+    }
+    setActiveId(numId);
   }, []);
 
   const addChecklist = useCallback(async (name: string) => {
     try {
-      const created = await createChecklist({ name });
+      const locationId = profile?.orgUnitId ?? null;
+      const created = await createChecklist({ name, ...(locationId != null ? { locationId } : {}) });
       setApiChecklists((prev) => [...prev, created]);
       setActiveId(created.id);
       setActiveCl({ ...created, tasks: [] });
       setActiveShift(null);
       setHistoryShifts([]);
     } catch {}
-  }, []);
+  }, [profile?.orgUnitId]);
 
   const updateChecklistName = useCallback(async (id: string, name: string) => {
     const numId = Number(id);
