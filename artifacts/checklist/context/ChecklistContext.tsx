@@ -9,6 +9,7 @@ import React, {
 } from "react";
 
 import { useAuth } from "@/context/AuthContext";
+import { ChecklistCache } from "@/utils/checklistCache";
 
 import {
   listChecklists,
@@ -209,34 +210,72 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
 
   const loaded = useRef(false);
+  const hasFetchedRef = useRef(false);
   const activeIdRef = useRef<number | null>(null);
   activeIdRef.current = activeId;
+  const [storageLoaded, setStorageLoaded] = useState(false);
 
-  // ── Load persisted state ────────────────────────────────────────────────────
+  // In-memory cache for zero-latency checklist switching
+  const clMemCacheRef = useRef<Map<number, ChecklistWithTasks>>(new Map());
+  const shiftMemCacheRef = useRef<Map<number, ShiftWithCompletions>>(new Map());
+  const historyMemCacheRef = useRef<Map<number, ShiftWithCompletions[]>>(new Map());
+
+  // ── Load persisted state + seed from cache ─────────────────────────────────
   useEffect(() => {
-    AsyncStorage.multiGet([
-      KEY_ACTIVE,
-      KEY_ACTIVE_SHIFTS,
-      KEY_HIDDEN_SHIFTS,
-      KEY_PENDING_SECTIONS,
-      KEY_APP_CONFIG,
-    ]).then((pairs) => {
+    async function init() {
+      const pairs = await AsyncStorage.multiGet([
+        KEY_ACTIVE,
+        KEY_ACTIVE_SHIFTS,
+        KEY_HIDDEN_SHIFTS,
+        KEY_PENDING_SECTIONS,
+        KEY_APP_CONFIG,
+      ]);
       const [active, shifts, hidden, pending, cfg] = pairs.map(([, v]) => v);
-      if (active) setActiveId(Number(active));
-      if (shifts) {
-        try { setActiveShiftIds(JSON.parse(shifts)); } catch {}
+
+      let initialId: number | null = null;
+      if (active) {
+        initialId = Number(active);
+        setActiveId(initialId);
       }
-      if (hidden) {
-        try { setHiddenShiftIds(new Set(JSON.parse(hidden))); } catch {}
+      if (shifts) { try { setActiveShiftIds(JSON.parse(shifts)); } catch {} }
+      if (hidden) { try { setHiddenShiftIds(new Set(JSON.parse(hidden))); } catch {} }
+      if (pending) { try { setPendingSections(JSON.parse(pending)); } catch {} }
+      if (cfg) { try { setAppConfig({ ...DEFAULT_APP_CONFIG, ...JSON.parse(cfg) }); } catch {} }
+
+      // Seed checklist list from cache so the UI is non-empty immediately
+      const cachedList = await ChecklistCache.loadList();
+      if (cachedList && cachedList.length > 0) {
+        setApiChecklists(cachedList);
+        if (initialId == null) {
+          initialId = cachedList[0].id;
+          setActiveId(initialId);
+        }
       }
-      if (pending) {
-        try { setPendingSections(JSON.parse(pending)); } catch {}
+
+      // Seed active checklist + shift + history from cache
+      if (initialId != null) {
+        const cache = new ChecklistCache(initialId);
+        const { checklist, shift, history } = await cache.load();
+        if (checklist) {
+          clMemCacheRef.current.set(initialId, checklist);
+          setActiveCl(checklist);
+        }
+        if (shift && !shift.submittedAt) {
+          shiftMemCacheRef.current.set(initialId, shift);
+          setActiveShift(shift);
+        }
+        const validHistory = history.filter((s) => s.submittedAt != null);
+        if (validHistory.length > 0) {
+          historyMemCacheRef.current.set(initialId, validHistory);
+          setHistoryShifts(validHistory);
+        }
       }
-      if (cfg) {
-        try { setAppConfig({ ...DEFAULT_APP_CONFIG, ...JSON.parse(cfg) }); } catch {}
-      }
+
       loaded.current = true;
-    });
+      setStorageLoaded(true);
+    }
+
+    init();
   }, []);
 
   // ── Persist state changes ───────────────────────────────────────────────────
@@ -265,91 +304,140 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(KEY_APP_CONFIG, JSON.stringify(appConfig));
   }, [appConfig]);
 
-  // ── Fetch all checklists on mount ───────────────────────────────────────────
-  const refreshChecklists = useCallback(async () => {
+  // ── Fetch everything from DB once (on app open) and populate cache ──────────
+  const fetchAllAndCache = useCallback(async () => {
     try {
       const cls = await listChecklists();
       setApiChecklists(cls);
-      // If no active id, pick first
-      setActiveId((prev) => {
-        if (prev != null) return prev;
-        return cls[0]?.id ?? null;
-      });
+      ChecklistCache.saveList(cls).catch(() => null);
+
+      const currentId = activeIdRef.current ?? cls[0]?.id ?? null;
+      if (activeIdRef.current == null && currentId != null) {
+        setActiveId(currentId);
+      }
+
+      // Read shift ids from storage directly to avoid state-loading race
+      let storedShiftIds: Record<string, number> = {};
+      try {
+        const raw = await AsyncStorage.getItem(KEY_ACTIVE_SHIFTS);
+        if (raw) storedShiftIds = JSON.parse(raw);
+      } catch {}
+
+      // Fetch all checklist structures in parallel and cache them
+      await Promise.all(
+        cls.map(async (c) => {
+          try {
+            const cl = await getChecklist(c.id);
+            clMemCacheRef.current.set(c.id, cl);
+            new ChecklistCache(c.id).saveChecklist(cl).catch(() => null);
+            if (c.id === currentId && c.id === activeIdRef.current) {
+              setActiveCl(cl);
+            }
+          } catch {}
+        })
+      );
+
+      // Fetch and cache the active checklist's shift and history
+      if (currentId != null) {
+        const existingShiftId = storedShiftIds[String(currentId)];
+        let shift: ShiftWithCompletions | null = null;
+
+        if (existingShiftId) {
+          try {
+            const fetched = await getShift(existingShiftId);
+            if (!fetched.submittedAt) shift = fetched;
+          } catch {}
+        }
+
+        if (!shift) {
+          try {
+            shift = await openShift(currentId);
+            setActiveShiftIds((prev) => ({ ...prev, [String(currentId)]: shift!.id }));
+          } catch {}
+        }
+
+        if (shift && currentId === activeIdRef.current) {
+          shiftMemCacheRef.current.set(currentId, shift);
+          setActiveShift(shift);
+          new ChecklistCache(currentId).saveShift(shift).catch(() => null);
+        }
+
+        // Load and cache history for the active checklist
+        try {
+          const shifts = await listShifts(currentId);
+          const submitted = shifts.filter((s) => s.submittedAt != null);
+          const full = await Promise.all(submitted.map((s) => getShift(s.id).catch(() => null)));
+          const valid = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
+          if (currentId === activeIdRef.current) {
+            historyMemCacheRef.current.set(currentId, valid);
+            setHistoryShifts(valid);
+            new ChecklistCache(currentId).saveHistory(valid).catch(() => null);
+          }
+        } catch {}
+      }
+
+      // Pre-cache shifts for other checklists that have a stored shift ID
+      await Promise.all(
+        cls
+          .filter((c) => c.id !== currentId && storedShiftIds[String(c.id)] != null)
+          .map(async (c) => {
+            try {
+              const shift = await getShift(storedShiftIds[String(c.id)]);
+              if (!shift.submittedAt) {
+                shiftMemCacheRef.current.set(c.id, shift);
+                new ChecklistCache(c.id).saveShift(shift).catch(() => null);
+              }
+            } catch {}
+          })
+      );
     } catch {
-      // Network unavailable — leave state as-is
+      // Network unavailable — cached data already displayed
+    } finally {
+      hasFetchedRef.current = true;
     }
   }, []);
 
-  // Only fetch once auth is ready and a user is signed in.
+  // Fetch from DB once when auth is ready and storage has loaded.
   useEffect(() => {
-    if (!ready || !profile) return;
-    refreshChecklists();
-  }, [ready, profile?.id, refreshChecklists]);
+    if (!ready || !profile || !storageLoaded) return;
+    fetchAllAndCache();
+  }, [ready, profile?.id, storageLoaded, fetchAllAndCache]);
 
   // Clear all checklist state when the user signs out.
   useEffect(() => {
     if (!ready || profile) return;
+    const ids = apiChecklists.map((c) => c.id);
     setApiChecklists([]);
     setActiveCl(null);
     setActiveShift(null);
     setHistoryShifts([]);
     setActiveId(null);
     setActiveShiftIds({});
+    clMemCacheRef.current.clear();
+    shiftMemCacheRef.current.clear();
+    historyMemCacheRef.current.clear();
+    hasFetchedRef.current = false;
+    ChecklistCache.clearAllByIds(ids).catch(() => null);
   }, [ready, profile]);
 
-  // ── Fetch active checklist + manage shift when activeId changes ─────────────
+  // ── Auto-save cache when active data changes ────────────────────────────────
   useEffect(() => {
-    if (!ready || !profile || activeId == null) return;
-    let cancelled = false;
+    if (!activeCl || activeId == null || activeCl.id !== activeId) return;
+    clMemCacheRef.current.set(activeId, activeCl);
+    new ChecklistCache(activeId).saveChecklist(activeCl).catch(() => null);
+  }, [activeCl, activeId]);
 
-    async function load() {
-      try {
-        const cl = await getChecklist(activeId!);
-        if (cancelled) return;
-        setActiveCl(cl);
+  useEffect(() => {
+    if (!activeShift || activeId == null) return;
+    shiftMemCacheRef.current.set(activeId, activeShift);
+    new ChecklistCache(activeId).saveShift(activeShift).catch(() => null);
+  }, [activeShift, activeId]);
 
-        // Find or open the active shift for this checklist
-        const existingShiftId = activeShiftIds[String(activeId!)];
-        if (existingShiftId) {
-          // Try to fetch the existing shift
-          try {
-            const shift = await getShift(existingShiftId);
-            if (cancelled) return;
-            if (!shift.submittedAt) {
-              setActiveShift(shift);
-              await loadHistory(activeId!, cl);
-              return;
-            }
-          } catch {
-            // Shift not found — open a new one
-          }
-        }
-        // Open a new shift
-        const newShift = await openShift(activeId!);
-        if (cancelled) return;
-        setActiveShift(newShift);
-        setActiveShiftIds((prev) => ({ ...prev, [String(activeId!)]: newShift.id }));
-        await loadHistory(activeId!, cl);
-      } catch {
-        // API unavailable
-      }
-    }
-
-    async function loadHistory(clId: number, cl: ChecklistWithTasks) {
-      try {
-        const shifts = await listShifts(clId);
-        const submitted = shifts.filter((s) => s.submittedAt != null);
-        // Fetch full completions for each submitted shift
-        const full = await Promise.all(submitted.map((s) => getShift(s.id).catch(() => null)));
-        const valid = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
-        if (!cancelled) setHistoryShifts(valid);
-      } catch {}
-    }
-
-    load();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, ready]);
+  useEffect(() => {
+    if (activeId == null) return;
+    historyMemCacheRef.current.set(activeId, historyShifts);
+    new ChecklistCache(activeId).saveHistory(historyShifts).catch(() => null);
+  }, [historyShifts, activeId]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const clIdStr = activeId != null ? String(activeId) : "";
@@ -380,21 +468,48 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   // ── Checklist management ────────────────────────────────────────────────────
   const setActiveChecklistId = useCallback((id: string) => {
     const numId = Number(id);
-    if (numId !== activeIdRef.current) {
-      setActiveCl(null);
-      setActiveShift(null);
-      setHistoryShifts([]);
-    }
+    if (numId === activeIdRef.current) return;
+
+    // Apply from in-memory cache synchronously (zero-latency switch)
+    const cachedCl = clMemCacheRef.current.get(numId) ?? null;
+    const cachedShift = shiftMemCacheRef.current.get(numId) ?? null;
+    const cachedHistory = historyMemCacheRef.current.get(numId) ?? [];
+
+    setActiveCl(cachedCl);
+    setActiveShift(cachedShift && !cachedShift.submittedAt ? cachedShift : null);
+    setHistoryShifts(cachedHistory.filter((s) => s.submittedAt != null));
     setActiveId(numId);
+
+    // If mem cache missed, fall back to AsyncStorage
+    if (!cachedCl) {
+      const targetId = numId;
+      new ChecklistCache(numId).load().then(({ checklist, shift, history }) => {
+        if (activeIdRef.current !== targetId) return;
+        if (checklist) {
+          clMemCacheRef.current.set(targetId, checklist);
+          setActiveCl(checklist);
+        }
+        if (shift && !shift.submittedAt) {
+          shiftMemCacheRef.current.set(targetId, shift);
+          setActiveShift(shift);
+        }
+        const validHistory = history.filter((s) => s.submittedAt != null);
+        historyMemCacheRef.current.set(targetId, validHistory);
+        setHistoryShifts(validHistory);
+      }).catch(() => null);
+    }
   }, []);
 
   const addChecklist = useCallback(async (name: string) => {
     try {
       const locationId = profile?.orgUnitId ?? null;
       const created = await createChecklist({ name, ...(locationId != null ? { locationId } : {}) });
+      const newCl: ChecklistWithTasks = { ...created, tasks: [] };
+      clMemCacheRef.current.set(created.id, newCl);
+      new ChecklistCache(created.id).saveChecklist(newCl).catch(() => null);
       setApiChecklists((prev) => [...prev, created]);
       setActiveId(created.id);
-      setActiveCl({ ...created, tasks: [] });
+      setActiveCl(newCl);
       setActiveShift(null);
       setHistoryShifts([]);
     } catch {}
@@ -415,12 +530,15 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     const numId = Number(id);
     try {
       await deleteChecklist(numId);
+      clMemCacheRef.current.delete(numId);
+      new ChecklistCache(numId).clear().catch(() => null);
       setApiChecklists((prev) => {
         const next = prev.filter((c) => c.id !== numId);
         if (numId === activeId && next.length > 0) {
-          setActiveId(next[0].id);
-          setActiveCl(null);
-          setActiveShift(null);
+          const nextId = next[0].id;
+          setActiveId(nextId);
+          setActiveCl(clMemCacheRef.current.get(nextId) ?? null);
+          setActiveShift(shiftMemCacheRef.current.get(nextId) ?? null);
         }
         return next;
       });
