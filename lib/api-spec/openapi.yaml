@@ -504,6 +504,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/Checklist"
 
+  /checklists/import/pdf:
+    post:
+      operationId: importChecklistFromPdf
+      tags: [checklists]
+      summary: Upload a PDF and extract checklist sections and tasks via OCR
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PdfUpload"
+      responses:
+        "200":
+          description: Parsed checklist structure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfImportResult"
+        "400":
+          description: No file uploaded or invalid file type
+        "422":
+          description: Could not extract text from PDF
+
   /checklists/{id}:
     get:
       operationId: getChecklist
@@ -1345,6 +1369,43 @@ components:
           items:
             $ref: "#/components/schemas/ShiftTaskCompletion"
       required: [id, tenantId, openedAt, completions]
+
+    PdfUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          description: PDF file contents (binary)
+
+    PdfImportTask:
+      type: object
+      properties:
+        text:
+          type: string
+        required:
+          type: boolean
+      required: [text, required]
+
+    PdfImportSection:
+      type: object
+      properties:
+        title:
+          type: string
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PdfImportTask"
+      required: [title, tasks]
+
+    PdfImportResult:
+      type: object
+      properties:
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/PdfImportSection"
+      required: [sections]
 
     ShiftSubmitInput:
       type: object

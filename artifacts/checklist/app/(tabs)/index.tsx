@@ -614,6 +614,15 @@ function ChecklistScreenNative() {
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
+              onPress={() => router.push("/import-pdf")}
+              style={styles.iconAction}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Import from PDF"
+            >
+              <Text style={styles.iconActionText}>📄</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => router.push("/reports")}
               style={styles.iconAction}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

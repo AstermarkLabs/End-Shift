@@ -718,6 +718,27 @@ export const CreateChecklistBody = zod.object({
 });
 
 /**
+ * @summary Upload a PDF and extract checklist sections and tasks via OCR
+ */
+export const ImportChecklistFromPdfBody = zod.object({
+  file: zod.string().describe("PDF file contents (binary)"),
+});
+
+export const ImportChecklistFromPdfResponse = zod.object({
+  sections: zod.array(
+    zod.object({
+      title: zod.string(),
+      tasks: zod.array(
+        zod.object({
+          text: zod.string(),
+          required: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
  * @summary Get a checklist with its tasks
  */
 export const GetChecklistParams = zod.object({

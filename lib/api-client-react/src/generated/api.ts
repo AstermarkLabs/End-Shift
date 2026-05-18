@@ -39,6 +39,8 @@ import type {
   PasskeyAuthVerifyRequest,
   PasskeyCredential,
   PasskeyRegisterVerifyRequest,
+  PdfImportResult,
+  PdfUpload,
   Profile,
   RefreshRequest,
   RegisterRequest,
@@ -2378,6 +2380,94 @@ export const useCreateChecklist = <
   TContext
 > => {
   return useMutation(getCreateChecklistMutationOptions(options));
+};
+
+/**
+ * @summary Upload a PDF and extract checklist sections and tasks via OCR
+ */
+export const getImportChecklistFromPdfUrl = () => {
+  return `/api/checklists/import/pdf`;
+};
+
+export const importChecklistFromPdf = async (
+  pdfUpload: PdfUpload,
+  options?: RequestInit,
+): Promise<PdfImportResult> => {
+  const formData = new FormData();
+  formData.append(`file`, pdfUpload.file);
+
+  return customFetch<PdfImportResult>(getImportChecklistFromPdfUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getImportChecklistFromPdfMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importChecklistFromPdf>>,
+    TError,
+    { data: BodyType<PdfUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importChecklistFromPdf>>,
+  TError,
+  { data: BodyType<PdfUpload> },
+  TContext
+> => {
+  const mutationKey = ["importChecklistFromPdf"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importChecklistFromPdf>>,
+    { data: BodyType<PdfUpload> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importChecklistFromPdf(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportChecklistFromPdfMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importChecklistFromPdf>>
+>;
+export type ImportChecklistFromPdfMutationBody = BodyType<PdfUpload>;
+export type ImportChecklistFromPdfMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload a PDF and extract checklist sections and tasks via OCR
+ */
+export const useImportChecklistFromPdf = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importChecklistFromPdf>>,
+    TError,
+    { data: BodyType<PdfUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importChecklistFromPdf>>,
+  TError,
+  { data: BodyType<PdfUpload> },
+  TContext
+> => {
+  return useMutation(getImportChecklistFromPdfMutationOptions(options));
 };
 
 /**

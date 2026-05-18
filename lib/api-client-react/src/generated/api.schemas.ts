@@ -336,6 +336,25 @@ export interface ShiftWithCompletions {
   completions: ShiftTaskCompletion[];
 }
 
+export interface PdfUpload {
+  /** PDF file contents (binary) */
+  file: string;
+}
+
+export interface PdfImportTask {
+  text: string;
+  required: boolean;
+}
+
+export interface PdfImportSection {
+  title: string;
+  tasks: PdfImportTask[];
+}
+
+export interface PdfImportResult {
+  sections: PdfImportSection[];
+}
+
 export interface ShiftSubmitInput {
   notes?: string;
 }
