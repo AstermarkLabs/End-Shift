@@ -49,6 +49,10 @@ function RootLayoutNav() {
         name="import-pdf"
         options={{ headerShown: false, presentation: "modal" }}
       />
+      <Stack.Screen
+        name="create-account"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
     </Stack>
   );
 }

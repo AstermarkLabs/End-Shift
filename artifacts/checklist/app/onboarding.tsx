@@ -30,7 +30,7 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
-type Step = "account-type" | "personal-account" | "account" | "regions" | "locations" | "team" | "confirm";
+type Step = "account-type" | "personal-account" | "personal-account-form" | "account" | "regions" | "locations" | "team" | "confirm";
 
 // ─── Reusable primitives ──────────────────────────────────────────────────────
 
@@ -198,9 +198,51 @@ function StepAccountType({
   );
 }
 
-// ─── Step 1 (Personal) — Credentials ─────────────────────────────────────────
+// ─── Step 1 (Personal) — Account prompt ──────────────────────────────────────
 
 function StepPersonalAccount({
+  onCreateAccount,
+  onSkip,
+}: {
+  onCreateAccount: () => void;
+  onSkip: () => void;
+}) {
+  const colors = useColors();
+
+  return (
+    <View style={[sh.confirmContainer, { paddingHorizontal: 28 }]}>
+      <View style={[sh.confirmCheck, { backgroundColor: colors.primary }]}>
+        <Text style={sh.confirmCheckText}>🔒</Text>
+      </View>
+      <Text style={[sh.confirmTitle, { color: colors.foreground }]}>
+        Password protect your checklists?
+      </Text>
+      <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground }]}>
+        Creating an account lets you sign in with a password. You can always add one later in Settings.
+      </Text>
+
+      <TouchableOpacity
+        style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32, width: "100%" }]}
+        onPress={onCreateAccount}
+        activeOpacity={0.85}
+      >
+        <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Yes, create an account</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[sh.primaryBtn, { backgroundColor: colors.muted, marginTop: 12, width: "100%" }]}
+        onPress={onSkip}
+        activeOpacity={0.85}
+      >
+        <Text style={[sh.primaryBtnText, { color: colors.mutedForeground }]}>No thanks, skip for now</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Step 1 (Personal) — Credentials form ────────────────────────────────────
+
+function StepPersonalAccountForm({
   stepNum,
   totalSteps,
   onBack,
@@ -1137,13 +1179,15 @@ export default function OnboardingScreen() {
   const [businessName, setBusinessName] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
+  const [wantsAccount, setWantsAccount] = useState(false);
 
   // Build the ordered list of steps based on account kind + business type + settings
   const buildSteps = useCallback(
-    (aKind: "personal" | "business", bType: "single-unit" | "multi-unit"): Step[] => {
+    (aKind: "personal" | "business", bType: "single-unit" | "multi-unit", withForm: boolean): Step[] => {
       const steps: Step[] = ["account-type"];
       if (aKind === "personal") {
         steps.push("personal-account");
+        if (withForm) steps.push("personal-account-form");
       } else {
         steps.push("account");
         if (bType === "multi-unit") {
@@ -1158,7 +1202,7 @@ export default function OnboardingScreen() {
     [settings],
   );
 
-  const steps = buildSteps(accountKind, businessType);
+  const steps = buildSteps(accountKind, businessType, wantsAccount);
   const currentIdx = steps.indexOf(step);
   // Step numbers displayed to user exclude the "account-type" selector screen
   const displayIdx = currentIdx; // 0-based from account-type
@@ -1179,14 +1223,24 @@ export default function OnboardingScreen() {
   const handleAccountTypeChosen = useCallback(
     (kind: "personal" | "business") => {
       setAccountKind(kind);
-      const nextSteps = buildSteps(kind, businessType);
+      const nextSteps = buildSteps(kind, businessType, false);
       const next = nextSteps[1];
       if (next) setStep(next);
     },
     [setAccountKind, buildSteps, businessType],
   );
 
-  const handlePersonalAccountDone = useCallback(() => {
+  const handlePersonalAccountCreateAccount = useCallback(() => {
+    setWantsAccount(true);
+    setStep("personal-account-form");
+  }, []);
+
+  const handlePersonalAccountSkip = useCallback(async () => {
+    await saveStorageMode("local-no-auth");
+    setStep("confirm");
+  }, []);
+
+  const handlePersonalAccountFormDone = useCallback(() => {
     setStep("confirm");
   }, []);
 
@@ -1195,7 +1249,7 @@ export default function OnboardingScreen() {
       setBusinessName(bName);
       setBusinessType(bType);
       updateAppConfig({ name: bName });
-      const nextSteps = buildSteps("business", bType);
+      const nextSteps = buildSteps("business", bType, false);
       const accountIdx = nextSteps.indexOf("account");
       const next = nextSteps[accountIdx + 1];
       if (next) setStep(next);
@@ -1283,10 +1337,16 @@ export default function OnboardingScreen() {
       )}
       {step === "personal-account" && (
         <StepPersonalAccount
+          onCreateAccount={handlePersonalAccountCreateAccount}
+          onSkip={handlePersonalAccountSkip}
+        />
+      )}
+      {step === "personal-account-form" && (
+        <StepPersonalAccountForm
           stepNum={stepNum}
           totalSteps={totalSteps}
           onBack={goBack}
-          onDone={handlePersonalAccountDone}
+          onDone={handlePersonalAccountFormDone}
         />
       )}
       {step === "account" && (

@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -18,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
+import { STORAGE_MODE_KEY } from "@/utils/localChecklistStore";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,13 @@ export default function AppSettingsScreen() {
   const { completionHistory, clearHistory, resetChecklist, appConfig, updateAppConfig } = useChecklist();
   const { profile } = useAuth();
   const isWeb = Platform.OS === "web";
+  const [isNoAuthMode, setIsNoAuthMode] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_MODE_KEY)
+      .then((mode) => setIsNoAuthMode(mode === "local-no-auth"))
+      .catch(() => setIsNoAuthMode(false));
+  }, [profile]);
 
   const showAdminLink =
     !!profile && (
@@ -339,15 +348,28 @@ export default function AppSettingsScreen() {
         {/* ── Account ── */}
         <SectionLabel title="ACCOUNT" />
         <View style={[styles.group, { borderColor: colors.border }]}>
-          <SettingsRow
-            icon="👤"
-            label="Profile & Passkeys"
-            subtitle="Change password, manage passkeys, sign out"
-            onPress={() => {
-              router.back();
-              setTimeout(() => router.push("/profile"), 50);
-            }}
-          />
+          {isNoAuthMode && (
+            <SettingsRow
+              icon="🔐"
+              label="Create Account"
+              subtitle="Add a password to protect your checklists"
+              onPress={() => {
+                router.back();
+                setTimeout(() => router.push("/create-account"), 50);
+              }}
+            />
+          )}
+          {!!profile && (
+            <SettingsRow
+              icon="👤"
+              label="Profile & Passkeys"
+              subtitle="Change password, manage passkeys, sign out"
+              onPress={() => {
+                router.back();
+                setTimeout(() => router.push("/profile"), 50);
+              }}
+            />
+          )}
           {showAdminLink && (
             <SettingsRow
               icon="🛡️"

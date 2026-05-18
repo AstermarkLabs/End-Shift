@@ -256,7 +256,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       ]);
       const [active, shifts, hidden, pending, cfg, modeRaw] = pairs.map(([, v]) => v);
 
-      const loadedMode: StorageMode = modeRaw === "local" ? "local" : "cloud";
+      const loadedMode: StorageMode = (modeRaw === "local" || modeRaw === "local-no-auth") ? "local" : "cloud";
       setStorageMode(loadedMode);
       storageModeRef.current = loadedMode;
 

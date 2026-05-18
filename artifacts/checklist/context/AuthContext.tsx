@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { useRouter, useSegments } from "expo-router";
 import React, {
@@ -10,6 +11,7 @@ import React, {
   useState,
 } from "react";
 import { Platform } from "react-native";
+import { STORAGE_MODE_KEY } from "@/utils/localChecklistStore";
 import {
   setAuthTokenGetter,
   setAuthRefreshHandler,
@@ -290,14 +292,23 @@ export function useAuthRedirect() {
   const { ready, profile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  // null = still loading; re-read whenever profile changes (handles sign-in/out)
+  const [noAuthMode, setNoAuthMode] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!ready) return;
+    setNoAuthMode(null);
+    AsyncStorage.getItem(STORAGE_MODE_KEY)
+      .then((mode) => setNoAuthMode(mode === "local-no-auth"))
+      .catch(() => setNoAuthMode(false));
+  }, [profile]);
+
+  useEffect(() => {
+    if (!ready || noAuthMode === null) return;
     const inAuthScreen = segments[0] === "login";
     const inOnboardingScreen = segments[0] === "onboarding";
     const inProfileScreen = segments[0] === "profile";
     const inPublicScreen = inAuthScreen || inOnboardingScreen;
-    if (!profile && !inPublicScreen) {
+    if (!profile && !inPublicScreen && !noAuthMode) {
       router.replace("/login");
       return;
     }
@@ -312,5 +323,5 @@ export function useAuthRedirect() {
     if (profile?.mustChangePassword && !inProfileScreen && !inPublicScreen) {
       router.replace("/profile");
     }
-  }, [ready, profile, segments, router]);
+  }, [ready, profile, segments, router, noAuthMode]);
 }

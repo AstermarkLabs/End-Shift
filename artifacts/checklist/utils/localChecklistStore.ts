@@ -10,7 +10,7 @@ import type {
 // ─── Storage mode ─────────────────────────────────────────────────────────────
 
 export const STORAGE_MODE_KEY = "@end_shift_storage_mode";
-export type StorageMode = "local" | "cloud";
+export type StorageMode = "local" | "local-no-auth" | "cloud";
 
 export async function saveStorageMode(mode: StorageMode): Promise<void> {
   await AsyncStorage.setItem(STORAGE_MODE_KEY, mode);
