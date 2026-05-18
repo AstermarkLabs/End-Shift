@@ -335,6 +335,11 @@ function ChecklistTabBar() {
         <TouchableOpacity onPress={() => setModal({ kind: "new" })} style={styles.addTabBtn}>
           <Text style={styles.addTabText}>＋</Text>
         </TouchableOpacity>
+
+        {/* Import PDF button */}
+        <TouchableOpacity onPress={() => router.push("/import-pdf")} style={styles.addTabBtn}>
+          <Text style={styles.addTabText}>📄</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <NameModal
@@ -883,6 +888,10 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     fontSize: 20,
     lineHeight: 24,
+  },
+  importTabText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 18,
   },
 
   // Category

@@ -181,6 +181,8 @@ interface ChecklistContextValue {
 
   appConfig: AppConfig;
   updateAppConfig: (updates: Partial<AppConfig>) => void;
+
+  onChecklistImported: (checklist: Checklist) => void;
 }
 
 export const ChecklistContext = createContext<ChecklistContextValue | null>(null);
@@ -651,6 +653,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setAppConfig((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const onChecklistImported = useCallback((checklist: Checklist) => {
+    setApiChecklists((prev) => [...prev, checklist]);
+    setActiveId(checklist.id);
+    setActiveCl(null);
+    setActiveShift(null);
+    setHistoryShifts([]);
+  }, []);
+
   // ── Active checklist id (string for backward compat) ────────────────────────
   const activeChecklistId = activeId != null ? String(activeId) : (checklistMetas[0]?.id ?? "");
 
@@ -684,6 +694,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         seedHistory,
         appConfig,
         updateAppConfig,
+        onChecklistImported,
       }}
     >
       {children}

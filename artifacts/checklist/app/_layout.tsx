@@ -45,6 +45,10 @@ function RootLayoutNav() {
         name="history"
         options={{ headerShown: false, presentation: "modal" }}
       />
+      <Stack.Screen
+        name="import-pdf"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
     </Stack>
   );
 }
