@@ -169,7 +169,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
       if (EXPLICIT_PREFIX.test(line)) {
         const taskText = stripPrefix(line);
         if (taskText.length > 0) {
-          current.tasks.push({ text: taskText, required: isRequired(line) });
+          current.tasks.push({ text: taskText, required: true });
         }
       }
     } else {
@@ -177,7 +177,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
       if (isUsableLine(line, headerSeen)) {
         const taskText = stripPrefix(line); // strips prefix if present, else returns as-is
         if (taskText.length > 0) {
-          current.tasks.push({ text: taskText, required: isRequired(line) });
+          current.tasks.push({ text: taskText, required: true });
         }
       }
     }
