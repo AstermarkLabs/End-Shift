@@ -84,7 +84,6 @@ export const usersTable = pgTable(
     }),
     username: text("username").notNull(),
     email: text("email"),
-    accountType: text("account_type").notNull().default("personal"),
     displayName: text("display_name").notNull(),
     passwordHash: text("password_hash"),
     roleId: integer("role_id")
