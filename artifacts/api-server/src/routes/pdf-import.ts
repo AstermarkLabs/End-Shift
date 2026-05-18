@@ -41,6 +41,7 @@ const upload = multer({
 interface PdfTask {
   text: string;
   required: boolean;
+  subsection: string | null;
 }
 
 interface PdfSection {
@@ -84,6 +85,21 @@ function stripPrefix(raw: string): string {
 
 function cleanSectionTitle(raw: string): string {
   return raw.replace(/:+$/, "").replace(/^#+\s*/, "").replace(/^(?:[IVX]+\.|[A-Z]\.)\s*/i, "").trim();
+}
+
+/**
+ * Lines that end with a dash/em-dash/en-dash (after trimming) and are short
+ * enough to be a label are treated as subsection markers.
+ * e.g. "Figure 8 Walk –" or "Equipment Check -"
+ */
+function isSubsectionMarker(line: string): boolean {
+  if (EXPLICIT_PREFIX.test(line)) return false;
+  if (isSectionHeader(line)) return false;
+  return /[-–—]\s*$/.test(line) && line.length >= 3 && line.length < 80;
+}
+
+function cleanSubsectionTitle(raw: string): string {
+  return raw.replace(/\s*[-–—]\s*$/, "").trim();
 }
 
 function isRequired(line: string): boolean {
@@ -146,6 +162,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
   const sections: PdfSection[] = [];
   let current: PdfSection = { title: "General Tasks", tasks: [] };
   let headerSeen = false;
+  let currentSubsection: string | null = null;
 
   for (const line of raw) {
     if (SKIP_LINE.test(line)) continue;
@@ -161,6 +178,13 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
         current.title = cleanSectionTitle(line);
         headerSeen = true;
       }
+      currentSubsection = null;
+      continue;
+    }
+
+    // Lines ending with a dash become subsection labels for the tasks that follow
+    if (isSubsectionMarker(line)) {
+      currentSubsection = cleanSubsectionTitle(line) || null;
       continue;
     }
 
@@ -169,7 +193,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
       if (EXPLICIT_PREFIX.test(line)) {
         const taskText = stripPrefix(line);
         if (taskText.length > 0) {
-          current.tasks.push({ text: taskText, required: true });
+          current.tasks.push({ text: taskText, required: true, subsection: currentSubsection });
         }
       }
     } else {
@@ -177,7 +201,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
       if (isUsableLine(line, headerSeen)) {
         const taskText = stripPrefix(line); // strips prefix if present, else returns as-is
         if (taskText.length > 0) {
-          current.tasks.push({ text: taskText, required: true });
+          current.tasks.push({ text: taskText, required: true, subsection: currentSubsection });
         }
       }
     }

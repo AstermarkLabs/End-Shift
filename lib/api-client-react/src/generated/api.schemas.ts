@@ -253,6 +253,8 @@ export interface ChecklistTask {
   id: number;
   checklistId: number;
   section: string;
+  /** @nullable */
+  subsection?: string | null;
   text: string;
   required: boolean;
   sortOrder: number;
@@ -262,6 +264,8 @@ export interface ChecklistTask {
 export interface ChecklistTaskInput {
   /** @minLength 1 */
   section: string;
+  /** @nullable */
+  subsection?: string | null;
   /** @minLength 1 */
   text: string;
   required?: boolean;
@@ -271,6 +275,8 @@ export interface ChecklistTaskInput {
 export interface ChecklistTaskUpdate {
   /** @minLength 1 */
   section?: string;
+  /** @nullable */
+  subsection?: string | null;
   /** @minLength 1 */
   text?: string;
   required?: boolean;
@@ -344,6 +350,8 @@ export interface PdfUpload {
 export interface PdfImportTask {
   text: string;
   required: boolean;
+  /** @nullable */
+  subsection?: string | null;
 }
 
 export interface PdfImportSection {

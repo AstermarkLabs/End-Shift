@@ -32,6 +32,7 @@ function shapeTask(row: typeof checklistTasksTable.$inferSelect) {
     id: row.id,
     checklistId: row.checklistId,
     section: row.section,
+    subsection: row.subsection ?? null,
     text: row.text,
     required: row.required,
     sortOrder: row.sortOrder,
@@ -51,6 +52,7 @@ const UpdateBody = z.object({
 
 const TaskCreateBody = z.object({
   section: z.string().min(1),
+  subsection: z.string().nullable().optional(),
   text: z.string().min(1),
   required: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
@@ -58,6 +60,7 @@ const TaskCreateBody = z.object({
 
 const TaskUpdateBody = z.object({
   section: z.string().min(1).optional(),
+  subsection: z.string().nullable().optional(),
   text: z.string().min(1).optional(),
   required: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
@@ -267,6 +270,7 @@ router.post(
       .values({
         checklistId: id,
         section: body.section,
+        subsection: body.subsection ?? null,
         text: body.text,
         required: body.required ?? true,
         sortOrder: body.sortOrder ?? 0,
@@ -304,6 +308,7 @@ router.put(
 
     const updates: Partial<typeof checklistTasksTable.$inferInsert> = {};
     if (body.section !== undefined) updates.section = body.section;
+    if (body.subsection !== undefined) updates.subsection = body.subsection ?? null;
     if (body.text !== undefined) updates.text = body.text;
     if (body.required !== undefined) updates.required = body.required;
     if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;

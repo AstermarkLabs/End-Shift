@@ -123,6 +123,7 @@ export function generateMockHistory(
     const tasks = CLOSING_TASKS.map(t => ({
       id: t.id,
       category: t.category,
+      subsection: null,
       text: t.text,
       required: t.required,
       completed: t.required

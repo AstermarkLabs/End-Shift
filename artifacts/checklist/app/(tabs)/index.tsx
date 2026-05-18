@@ -496,10 +496,29 @@ function CategoryHeader({
   );
 }
 
+// ─── Subsection Header ────────────────────────────────────────────────────────
+
+function SubsectionHeader({ subsection }: { subsection: string }) {
+  const colors = useColors();
+  return (
+    <View
+      style={[
+        styles.subsectionHeader,
+        { borderLeftColor: colors.primary + "50" },
+      ]}
+    >
+      <Text style={[styles.subsectionTitle, { color: colors.mutedForeground }]}>
+        {subsection}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 type ListItem =
   | { type: "header"; category: string; completed: number; total: number }
+  | { type: "subheader"; subsection: string }
   | { type: "task"; task: Task };
 
 export default function ChecklistScreen() {
@@ -586,7 +605,13 @@ function ChecklistScreenNative() {
       completed: completedInCategory,
       total: categoryTasks.length,
     });
+    let lastSubsection: string | null | undefined = undefined;
     for (const task of categoryTasks) {
+      const sub = task.subsection ?? null;
+      if (sub !== lastSubsection) {
+        if (sub) listData.push({ type: "subheader", subsection: sub });
+        lastSubsection = sub;
+      }
       listData.push({ type: "task", task });
     }
   }
@@ -690,9 +715,11 @@ function ChecklistScreenNative() {
       {/* List */}
       <FlatList
         data={listData}
-        keyExtractor={(item) =>
-          item.type === "header" ? `cat-${item.category}` : `task-${item.task.id}`
-        }
+        keyExtractor={(item) => {
+          if (item.type === "header") return `cat-${item.category}`;
+          if (item.type === "subheader") return `sub-${item.subsection}`;
+          return `task-${item.task.id}`;
+        }}
         renderItem={({ item }) => {
           if (item.type === "header") {
             return (
@@ -702,6 +729,9 @@ function ChecklistScreenNative() {
                 total={item.total}
               />
             );
+          }
+          if (item.type === "subheader") {
+            return <SubsectionHeader subsection={item.subsection} />;
           }
           return <TaskRow task={item.task} onToggle={handleToggle} />;
         }}
@@ -905,6 +935,21 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     borderRadius: 8,
     borderLeftWidth: 3,
+  },
+  subsectionHeader: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 2,
+    paddingLeft: 10,
+    paddingVertical: 4,
+    borderLeftWidth: 2,
+  },
+  subsectionTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   categoryTitle: {
     fontSize: 13,

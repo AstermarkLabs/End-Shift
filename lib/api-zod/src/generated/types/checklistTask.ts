@@ -10,6 +10,8 @@ export interface ChecklistTask {
   id: number;
   checklistId: number;
   section: string;
+  /** @nullable */
+  subsection?: string | null;
   text: string;
   required: boolean;
   sortOrder: number;

@@ -9,4 +9,6 @@
 export interface PdfImportTask {
   text: string;
   required: boolean;
+  /** @nullable */
+  subsection?: string | null;
 }

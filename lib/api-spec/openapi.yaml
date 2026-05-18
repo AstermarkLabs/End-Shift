@@ -1235,6 +1235,8 @@ components:
           type: integer
         section:
           type: string
+        subsection:
+          type: ["string", "null"]
         text:
           type: string
         required:
@@ -1252,6 +1254,8 @@ components:
         section:
           type: string
           minLength: 1
+        subsection:
+          type: ["string", "null"]
         text:
           type: string
           minLength: 1
@@ -1267,6 +1271,8 @@ components:
         section:
           type: string
           minLength: 1
+        subsection:
+          type: ["string", "null"]
         text:
           type: string
           minLength: 1
@@ -1385,6 +1391,8 @@ components:
           type: string
         required:
           type: boolean
+        subsection:
+          type: ["string", "null"]
       required: [text, required]
 
     PdfImportSection:

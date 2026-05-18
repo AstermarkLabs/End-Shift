@@ -295,7 +295,7 @@ function SectionCard({
           <SortableList
             data={sectionTasks}
             keyExtractor={(t) => String(t.id)}
-            rowHeight={48}
+            itemSize={48}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onReorder={(newData) => reorderTasksInSection(title, newData)}
@@ -411,7 +411,7 @@ export default function ChecklistSettingsScreen() {
         <SortableList
           data={sections}
           keyExtractor={(s) => s}
-          rowHeight={56}
+          itemSize={56}
           onDragStart={() => setScrollEnabled(false)}
           onDragEnd={() => setScrollEnabled(true)}
           onReorder={reorderSections}

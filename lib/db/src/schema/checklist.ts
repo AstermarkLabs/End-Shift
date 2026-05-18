@@ -43,6 +43,7 @@ export const checklistTasksTable = pgTable("checklist_tasks", {
     .notNull()
     .references(() => checklistsTable.id, { onDelete: "cascade" }),
   section: text("section").notNull(),
+  subsection: text("subsection"),
   text: text("text").notNull(),
   required: boolean("required").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),

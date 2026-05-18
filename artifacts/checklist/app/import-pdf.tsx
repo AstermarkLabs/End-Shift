@@ -29,6 +29,7 @@ interface ReviewTask {
   text: string;
   required: boolean;
   included: boolean;
+  subsection: string | null;
 }
 
 interface ReviewSection {
@@ -95,6 +96,7 @@ export default function ImportPdfScreen() {
             text: t.text,
             required: t.required,
             included: true,
+            subsection: t.subsection ?? null,
           })),
         })),
       );
@@ -161,6 +163,7 @@ export default function ImportPdfScreen() {
         for (const task of section.tasks) {
           await createChecklistTask(checklist.id, {
             section: section.title,
+            subsection: task.subsection ?? undefined,
             text: task.text,
             required: task.required,
             sortOrder: sortOrder++,
@@ -275,10 +278,22 @@ export default function ImportPdfScreen() {
           editable={!creating}
         />
 
-        {sections.map((section, si) => (
-          <View key={si} style={styles.sectionBlock}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            {section.tasks.map((task, ti) => (
+        {sections.map((section, si) => {
+          const items: React.ReactElement[] = [];
+          let lastSub: string | null | undefined = undefined;
+          section.tasks.forEach((task, ti) => {
+            const sub = task.subsection ?? null;
+            if (sub !== lastSub) {
+              if (sub) {
+                items.push(
+                  <Text key={`sub-${si}-${ti}`} style={styles.subsectionLabel}>
+                    {sub}
+                  </Text>,
+                );
+              }
+              lastSub = sub;
+            }
+            items.push(
               <View key={ti} style={styles.taskRow}>
                 <TouchableOpacity
                   onPress={() => toggleTask(si, ti)}
@@ -319,10 +334,16 @@ export default function ImportPdfScreen() {
                 ) : (
                   <View style={styles.reqBadgePlaceholder} />
                 )}
-              </View>
-            ))}
-          </View>
-        ))}
+              </View>,
+            );
+          });
+          return (
+            <View key={si} style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              {items}
+            </View>
+          );
+        })}
       </ScrollView>
 
       <View
@@ -480,6 +501,17 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     sectionBlock: {
       marginBottom: 12,
+    },
+    subsectionLabel: {
+      fontSize: 11,
+      fontWeight: "600",
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: 2,
     },
     sectionTitle: {
       fontSize: 13,

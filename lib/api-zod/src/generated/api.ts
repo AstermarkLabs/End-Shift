@@ -732,6 +732,7 @@ export const ImportChecklistFromPdfResponse = zod.object({
         zod.object({
           text: zod.string(),
           required: zod.boolean(),
+          subsection: zod.string().nullish(),
         }),
       ),
     }),
@@ -758,6 +759,7 @@ export const GetChecklistResponse = zod.object({
       id: zod.number(),
       checklistId: zod.number(),
       section: zod.string(),
+      subsection: zod.string().nullish(),
       text: zod.string(),
       required: zod.boolean(),
       sortOrder: zod.number(),
@@ -806,6 +808,7 @@ export const ListChecklistTasksResponseItem = zod.object({
   id: zod.number(),
   checklistId: zod.number(),
   section: zod.string(),
+  subsection: zod.string().nullish(),
   text: zod.string(),
   required: zod.boolean(),
   sortOrder: zod.number(),
@@ -824,6 +827,7 @@ export const CreateChecklistTaskParams = zod.object({
 
 export const CreateChecklistTaskBody = zod.object({
   section: zod.string().min(1),
+  subsection: zod.string().nullish(),
   text: zod.string().min(1),
   required: zod.boolean().optional(),
   sortOrder: zod.number().optional(),
@@ -839,6 +843,7 @@ export const UpdateChecklistTaskParams = zod.object({
 
 export const UpdateChecklistTaskBody = zod.object({
   section: zod.string().min(1).optional(),
+  subsection: zod.string().nullish(),
   text: zod.string().min(1).optional(),
   required: zod.boolean().optional(),
   sortOrder: zod.number().optional(),
@@ -848,6 +853,7 @@ export const UpdateChecklistTaskResponse = zod.object({
   id: zod.number(),
   checklistId: zod.number(),
   section: zod.string(),
+  subsection: zod.string().nullish(),
   text: zod.string(),
   required: zod.boolean(),
   sortOrder: zod.number(),

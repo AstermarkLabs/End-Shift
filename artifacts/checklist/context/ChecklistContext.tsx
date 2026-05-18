@@ -41,6 +41,7 @@ import type {
 export interface Task {
   id: number;
   category: string;
+  subsection: string | null;
   text: string;
   completed: boolean;
   required: boolean;
@@ -68,6 +69,7 @@ export interface CompletedChecklist {
   tasks: Array<{
     id: number;
     category: string;
+    subsection: string | null;
     text: string;
     completed: boolean;
     required: boolean;
@@ -114,6 +116,7 @@ function toTask(t: ChecklistTask, completedIds: Set<number>): Task {
   return {
     id: t.id,
     category: t.section,
+    subsection: t.subsection ?? null,
     text: t.text,
     completed: completedIds.has(t.id),
     required: t.required,
@@ -140,6 +143,7 @@ function shiftToCompleted(
     tasks: tasks.map((t) => ({
       id: t.id,
       category: t.section,
+      subsection: t.subsection ?? null,
       text: t.text,
       completed: completedIds.has(t.id),
       required: t.required,
@@ -771,12 +775,33 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setAppConfig((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const onChecklistImported = useCallback((checklist: Checklist) => {
+  const onChecklistImported = useCallback(async (checklist: Checklist) => {
+    // Immediately show the new checklist with a stub (tasks will load async)
+    const stub: ChecklistWithTasks = { ...checklist, tasks: [] };
+    clMemCacheRef.current.set(checklist.id, stub);
+    new ChecklistCache(checklist.id).saveChecklist(stub).catch(() => null);
     setApiChecklists((prev) => [...prev, checklist]);
     setActiveId(checklist.id);
-    setActiveCl(null);
+    setActiveCl(stub);
     setActiveShift(null);
     setHistoryShifts([]);
+
+    // Fetch full checklist (with tasks) and open a fresh shift in parallel
+    try {
+      const [full, shift] = await Promise.all([
+        getChecklist(checklist.id),
+        openShift(checklist.id),
+      ]);
+      clMemCacheRef.current.set(checklist.id, full);
+      new ChecklistCache(checklist.id).saveChecklist(full).catch(() => null);
+      shiftMemCacheRef.current.set(checklist.id, shift);
+      new ChecklistCache(checklist.id).saveShift(shift).catch(() => null);
+      if (activeIdRef.current === checklist.id) {
+        setActiveCl(full);
+        setActiveShift(shift);
+        setActiveShiftIds((prev) => ({ ...prev, [String(checklist.id)]: shift.id }));
+      }
+    } catch {}
   }, []);
 
   // ── Active checklist id (string for backward compat) ────────────────────────

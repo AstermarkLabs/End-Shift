@@ -9,6 +9,8 @@
 export interface ChecklistTaskUpdate {
   /** @minLength 1 */
   section?: string;
+  /** @nullable */
+  subsection?: string | null;
   /** @minLength 1 */
   text?: string;
   required?: boolean;
