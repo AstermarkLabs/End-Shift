@@ -92,14 +92,34 @@ function isRequired(line: string): boolean {
 
 /**
  * Decide whether a line looks like a useful task candidate in permissive mode.
- * Rejects very short lines, very long paragraphs, and obvious noise.
+ * Rejects column headers, form labels, copyright lines, and other noise.
  */
 function isUsableLine(line: string): boolean {
   if (line.length < 4 || line.length > 250) return false;
   if (SKIP_LINE.test(line)) return false;
+  // Skip copyright / legal boilerplate lines
+  if (
+    /©|all rights reserved|confidential.*proprietary|proprietary.*confidential/i.test(
+      line,
+    )
+  )
+    return false;
   // Reject lines that are mostly punctuation / symbols
   const alphaNum = line.replace(/[^a-zA-Z0-9]/g, "");
   if (alphaNum.length < 3) return false;
+
+  // Evaluate word count using the cleaned text (after stripping any task prefix)
+  // so that "✓  Initials  Notes" is judged on "Initials Notes", not on "✓ ..."
+  const cleaned = stripPrefix(line).trim();
+  const words = cleaned.split(/\s+/).filter((w) => w.length > 0);
+
+  // Single-word lines are almost always form labels (Date, Completed, Initials…)
+  if (words.length <= 1) return false;
+
+  // Short 2-word lines are usually column headers; real 2-word tasks tend to be longer
+  // ("Opening Cash" = 12 chars is on the boundary, "Initials Notes" = 14 chars is a header)
+  if (words.length === 2 && cleaned.length < 16) return false;
+
   return true;
 }
 
