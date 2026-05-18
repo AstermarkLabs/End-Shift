@@ -43,6 +43,7 @@ export interface OnboardingSettings {
 
 interface OnboardingState {
   completed: boolean;
+  accountKind: "personal" | "business";
   businessType: "single-unit" | "multi-unit";
   regions: Region[];
   locations: OrgLocation[];
@@ -52,12 +53,14 @@ interface OnboardingState {
 
 interface OnboardingContextValue {
   onboardingCompleted: boolean;
+  accountKind: "personal" | "business";
   businessType: "single-unit" | "multi-unit";
   regions: Region[];
   locations: OrgLocation[];
   teamMembers: TeamMember[];
   settings: OnboardingSettings;
 
+  setAccountKind: (k: "personal" | "business") => void;
   setBusinessType: (t: "single-unit" | "multi-unit") => void;
 
   // Regions & districts
@@ -98,6 +101,7 @@ const DEFAULT_SETTINGS: OnboardingSettings = {
 
 const DEFAULT_STATE: OnboardingState = {
   completed: false,
+  accountKind: "personal",
   businessType: "single-unit",
   regions: [],
   locations: [],
@@ -139,6 +143,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     if (!loaded.current) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  const setAccountKind = useCallback((k: "personal" | "business") => {
+    setState((prev) => ({ ...prev, accountKind: k }));
+  }, []);
 
   const setBusinessType = useCallback((t: "single-unit" | "multi-unit") => {
     setState((prev) => ({ ...prev, businessType: t }));
@@ -290,11 +298,13 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     <OnboardingContext.Provider
       value={{
         onboardingCompleted: state.completed,
+        accountKind: state.accountKind,
         businessType: state.businessType,
         regions: state.regions,
         locations: state.locations,
         teamMembers: state.teamMembers,
         settings: state.settings,
+        setAccountKind,
         setBusinessType,
         addRegion,
         updateRegion,

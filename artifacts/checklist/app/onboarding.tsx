@@ -18,6 +18,7 @@ import { completeOnboarding, createOrgUnit, register as apiRegister } from "@wor
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
 import { useChecklist } from "@/context/ChecklistContext";
+import { saveStorageMode } from "@/utils/localChecklistStore";
 import {
   useOnboarding,
   type District,
@@ -29,7 +30,7 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
-type Step = "account" | "regions" | "locations" | "team" | "confirm";
+type Step = "account-type" | "personal-account" | "account" | "regions" | "locations" | "team" | "confirm";
 
 // ─── Reusable primitives ──────────────────────────────────────────────────────
 
@@ -126,19 +127,250 @@ function ErrorBox({ message, colors }: { message: string; colors: ReturnType<typ
   );
 }
 
-// ─── Step 1 — Account ─────────────────────────────────────────────────────────
+// ─── Step 0 — Account Type ────────────────────────────────────────────────────
 
-function StepAccount({
+function StepAccountType({
+  onChoose,
+}: {
+  onChoose: (kind: "personal" | "business") => void;
+}) {
+  const colors = useColors();
+  const router = useRouter();
+
+  return (
+    <ScrollView
+      contentContainerStyle={sh.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={sh.stepHeader}>
+        <View style={sh.stepTopRow}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[sh.backBtn, { color: colors.mutedForeground }]}>‹ Back</Text>
+          </TouchableOpacity>
+          <Text style={[sh.stepLabel, { color: colors.mutedForeground }]}>GET STARTED</Text>
+          <View style={sh.backPlaceholder} />
+        </View>
+        <Text style={[sh.stepTitle, { color: colors.foreground }]}>How will you use{"\n"}End Shift?</Text>
+        <Text style={[sh.stepSubtitle, { color: colors.mutedForeground }]}>
+          Choose the option that fits you best. You can always upgrade later.
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => onChoose("personal")}
+        style={[
+          sh.typeOption,
+          sh.typeOptionLarge,
+          { borderColor: colors.border, backgroundColor: colors.card },
+        ]}
+        activeOpacity={0.8}
+      >
+        <Text style={sh.typeOptionIcon}>👤</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[sh.typeOptionTitle, { color: colors.foreground }]}>Personal</Text>
+          <Text style={[sh.typeOptionDesc, { color: colors.mutedForeground }]}>
+            Just for you. Checklists live on this device — no account required. Great for solo routines.
+          </Text>
+        </View>
+        <Text style={[sh.typeOptionArrow, { color: colors.mutedForeground }]}>›</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => onChoose("business")}
+        style={[
+          sh.typeOption,
+          sh.typeOptionLarge,
+          { borderColor: colors.border, backgroundColor: colors.card },
+        ]}
+        activeOpacity={0.8}
+      >
+        <Text style={sh.typeOptionIcon}>🏢</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[sh.typeOptionTitle, { color: colors.foreground }]}>Business</Text>
+          <Text style={[sh.typeOptionDesc, { color: colors.mutedForeground }]}>
+            For a team or multiple locations. Cloud-synced, collaborative, with roles and reporting.
+          </Text>
+        </View>
+        <Text style={[sh.typeOptionArrow, { color: colors.mutedForeground }]}>›</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+// ─── Step 1 (Personal) — Credentials ─────────────────────────────────────────
+
+function StepPersonalAccount({
   stepNum,
   totalSteps,
+  onBack,
   onDone,
 }: {
   stepNum: number;
   totalSteps: number;
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const colors = useColors();
+  const { signIn } = useAuth();
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onContinue = async () => {
+    setError(null);
+    if (!username.trim()) { setError("Username is required."); return; }
+    if (!email.trim()) { setError("Email is required."); return; }
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) { setError(pwCheck.errors[0]!); return; }
+    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+
+    setBusy(true);
+    try {
+      // Register on the server (enables future cloud-sync upgrade).
+      // The username is used as the tenant name for personal accounts.
+      await apiRegister({
+        username: username.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
+        password,
+        businessName: username.trim(),
+        businessType: "single-unit",
+      });
+      // Mark this device as local-storage mode before signing in
+      await saveStorageMode("local");
+      await signIn(username.trim().toLowerCase(), password);
+      onDone();
+    } catch (e) {
+      setError(describeApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={sh.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <StepHeader
+          step={stepNum}
+          total={totalSteps}
+          title="Create your account"
+          subtitle="Your checklists will be saved on this device."
+          onBack={onBack}
+        />
+
+        {error ? <ErrorBox message={error} colors={colors} /> : null}
+
+        <FieldLabel label="Username" colors={colors} />
+        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+          This is how you'll sign in. Keep it short and memorable.
+        </Text>
+        <TextInput
+          value={username}
+          onChangeText={(v) => { setUsername(v); setError(null); }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!busy}
+          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          placeholder="yourname"
+          placeholderTextColor={colors.mutedForeground}
+        />
+
+        <FieldLabel label="Email" colors={colors} />
+        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+          Used for account recovery only.
+        </Text>
+        <TextInput
+          value={email}
+          onChangeText={(v) => { setEmail(v); setError(null); }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          editable={!busy}
+          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          placeholder="you@example.com"
+          placeholderTextColor={colors.mutedForeground}
+        />
+
+        <FieldLabel label="Password" colors={colors} />
+        <View style={sh.passwordRow}>
+          <TextInput
+            value={password}
+            onChangeText={(v) => { setPassword(v); setError(null); }}
+            secureTextEntry={!showPassword}
+            editable={!busy}
+            style={[sh.input, sh.passwordInput, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+            placeholder="••••••••••••"
+            placeholderTextColor={colors.mutedForeground}
+          />
+          <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={sh.showToggle}>
+            <Text style={[sh.showToggleText, { color: colors.primary }]}>
+              {showPassword ? "Hide" : "Show"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {password.length > 0 && (
+          <View style={sh.rulesBox}>
+            {PASSWORD_RULES.map((rule) => {
+              const met = rule.test(password);
+              return (
+                <Text
+                  key={rule.label}
+                  style={[sh.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}
+                >
+                  {met ? "✓" : "○"} {rule.label}
+                </Text>
+              );
+            })}
+          </View>
+        )}
+
+        <FieldLabel label="Confirm password" colors={colors} />
+        <TextInput
+          value={confirmPassword}
+          onChangeText={(v) => { setConfirmPassword(v); setError(null); }}
+          secureTextEntry={!showPassword}
+          editable={!busy}
+          style={[sh.input, { borderColor: confirmPassword && confirmPassword !== password ? colors.destructive : colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          placeholder="••••••••••••"
+          placeholderTextColor={colors.mutedForeground}
+        />
+
+        <PrimaryButton label="Continue" onPress={onContinue} busy={busy} colors={colors} />
+
+        <Text style={[sh.legalText, { color: colors.mutedForeground }]}>
+          By continuing you agree to the Terms and Privacy Policy.
+        </Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+// ─── Step 1 (Business) — Account ──────────────────────────────────────────────
+
+function StepBusinessAccount({
+  stepNum,
+  totalSteps,
+  onBack,
+  onDone,
+}: {
+  stepNum: number;
+  totalSteps: number;
+  onBack: () => void;
   onDone: (businessName: string, businessType: "single-unit" | "multi-unit") => void;
 }) {
   const colors = useColors();
-  const router = useRouter();
   const { signIn } = useAuth();
   const { setBusinessType } = useOnboarding();
 
@@ -170,7 +402,6 @@ function StepAccount({
         businessName: businessName.trim(),
         businessType,
       });
-      // Sign in with the new credentials so AuthContext is hydrated
       await signIn(username.trim().toLowerCase(), password);
       setBusinessType(businessType);
       onDone(businessName.trim(), businessType);
@@ -194,8 +425,8 @@ function StepAccount({
         <StepHeader
           step={stepNum}
           total={totalSteps}
-          title="Set up your account"
-          onBack={() => router.back()}
+          title="Set up your business"
+          onBack={onBack}
         />
 
         {error ? <ErrorBox message={error} colors={colors} /> : null}
@@ -416,7 +647,6 @@ function StepRegions({
           key={region.id}
           style={[sh.regionCard, { borderColor: colors.border, backgroundColor: colors.card }]}
         >
-          {/* Region header */}
           <View style={sh.regionHeaderRow}>
             <Text style={[sh.regionNum, { color: colors.mutedForeground }]}>{idx + 1}</Text>
             <TextInput
@@ -431,7 +661,6 @@ function StepRegions({
             </TouchableOpacity>
           </View>
 
-          {/* Districts */}
           {region.districts.map((d: District) => (
             <View key={d.id} style={sh.districtRow}>
               <Text style={[sh.districtArrow, { color: colors.mutedForeground }]}>▸</Text>
@@ -451,7 +680,6 @@ function StepRegions({
             </View>
           ))}
 
-          {/* Add district row */}
           <View style={sh.addDistrictRow}>
             <TextInput
               value={districtInputs[region.id] ?? ""}
@@ -468,7 +696,6 @@ function StepRegions({
         </View>
       ))}
 
-      {/* Add region */}
       <View style={sh.addRegionRow}>
         <TextInput
           value={newRegionName}
@@ -687,7 +914,6 @@ function StepTeam({
         Heads up: Teammates will get an email with a passkey invite. They can sign in without a password.
       </Text>
 
-      {/* Existing members */}
       {teamMembers.map((member) => (
         <View
           key={member.id}
@@ -714,7 +940,6 @@ function StepTeam({
         </View>
       ))}
 
-      {/* Add member form */}
       <View style={[sh.addMemberCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
         <Text style={[sh.addMemberLabel, { color: colors.mutedForeground }]}>EMAIL</Text>
         <TextInput
@@ -781,6 +1006,7 @@ function StepTeam({
 // ─── Step 5 — Confirm ─────────────────────────────────────────────────────────
 
 function StepConfirm({
+  accountKind,
   businessName,
   businessType,
   regions,
@@ -790,6 +1016,7 @@ function StepConfirm({
   finishError,
   onOpen,
 }: {
+  accountKind: "personal" | "business";
   businessName: string;
   businessType: "single-unit" | "multi-unit";
   regions: Region[];
@@ -800,8 +1027,28 @@ function StepConfirm({
   onOpen: () => void;
 }) {
   const colors = useColors();
-  const totalDistricts = regions.reduce((acc, r) => acc + r.districts.length, 0);
 
+  if (accountKind === "personal") {
+    return (
+      <View style={sh.confirmContainer}>
+        <View style={[sh.confirmCheck, { backgroundColor: colors.primary }]}>
+          <Text style={sh.confirmCheckText}>✓</Text>
+        </View>
+        <Text style={[sh.confirmTitle, { color: colors.foreground }]}>You're all set</Text>
+        <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground }]}>
+          Your checklists are saved on this device. You can enable cloud sync anytime from Settings.
+        </Text>
+        <TouchableOpacity
+          style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32, width: "100%" }]}
+          onPress={onOpen}
+        >
+          <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Open End Shift</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const totalDistricts = regions.reduce((acc, r) => acc + r.districts.length, 0);
   const items: { label: string; show: boolean }[] = [
     { label: `${regions.length} region${regions.length !== 1 ? "s" : ""}`, show: regions.length > 0 },
     { label: `${totalDistricts} district${totalDistricts !== 1 ? "s" : ""}`, show: totalDistricts > 0 },
@@ -863,11 +1110,13 @@ export default function OnboardingScreen() {
   const colors = useColors();
   const { updateAppConfig } = useChecklist();
   const {
+    accountKind,
     businessType,
     regions,
     locations,
     teamMembers,
     settings,
+    setAccountKind,
     setBusinessType,
     addRegion,
     updateRegion,
@@ -884,30 +1133,37 @@ export default function OnboardingScreen() {
     markComplete,
   } = useOnboarding();
 
-  const [step, setStep] = useState<Step>("account");
+  const [step, setStep] = useState<Step>("account-type");
   const [businessName, setBusinessName] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
 
-  // Build the ordered list of steps based on business type + settings
+  // Build the ordered list of steps based on account kind + business type + settings
   const buildSteps = useCallback(
-    (bType: "single-unit" | "multi-unit"): Step[] => {
-      const steps: Step[] = ["account"];
-      if (bType === "multi-unit") {
-        if (settings.showRegionsStep) steps.push("regions");
-        if (settings.showLocationsStep) steps.push("locations");
+    (aKind: "personal" | "business", bType: "single-unit" | "multi-unit"): Step[] => {
+      const steps: Step[] = ["account-type"];
+      if (aKind === "personal") {
+        steps.push("personal-account");
+      } else {
+        steps.push("account");
+        if (bType === "multi-unit") {
+          if (settings.showRegionsStep) steps.push("regions");
+          if (settings.showLocationsStep) steps.push("locations");
+        }
+        if (settings.showTeamStep) steps.push("team");
       }
-      if (settings.showTeamStep) steps.push("team");
       steps.push("confirm");
       return steps;
     },
     [settings],
   );
 
-  const steps = buildSteps(businessType);
+  const steps = buildSteps(accountKind, businessType);
   const currentIdx = steps.indexOf(step);
-  const stepNum = currentIdx + 1;
-  const totalSteps = steps.length;
+  // Step numbers displayed to user exclude the "account-type" selector screen
+  const displayIdx = currentIdx; // 0-based from account-type
+  const stepNum = currentIdx; // account-type=0 so the next step starts at 1
+  const totalSteps = steps.length - 1; // exclude account-type from total
 
   const goNext = useCallback(() => {
     const next = steps[currentIdx + 1];
@@ -920,19 +1176,41 @@ export default function OnboardingScreen() {
     else router.back();
   }, [steps, currentIdx, router]);
 
-  const handleAccountDone = useCallback(
+  const handleAccountTypeChosen = useCallback(
+    (kind: "personal" | "business") => {
+      setAccountKind(kind);
+      const nextSteps = buildSteps(kind, businessType);
+      const next = nextSteps[1];
+      if (next) setStep(next);
+    },
+    [setAccountKind, buildSteps, businessType],
+  );
+
+  const handlePersonalAccountDone = useCallback(() => {
+    setStep("confirm");
+  }, []);
+
+  const handleBusinessAccountDone = useCallback(
     (bName: string, bType: "single-unit" | "multi-unit") => {
       setBusinessName(bName);
       setBusinessType(bType);
       updateAppConfig({ name: bName });
-      const nextSteps = buildSteps(bType);
-      const nextStep = nextSteps[1];
-      if (nextStep) setStep(nextStep);
+      const nextSteps = buildSteps("business", bType);
+      const accountIdx = nextSteps.indexOf("account");
+      const next = nextSteps[accountIdx + 1];
+      if (next) setStep(next);
     },
     [setBusinessType, updateAppConfig, buildSteps],
   );
 
   const handleFinish = useCallback(async () => {
+    // Personal accounts: no server-side org setup needed
+    if (accountKind === "personal") {
+      markComplete();
+      router.replace("/");
+      return;
+    }
+
     setIsFinishing(true);
     setFinishError(null);
     try {
@@ -991,7 +1269,7 @@ export default function OnboardingScreen() {
       markComplete();
       router.replace("/");
     }
-  }, [regions, locations, teamMembers, markComplete, router]);
+  }, [accountKind, regions, locations, teamMembers, markComplete, router]);
 
   return (
     <View
@@ -1000,8 +1278,24 @@ export default function OnboardingScreen() {
         { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
+      {step === "account-type" && (
+        <StepAccountType onChoose={handleAccountTypeChosen} />
+      )}
+      {step === "personal-account" && (
+        <StepPersonalAccount
+          stepNum={stepNum}
+          totalSteps={totalSteps}
+          onBack={goBack}
+          onDone={handlePersonalAccountDone}
+        />
+      )}
       {step === "account" && (
-        <StepAccount stepNum={stepNum} totalSteps={totalSteps} onDone={handleAccountDone} />
+        <StepBusinessAccount
+          stepNum={stepNum}
+          totalSteps={totalSteps}
+          onBack={goBack}
+          onDone={handleBusinessAccountDone}
+        />
       )}
       {step === "regions" && (
         <StepRegions
@@ -1048,6 +1342,7 @@ export default function OnboardingScreen() {
       )}
       {step === "confirm" && (
         <StepConfirm
+          accountKind={accountKind}
           businessName={businessName}
           businessType={businessType}
           regions={regions}
@@ -1088,7 +1383,7 @@ const sh = StyleSheet.create({
   rulesBox: { gap: 3, marginTop: 6, marginBottom: 2 },
   ruleText: { fontSize: 12 },
 
-  // Business type
+  // Account / business type options
   typeOption: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1098,10 +1393,15 @@ const sh = StyleSheet.create({
     padding: 14,
     marginTop: 10,
   },
+  typeOptionLarge: {
+    paddingVertical: 18,
+    marginTop: 14,
+  },
   typeOptionIcon: { fontSize: 22, marginTop: 2 },
   typeOptionTitle: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
   typeOptionDesc: { fontSize: 13, lineHeight: 18 },
   typeOptionCheck: { fontSize: 18, fontWeight: "700", marginTop: 2 },
+  typeOptionArrow: { fontSize: 20, fontWeight: "300", alignSelf: "center" },
 
   // Buttons
   primaryBtn: { marginTop: 24, height: 52, borderRadius: 12, alignItems: "center", justifyContent: "center" },

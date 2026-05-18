@@ -10,6 +10,25 @@ import React, {
 
 import { useAuth } from "@/context/AuthContext";
 import { ChecklistCache } from "@/utils/checklistCache";
+import {
+  STORAGE_MODE_KEY,
+  type StorageMode,
+  localListChecklists,
+  localGetChecklist,
+  localCreateChecklist,
+  localUpdateChecklist,
+  localDeleteChecklist,
+  localSaveChecklist,
+  localCreateChecklistTask,
+  localUpdateChecklistTask,
+  localDeleteChecklistTask,
+  localOpenShift,
+  localListShifts,
+  localGetShift,
+  localSubmitShift,
+  localCompleteShiftTask,
+  localUncompleteShiftTask,
+} from "@/utils/localChecklistStore";
 
 import {
   listChecklists,
@@ -138,7 +157,7 @@ function shiftToCompleted(
     id: String(shift.id),
     checklistId: String(shift.checklistId ?? ""),
     checklistName: clName,
-    completedAt: shift.submittedAt ?? shift.openedAt,
+    completedAt: String(shift.submittedAt ?? shift.openedAt),
     sections,
     tasks: tasks.map((t) => ({
       id: t.id,
@@ -188,6 +207,8 @@ interface ChecklistContextValue {
   updateAppConfig: (updates: Partial<AppConfig>) => void;
 
   onChecklistImported: (checklist: Checklist) => void;
+
+  storageMode: StorageMode;
 }
 
 export const ChecklistContext = createContext<ChecklistContextValue | null>(null);
@@ -195,7 +216,7 @@ export const ChecklistContext = createContext<ChecklistContextValue | null>(null
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const { ready, profile } = useAuth();
 
-  // ── Raw API data ────────────────────────────────────────────────────────────
+  // ── Raw API/local data ──────────────────────────────────────────────────────
   const [apiChecklists, setApiChecklists] = useState<Checklist[]>([]);
   const [activeCl, setActiveCl] = useState<ChecklistWithTasks | null>(null);
   const [activeShift, setActiveShift] = useState<ShiftWithCompletions | null>(null);
@@ -203,23 +224,21 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   // ── Local-only state ────────────────────────────────────────────────────────
   const [activeId, setActiveId] = useState<number | null>(null);
-  // { [clId]: shiftId } — the currently open shift per checklist
   const [activeShiftIds, setActiveShiftIds] = useState<Record<string, number>>({});
-  // Shift IDs hidden by deleteHistoryEntry / clearHistory
   const [hiddenShiftIds, setHiddenShiftIds] = useState<Set<string>>(new Set());
-  // Sections with no tasks yet, per checklist
   const [pendingSections, setPendingSections] = useState<Record<string, string[]>>({});
-  // Local reorder state: maps cl id (string) to section order override
   const [sectionOrderOverride, setSectionOrderOverride] = useState<Record<string, string[]>>({});
   const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
+  const [storageMode, setStorageMode] = useState<StorageMode>("cloud");
 
   const loaded = useRef(false);
   const hasFetchedRef = useRef(false);
   const activeIdRef = useRef<number | null>(null);
   activeIdRef.current = activeId;
   const [storageLoaded, setStorageLoaded] = useState(false);
+  const storageModeRef = useRef<StorageMode>("cloud");
+  storageModeRef.current = storageMode;
 
-  // In-memory cache for zero-latency checklist switching
   const clMemCacheRef = useRef<Map<number, ChecklistWithTasks>>(new Map());
   const shiftMemCacheRef = useRef<Map<number, ShiftWithCompletions>>(new Map());
   const historyMemCacheRef = useRef<Map<number, ShiftWithCompletions[]>>(new Map());
@@ -233,8 +252,13 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         KEY_HIDDEN_SHIFTS,
         KEY_PENDING_SECTIONS,
         KEY_APP_CONFIG,
+        STORAGE_MODE_KEY,
       ]);
-      const [active, shifts, hidden, pending, cfg] = pairs.map(([, v]) => v);
+      const [active, shifts, hidden, pending, cfg, modeRaw] = pairs.map(([, v]) => v);
+
+      const loadedMode: StorageMode = modeRaw === "local" ? "local" : "cloud";
+      setStorageMode(loadedMode);
+      storageModeRef.current = loadedMode;
 
       let initialId: number | null = null;
       if (active) {
@@ -246,32 +270,71 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       if (pending) { try { setPendingSections(JSON.parse(pending)); } catch {} }
       if (cfg) { try { setAppConfig({ ...DEFAULT_APP_CONFIG, ...JSON.parse(cfg) }); } catch {} }
 
-      // Seed checklist list from cache so the UI is non-empty immediately
-      const cachedList = await ChecklistCache.loadList();
-      if (cachedList && cachedList.length > 0) {
-        setApiChecklists(cachedList);
-        if (initialId == null) {
-          initialId = cachedList[0].id;
-          setActiveId(initialId);
+      if (loadedMode === "local") {
+        // Seed from local store (AsyncStorage is source of truth)
+        const localList = await localListChecklists();
+        if (localList.length > 0) {
+          setApiChecklists(localList);
+          if (initialId == null) {
+            initialId = localList[0].id;
+            setActiveId(initialId);
+          }
         }
-      }
-
-      // Seed active checklist + shift + history from cache
-      if (initialId != null) {
-        const cache = new ChecklistCache(initialId);
-        const { checklist, shift, history } = await cache.load();
-        if (checklist) {
-          clMemCacheRef.current.set(initialId, checklist);
-          setActiveCl(checklist);
+        if (initialId != null) {
+          const cl = await localGetChecklist(initialId).catch(() => null);
+          if (cl) {
+            clMemCacheRef.current.set(initialId, cl);
+            setActiveCl(cl);
+          }
+          // Restore the stored shift ID, or open a new one
+          let storedShiftIds: Record<string, number> = {};
+          try {
+            const raw = await AsyncStorage.getItem(KEY_ACTIVE_SHIFTS);
+            if (raw) storedShiftIds = JSON.parse(raw);
+          } catch {}
+          const existingShiftId = storedShiftIds[String(initialId)];
+          let shift: ShiftWithCompletions | null = null;
+          if (existingShiftId) {
+            shift = await localGetShift(existingShiftId).catch(() => null);
+            if (shift?.submittedAt) shift = null;
+          }
+          if (!shift) {
+            shift = await localOpenShift(initialId).catch(() => null);
+            if (shift) {
+              setActiveShiftIds((prev) => ({ ...prev, [String(initialId!)]: shift!.id }));
+            }
+          }
+          if (shift) {
+            shiftMemCacheRef.current.set(initialId, shift);
+            setActiveShift(shift);
+          }
         }
-        if (shift && !shift.submittedAt) {
-          shiftMemCacheRef.current.set(initialId, shift);
-          setActiveShift(shift);
+      } else {
+        // Cloud mode: seed from disk cache for instant display
+        const cachedList = await ChecklistCache.loadList();
+        if (cachedList && cachedList.length > 0) {
+          setApiChecklists(cachedList);
+          if (initialId == null) {
+            initialId = cachedList[0].id;
+            setActiveId(initialId);
+          }
         }
-        const validHistory = history.filter((s) => s.submittedAt != null);
-        if (validHistory.length > 0) {
-          historyMemCacheRef.current.set(initialId, validHistory);
-          setHistoryShifts(validHistory);
+        if (initialId != null) {
+          const cache = new ChecklistCache(initialId);
+          const { checklist, shift, history } = await cache.load();
+          if (checklist) {
+            clMemCacheRef.current.set(initialId, checklist);
+            setActiveCl(checklist);
+          }
+          if (shift && !shift.submittedAt) {
+            shiftMemCacheRef.current.set(initialId, shift);
+            setActiveShift(shift);
+          }
+          const validHistory = history.filter((s) => s.submittedAt != null);
+          if (validHistory.length > 0) {
+            historyMemCacheRef.current.set(initialId, validHistory);
+            setHistoryShifts(validHistory);
+          }
         }
       }
 
@@ -308,8 +371,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(KEY_APP_CONFIG, JSON.stringify(appConfig));
   }, [appConfig]);
 
-  // ── Fetch everything from DB once (on app open) and populate cache ──────────
-  const fetchAllAndCache = useCallback(async () => {
+  // ── Fetch / sync all data once (on app open) ────────────────────────────────
+  const fetchAllCloud = useCallback(async () => {
     try {
       const cls = await listChecklists();
       setApiChecklists(cls);
@@ -320,14 +383,12 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         setActiveId(currentId);
       }
 
-      // Read shift ids from storage directly to avoid state-loading race
       let storedShiftIds: Record<string, number> = {};
       try {
         const raw = await AsyncStorage.getItem(KEY_ACTIVE_SHIFTS);
         if (raw) storedShiftIds = JSON.parse(raw);
       } catch {}
 
-      // Fetch all checklist structures in parallel and cache them
       await Promise.all(
         cls.map(async (c) => {
           try {
@@ -341,7 +402,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         })
       );
 
-      // Fetch and cache the active checklist's shift and history
       if (currentId != null) {
         const existingShiftId = storedShiftIds[String(currentId)];
         let shift: ShiftWithCompletions | null = null;
@@ -366,10 +426,9 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
           new ChecklistCache(currentId).saveShift(shift).catch(() => null);
         }
 
-        // Load and cache history for the active checklist
         try {
-          const shifts = await listShifts(currentId);
-          const submitted = shifts.filter((s) => s.submittedAt != null);
+          const allShifts = await listShifts(currentId);
+          const submitted = allShifts.filter((s) => s.submittedAt != null);
           const full = await Promise.all(submitted.map((s) => getShift(s.id).catch(() => null)));
           const valid = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
           if (currentId === activeIdRef.current) {
@@ -380,7 +439,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
 
-      // Pre-cache shifts for other checklists that have a stored shift ID
       await Promise.all(
         cls
           .filter((c) => c.id !== currentId && storedShiftIds[String(c.id)] != null)
@@ -401,11 +459,85 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Fetch from DB once when auth is ready and storage has loaded.
+  const fetchAllLocal = useCallback(async () => {
+    try {
+      const cls = await localListChecklists();
+      setApiChecklists(cls);
+
+      const currentId = activeIdRef.current ?? cls[0]?.id ?? null;
+      if (activeIdRef.current == null && currentId != null) {
+        setActiveId(currentId);
+      }
+
+      await Promise.all(
+        cls.map(async (c) => {
+          try {
+            const cl = await localGetChecklist(c.id);
+            clMemCacheRef.current.set(c.id, cl);
+            if (c.id === currentId && c.id === activeIdRef.current) {
+              setActiveCl(cl);
+            }
+          } catch {}
+        })
+      );
+
+      if (currentId != null) {
+        let storedShiftIds: Record<string, number> = {};
+        try {
+          const raw = await AsyncStorage.getItem(KEY_ACTIVE_SHIFTS);
+          if (raw) storedShiftIds = JSON.parse(raw);
+        } catch {}
+
+        const existingShiftId = storedShiftIds[String(currentId)];
+        let shift: ShiftWithCompletions | null = null;
+
+        if (existingShiftId) {
+          try {
+            const fetched = await localGetShift(existingShiftId);
+            if (!fetched.submittedAt) shift = fetched;
+          } catch {}
+        }
+
+        if (!shift) {
+          try {
+            shift = await localOpenShift(currentId);
+            setActiveShiftIds((prev) => ({ ...prev, [String(currentId)]: shift!.id }));
+          } catch {}
+        }
+
+        if (shift && currentId === activeIdRef.current) {
+          shiftMemCacheRef.current.set(currentId, shift);
+          setActiveShift(shift);
+        }
+
+        try {
+          const allShifts = await localListShifts(currentId);
+          const submitted = allShifts.filter((s) => s.submittedAt != null);
+          const full = await Promise.all(submitted.map((s) => localGetShift(s.id).catch(() => null)));
+          const valid = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
+          if (currentId === activeIdRef.current) {
+            historyMemCacheRef.current.set(currentId, valid);
+            setHistoryShifts(valid);
+          }
+        } catch {}
+      }
+    } catch {
+      // Local store unavailable — cached data already displayed
+    } finally {
+      hasFetchedRef.current = true;
+    }
+  }, []);
+
+  // Fetch from source once when auth is ready and storage has loaded.
   useEffect(() => {
-    if (!ready || !profile || !storageLoaded) return;
-    fetchAllAndCache();
-  }, [ready, profile?.id, storageLoaded, fetchAllAndCache]);
+    if (!storageLoaded || hasFetchedRef.current) return;
+    if (storageModeRef.current === "local") {
+      fetchAllLocal();
+    } else {
+      if (!ready || !profile) return;
+      fetchAllCloud();
+    }
+  }, [ready, profile?.id, storageLoaded, storageMode, fetchAllCloud, fetchAllLocal]);
 
   // Clear all checklist state when the user signs out.
   useEffect(() => {
@@ -421,26 +553,37 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     shiftMemCacheRef.current.clear();
     historyMemCacheRef.current.clear();
     hasFetchedRef.current = false;
-    ChecklistCache.clearAllByIds(ids).catch(() => null);
+    if (storageModeRef.current === "cloud") {
+      ChecklistCache.clearAllByIds(ids).catch(() => null);
+    }
   }, [ready, profile]);
 
-  // ── Auto-save cache when active data changes ────────────────────────────────
+  // ── Auto-save cache when active checklist changes ───────────────────────────
   useEffect(() => {
     if (!activeCl || activeId == null || activeCl.id !== activeId) return;
     clMemCacheRef.current.set(activeId, activeCl);
-    new ChecklistCache(activeId).saveChecklist(activeCl).catch(() => null);
+    if (storageModeRef.current === "local") {
+      localSaveChecklist(activeCl).catch(() => null);
+    } else {
+      new ChecklistCache(activeId).saveChecklist(activeCl).catch(() => null);
+    }
   }, [activeCl, activeId]);
 
+  // Shifts: only auto-save to cloud cache (local mode shifts are written directly per-mutation)
   useEffect(() => {
     if (!activeShift || activeId == null) return;
     shiftMemCacheRef.current.set(activeId, activeShift);
-    new ChecklistCache(activeId).saveShift(activeShift).catch(() => null);
+    if (storageModeRef.current === "cloud") {
+      new ChecklistCache(activeId).saveShift(activeShift).catch(() => null);
+    }
   }, [activeShift, activeId]);
 
   useEffect(() => {
     if (activeId == null) return;
     historyMemCacheRef.current.set(activeId, historyShifts);
-    new ChecklistCache(activeId).saveHistory(historyShifts).catch(() => null);
+    if (storageModeRef.current === "cloud") {
+      new ChecklistCache(activeId).saveHistory(historyShifts).catch(() => null);
+    }
   }, [historyShifts, activeId]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
@@ -451,7 +594,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const completedIds = new Set(activeShift?.completions.map((c) => c.taskId) ?? []);
   const tasks: Task[] = activeCl ? activeCl.tasks.map((t) => toTask(t, completedIds)) : [];
 
-  // Checklist metas (with sections derived from tasks)
   const checklistMetas: ChecklistMeta[] = apiChecklists.map((cl) => {
     const clTasks = cl.id === activeCl?.id ? (activeCl?.tasks ?? []) : [];
     const clSections = deriveSections(clTasks, pendingSections[String(cl.id)] ?? []);
@@ -459,7 +601,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     return toChecklistMeta(cl, ordered);
   });
 
-  // Completion history
   const completionHistory: CompletedChecklist[] = historyShifts
     .filter((s) => !hiddenShiftIds.has(String(s.id)))
     .map((s) => {
@@ -474,7 +615,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     const numId = Number(id);
     if (numId === activeIdRef.current) return;
 
-    // Apply from in-memory cache synchronously (zero-latency switch)
     const cachedCl = clMemCacheRef.current.get(numId) ?? null;
     const cachedShift = shiftMemCacheRef.current.get(numId) ?? null;
     const cachedHistory = historyMemCacheRef.current.get(numId) ?? [];
@@ -484,10 +624,21 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setHistoryShifts(cachedHistory.filter((s) => s.submittedAt != null));
     setActiveId(numId);
 
-    // If mem cache missed, fall back to AsyncStorage
     if (!cachedCl) {
       const targetId = numId;
-      new ChecklistCache(numId).load().then(({ checklist, shift, history }) => {
+      const loadFn = storageModeRef.current === "local"
+        ? async () => {
+            const cl = await localGetChecklist(targetId);
+            const shift = await localOpenShift(targetId).catch(() => null);
+            const allShifts = await localListShifts(targetId);
+            const submitted = allShifts.filter((s) => s.submittedAt != null);
+            const full = await Promise.all(submitted.map((s) => localGetShift(s.id).catch(() => null)));
+            const history = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
+            return { checklist: cl, shift: shift && !shift.submittedAt ? shift : null, history };
+          }
+        : () => new ChecklistCache(targetId).load();
+
+      loadFn().then(({ checklist, shift, history }) => {
         if (activeIdRef.current !== targetId) return;
         if (checklist) {
           clMemCacheRef.current.set(targetId, checklist);
@@ -506,11 +657,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const addChecklist = useCallback(async (name: string) => {
     try {
-      const locationId = profile?.orgUnitId ?? null;
-      const created = await createChecklist({ name, ...(locationId != null ? { locationId } : {}) });
+      const created = storageModeRef.current === "local"
+        ? await localCreateChecklist({ name })
+        : await createChecklist({ name, ...(profile?.orgUnitId != null ? { locationId: profile.orgUnitId } : {}) });
       const newCl: ChecklistWithTasks = { ...created, tasks: [] };
       clMemCacheRef.current.set(created.id, newCl);
-      new ChecklistCache(created.id).saveChecklist(newCl).catch(() => null);
+      if (storageModeRef.current === "cloud") {
+        new ChecklistCache(created.id).saveChecklist(newCl).catch(() => null);
+      }
       setApiChecklists((prev) => [...prev, created]);
       setActiveId(created.id);
       setActiveCl(newCl);
@@ -522,7 +676,9 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const updateChecklistName = useCallback(async (id: string, name: string) => {
     const numId = Number(id);
     try {
-      const updated = await updateChecklist(numId, { name });
+      const updated = storageModeRef.current === "local"
+        ? await localUpdateChecklist(numId, { name })
+        : await updateChecklist(numId, { name });
       setApiChecklists((prev) => prev.map((c) => (c.id === numId ? updated : c)));
       if (numId === activeId) {
         setActiveCl((prev) => prev ? { ...prev, name: updated.name } : prev);
@@ -533,9 +689,15 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const removeChecklist = useCallback(async (id: string) => {
     const numId = Number(id);
     try {
-      await deleteChecklist(numId);
+      if (storageModeRef.current === "local") {
+        await localDeleteChecklist(numId);
+      } else {
+        await deleteChecklist(numId);
+      }
       clMemCacheRef.current.delete(numId);
-      new ChecklistCache(numId).clear().catch(() => null);
+      if (storageModeRef.current === "cloud") {
+        new ChecklistCache(numId).clear().catch(() => null);
+      }
       setApiChecklists((prev) => {
         const next = prev.filter((c) => c.id !== numId);
         if (numId === activeId && next.length > 0) {
@@ -567,34 +729,40 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       if (isCompleted) {
         return { ...prev, completions: prev.completions.filter((c) => c.taskId !== id) };
       } else {
-        const now = new Date().toISOString();
         return {
           ...prev,
           completions: [
             ...prev.completions,
-            { id: -Date.now(), shiftLogId: prev.id, taskId: id, completedBy: null, completedAt: now },
+            { id: -Date.now(), shiftLogId: prev.id, taskId: id, completedBy: null, completedAt: new Date().toISOString() },
           ],
         };
       }
     });
 
     try {
-      if (isCompleted) {
-        await uncompleteShiftTask(activeShift.id, id);
+      if (storageModeRef.current === "local") {
+        if (isCompleted) {
+          await localUncompleteShiftTask(activeShift.id, id);
+        } else {
+          await localCompleteShiftTask(activeShift.id, id);
+        }
       } else {
-        await completeShiftTask(activeShift.id, id);
+        if (isCompleted) {
+          await uncompleteShiftTask(activeShift.id, id);
+        } else {
+          await completeShiftTask(activeShift.id, id);
+        }
       }
     } catch {
       // Revert optimistic update
       setActiveShift((prev) => {
         if (!prev) return prev;
         if (isCompleted) {
-          const now = new Date().toISOString();
           return {
             ...prev,
             completions: [
               ...prev.completions,
-              { id: -Date.now(), shiftLogId: prev.id, taskId: id, completedBy: null, completedAt: now },
+              { id: -Date.now(), shiftLogId: prev.id, taskId: id, completedBy: null, completedAt: new Date().toISOString() },
             ],
           };
         } else {
@@ -607,7 +775,9 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const resetChecklist = useCallback(async () => {
     if (activeId == null) return;
     try {
-      const newShift = await openShift(activeId);
+      const newShift = storageModeRef.current === "local"
+        ? await localOpenShift(activeId)
+        : await openShift(activeId);
       setActiveShift(newShift);
       setActiveShiftIds((prev) => ({ ...prev, [String(activeId)]: newShift.id }));
     } catch {}
@@ -617,9 +787,10 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     if (activeId == null) return;
     const sortOrder = (activeCl?.tasks.filter((t) => t.section === category).length ?? 0);
     try {
-      const created = await createChecklistTask(activeId, { section: category, text, required, sortOrder });
+      const created = storageModeRef.current === "local"
+        ? await localCreateChecklistTask(activeId, { section: category, text, required, sortOrder })
+        : await createChecklistTask(activeId, { section: category, text, required, sortOrder });
       setActiveCl((prev) => prev ? { ...prev, tasks: [...prev.tasks, created] } : prev);
-      // Remove from pending sections if it was there
       setPendingSections((prev) => {
         const key = String(activeId);
         const cur = prev[key] ?? [];
@@ -635,7 +806,9 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     if (updates.required !== undefined) apiUpdates.required = updates.required;
     if (updates.category !== undefined) apiUpdates.section = updates.category;
     try {
-      const updated = await updateChecklistTask(activeId, id, apiUpdates);
+      const updated = storageModeRef.current === "local"
+        ? await localUpdateChecklistTask(id, apiUpdates as Parameters<typeof localUpdateChecklistTask>[1])
+        : await updateChecklistTask(activeId, id, apiUpdates);
       setActiveCl((prev) => {
         if (!prev) return prev;
         return { ...prev, tasks: prev.tasks.map((t) => (t.id === id ? updated : t)) };
@@ -646,7 +819,11 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const removeTask = useCallback(async (id: number) => {
     if (activeId == null) return;
     try {
-      await deleteChecklistTask(activeId, id);
+      if (storageModeRef.current === "local") {
+        await localDeleteChecklistTask(id);
+      } else {
+        await deleteChecklistTask(activeId, id);
+      }
       setActiveCl((prev) => {
         if (!prev) return prev;
         return { ...prev, tasks: prev.tasks.filter((t) => t.id !== id) };
@@ -671,13 +848,20 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const updateSection = useCallback(async (oldTitle: string, newTitle: string) => {
     if (activeId == null) return;
-    // Update all tasks in this section
     const tasksToUpdate = (activeCl?.tasks ?? []).filter((t) => t.section === oldTitle);
-    await Promise.all(
-      tasksToUpdate.map((t) =>
-        updateChecklistTask(activeId, t.id, { section: newTitle }).catch(() => null)
-      )
-    );
+    if (storageModeRef.current === "local") {
+      await Promise.all(
+        tasksToUpdate.map((t) =>
+          localUpdateChecklistTask(t.id, { section: newTitle }).catch(() => null)
+        )
+      );
+    } else {
+      await Promise.all(
+        tasksToUpdate.map((t) =>
+          updateChecklistTask(activeId, t.id, { section: newTitle }).catch(() => null)
+        )
+      );
+    }
     setActiveCl((prev) => {
       if (!prev) return prev;
       return {
@@ -685,7 +869,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         tasks: prev.tasks.map((t) => (t.section === oldTitle ? { ...t, section: newTitle } : t)),
       };
     });
-    // Update pending sections
     setPendingSections((prev) => {
       const key = String(activeId);
       const cur = prev[key] ?? [];
@@ -700,11 +883,16 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const removeSection = useCallback(async (title: string) => {
     if (activeId == null) return;
-    // Delete all tasks in this section
     const tasksToDelete = (activeCl?.tasks ?? []).filter((t) => t.section === title);
-    await Promise.all(
-      tasksToDelete.map((t) => deleteChecklistTask(activeId, t.id).catch(() => null))
-    );
+    if (storageModeRef.current === "local") {
+      await Promise.all(
+        tasksToDelete.map((t) => localDeleteChecklistTask(t.id).catch(() => null))
+      );
+    } else {
+      await Promise.all(
+        tasksToDelete.map((t) => deleteChecklistTask(activeId, t.id).catch(() => null))
+      );
+    }
     setActiveCl((prev) => {
       if (!prev) return prev;
       return { ...prev, tasks: prev.tasks.filter((t) => t.section !== title) };
@@ -726,7 +914,6 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const reorderTasksInSection = useCallback(async (category: string, newSectionTasks: Task[]) => {
     if (activeId == null) return;
-    // Update sortOrder for each task
     setActiveCl((prev) => {
       if (!prev) return prev;
       const otherTasks = prev.tasks.filter((t) => t.section !== category);
@@ -736,20 +923,29 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       }));
       return { ...prev, tasks: [...otherTasks, ...reordered] };
     });
-    // Persist sortOrder to API (fire-and-forget)
-    newSectionTasks.forEach((t, i) => {
-      updateChecklistTask(activeId, t.id, { sortOrder: i }).catch(() => null);
-    });
+    // Persist sortOrder (fire-and-forget)
+    if (storageModeRef.current === "local") {
+      newSectionTasks.forEach((t, i) => {
+        localUpdateChecklistTask(t.id, { sortOrder: i }).catch(() => null);
+      });
+    } else {
+      newSectionTasks.forEach((t, i) => {
+        updateChecklistTask(activeId, t.id, { sortOrder: i }).catch(() => null);
+      });
+    }
   }, [activeId]);
 
   // ── History operations ──────────────────────────────────────────────────────
   const completeChecklist = useCallback(async () => {
     if (!activeShift || activeId == null) return;
     try {
-      const submitted = await submitShift(activeShift.id, {});
+      const submitted = storageModeRef.current === "local"
+        ? await localSubmitShift(activeShift.id)
+        : await submitShift(activeShift.id, {});
       setHistoryShifts((prev) => [submitted, ...prev]);
-      // Open a new shift
-      const newShift = await openShift(activeId);
+      const newShift = storageModeRef.current === "local"
+        ? await localOpenShift(activeId)
+        : await openShift(activeId);
       setActiveShift(newShift);
       setActiveShiftIds((prev) => ({ ...prev, [String(activeId)]: newShift.id }));
     } catch {}
@@ -763,48 +959,53 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     setHiddenShiftIds((prev) => new Set([...prev, ...historyShifts.map((s) => String(s.id))]));
   }, [historyShifts]);
 
-  const clearMockHistory = useCallback(() => {
-    // No-op for API-backed context (no mock data)
-  }, []);
+  const clearMockHistory = useCallback(() => {}, []);
 
-  const seedHistory = useCallback((_items: CompletedChecklist[]) => {
-    // No-op for API-backed context (history comes from server)
-  }, []);
+  const seedHistory = useCallback((_items: CompletedChecklist[]) => {}, []);
 
   const updateAppConfig = useCallback((updates: Partial<AppConfig>) => {
     setAppConfig((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const onChecklistImported = useCallback(async (checklist: Checklist) => {
-    // Immediately show the new checklist with a stub (tasks will load async)
     const stub: ChecklistWithTasks = { ...checklist, tasks: [] };
     clMemCacheRef.current.set(checklist.id, stub);
-    new ChecklistCache(checklist.id).saveChecklist(stub).catch(() => null);
+    if (storageModeRef.current === "cloud") {
+      new ChecklistCache(checklist.id).saveChecklist(stub).catch(() => null);
+    }
     setApiChecklists((prev) => [...prev, checklist]);
     setActiveId(checklist.id);
     setActiveCl(stub);
     setActiveShift(null);
     setHistoryShifts([]);
 
-    // Fetch full checklist (with tasks) and open a fresh shift in parallel
     try {
-      const [full, shift] = await Promise.all([
-        getChecklist(checklist.id),
-        openShift(checklist.id),
-      ]);
-      clMemCacheRef.current.set(checklist.id, full);
-      new ChecklistCache(checklist.id).saveChecklist(full).catch(() => null);
-      shiftMemCacheRef.current.set(checklist.id, shift);
-      new ChecklistCache(checklist.id).saveShift(shift).catch(() => null);
-      if (activeIdRef.current === checklist.id) {
-        setActiveCl(full);
-        setActiveShift(shift);
-        setActiveShiftIds((prev) => ({ ...prev, [String(checklist.id)]: shift.id }));
+      if (storageModeRef.current === "local") {
+        await localSaveChecklist(stub);
+        const shift = await localOpenShift(checklist.id);
+        shiftMemCacheRef.current.set(checklist.id, shift);
+        if (activeIdRef.current === checklist.id) {
+          setActiveShift(shift);
+          setActiveShiftIds((prev) => ({ ...prev, [String(checklist.id)]: shift.id }));
+        }
+      } else {
+        const [full, shift] = await Promise.all([
+          getChecklist(checklist.id),
+          openShift(checklist.id),
+        ]);
+        clMemCacheRef.current.set(checklist.id, full);
+        new ChecklistCache(checklist.id).saveChecklist(full).catch(() => null);
+        shiftMemCacheRef.current.set(checklist.id, shift);
+        new ChecklistCache(checklist.id).saveShift(shift).catch(() => null);
+        if (activeIdRef.current === checklist.id) {
+          setActiveCl(full);
+          setActiveShift(shift);
+          setActiveShiftIds((prev) => ({ ...prev, [String(checklist.id)]: shift.id }));
+        }
       }
     } catch {}
   }, []);
 
-  // ── Active checklist id (string for backward compat) ────────────────────────
   const activeChecklistId = activeId != null ? String(activeId) : (checklistMetas[0]?.id ?? "");
 
   return (
@@ -838,6 +1039,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         appConfig,
         updateAppConfig,
         onChecklistImported,
+        storageMode,
       }}
     >
       {children}
