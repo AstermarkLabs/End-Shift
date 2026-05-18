@@ -137,3 +137,6 @@ overrides:
   rollup>@rollup/rollup-win32-x64-msvc: '-'
   tinyglobby>picomatch: ^4.0.4
   vite>picomatch: ^4.0.4
+
+patchedDependencies:
+  react-native-pdf-thumbnail@1.3.1: patches/react-native-pdf-thumbnail@1.3.1.patch
