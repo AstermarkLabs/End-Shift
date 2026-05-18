@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,6 +16,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import {
+  listRoles,
+  getChecklistRoles,
+  updateChecklistRoles,
+} from "@workspace/api-client-react";
+import type { Role } from "@workspace/api-client-react";
 
 import { SortableList } from "@/components/SortableList";
 import { Task, useChecklist } from "@/context/ChecklistContext";
@@ -320,6 +327,96 @@ function SectionCard({
   );
 }
 
+// ─── Role Restrict Card ───────────────────────────────────────────────────────
+
+function RoleRestrictCard({ checklistId }: { checklistId: string }) {
+  const colors = useColors();
+  const numericId = parseInt(checklistId, 10);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
+  const [allowedRoleIds, setAllowedRoleIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!Number.isFinite(numericId)) return;
+    setLoading(true);
+    try {
+      const [roles, restrictions] = await Promise.all([
+        listRoles(),
+        getChecklistRoles(numericId),
+      ]);
+      setAllRoles(roles);
+      setAllowedRoleIds(restrictions.allowedRoleIds);
+    } finally {
+      setLoading(false);
+    }
+  }, [numericId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toggleRole = async (roleId: number) => {
+    const next = allowedRoleIds.includes(roleId)
+      ? allowedRoleIds.filter((r) => r !== roleId)
+      : [...allowedRoleIds, roleId];
+    setAllowedRoleIds(next);
+    setSaving(true);
+    try {
+      const result = await updateChecklistRoles(numericId, { roleIds: next });
+      setAllowedRoleIds(result.allowedRoleIds);
+    } catch {
+      setAllowedRoleIds(allowedRoleIds);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hint =
+    allowedRoleIds.length === 0
+      ? "Visible to all roles"
+      : `Restricted to ${allowedRoleIds.length} role${allowedRoleIds.length !== 1 ? "s" : ""}`;
+
+  return (
+    <View style={[styles.roleCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.roleCardLabel, { color: colors.mutedForeground }]}>RESTRICT TO ROLES</Text>
+      <Text style={[styles.roleCardHint, { color: colors.mutedForeground }]}>{hint}</Text>
+      {loading ? (
+        <Text style={[styles.roleCardHint, { color: colors.mutedForeground, padding: 4 }]}>
+          Loading roles…
+        </Text>
+      ) : allRoles.length === 0 ? (
+        <Text style={[styles.roleCardHint, { color: colors.mutedForeground }]}>
+          No roles found for this tenant.
+        </Text>
+      ) : (
+        allRoles.map((role) => (
+          <View
+            key={role.id}
+            style={[styles.roleRow, { borderTopColor: colors.border }]}
+          >
+            <View style={styles.roleInfo}>
+              <Text style={[styles.roleName, { color: colors.foreground }]}>
+                {role.name}
+              </Text>
+              {allowedRoleIds.length === 0 && (
+                <Text style={[styles.roleAccess, { color: colors.mutedForeground }]}>
+                  unrestricted
+                </Text>
+              )}
+            </View>
+            <Switch
+              value={allowedRoleIds.includes(role.id)}
+              onValueChange={() => toggleRole(role.id)}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#fff"
+              disabled={saving}
+            />
+          </View>
+        ))
+      )}
+    </View>
+  );
+}
+
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
 export default function ChecklistSettingsScreen() {
@@ -435,6 +532,11 @@ export default function ChecklistSettingsScreen() {
         >
           <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>+ Add Section</Text>
         </TouchableOpacity>
+
+        {/* Role restrictions */}
+        {activeChecklistId ? (
+          <RoleRestrictCard checklistId={activeChecklistId} />
+        ) : null}
       </ScrollView>
 
       {editTarget && <EditModal target={editTarget} onClose={() => setEditTarget(null)} />}
@@ -580,6 +682,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addSectionBtnText: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
+
+  // Role card
+  roleCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 4,
+  },
+  roleCardLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  roleCardHint: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  roleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  roleInfo: { flex: 1, gap: 1 },
+  roleName: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  roleAccess: { fontSize: 11 },
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: "flex-end" },

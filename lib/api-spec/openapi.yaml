@@ -692,6 +692,56 @@ paths:
         "404":
           description: Not found
 
+  /checklists/{id}/roles:
+    get:
+      operationId: getChecklistRoles
+      tags: [checklists]
+      summary: Get role restrictions for a checklist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Role restrictions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistRoles"
+        "404":
+          description: Not found
+    put:
+      operationId: updateChecklistRoles
+      tags: [checklists]
+      summary: Set role restrictions for a checklist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistRolesUpdate"
+      responses:
+        "200":
+          description: Updated role restrictions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistRoles"
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+
   /checklists/{id}/shifts:
     get:
       operationId: listShifts
@@ -1199,13 +1249,18 @@ components:
           type: string
         createdBy:
           type: ["integer", "null"]
+        allowedRoleIds:
+          type: array
+          items:
+            type: integer
+          description: Role IDs that may access this checklist. Empty means unrestricted.
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required: [id, tenantId, name, createdAt, updatedAt]
+      required: [id, tenantId, name, allowedRoleIds, createdAt, updatedAt]
 
     ChecklistInput:
       type: object
@@ -1294,6 +1349,11 @@ components:
           type: string
         createdBy:
           type: ["integer", "null"]
+        allowedRoleIds:
+          type: array
+          items:
+            type: integer
+          description: Role IDs that may access this checklist. Empty means unrestricted.
         createdAt:
           type: string
           format: date-time
@@ -1304,7 +1364,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChecklistTask"
-      required: [id, tenantId, name, createdAt, updatedAt, tasks]
+      required: [id, tenantId, name, allowedRoleIds, createdAt, updatedAt, tasks]
+
+    ChecklistRoles:
+      type: object
+      properties:
+        allowedRoleIds:
+          type: array
+          items:
+            type: integer
+          description: Role IDs that may access this checklist. Empty means unrestricted.
+      required: [allowedRoleIds]
+
+    ChecklistRolesUpdate:
+      type: object
+      properties:
+        roleIds:
+          type: array
+          items:
+            type: integer
+      required: [roleIds]
 
     ShiftLog:
       type: object

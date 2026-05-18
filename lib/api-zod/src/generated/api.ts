@@ -703,6 +703,11 @@ export const ListChecklistsResponseItem = zod.object({
   locationId: zod.number().nullish(),
   name: zod.string(),
   createdBy: zod.number().nullish(),
+  allowedRoleIds: zod
+    .array(zod.number())
+    .describe(
+      "Role IDs that may access this checklist. Empty means unrestricted.",
+    ),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -752,6 +757,11 @@ export const GetChecklistResponse = zod.object({
   locationId: zod.number().nullish(),
   name: zod.string(),
   createdBy: zod.number().nullish(),
+  allowedRoleIds: zod
+    .array(zod.number())
+    .describe(
+      "Role IDs that may access this checklist. Empty means unrestricted.",
+    ),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   tasks: zod.array(
@@ -786,6 +796,11 @@ export const UpdateChecklistResponse = zod.object({
   locationId: zod.number().nullish(),
   name: zod.string(),
   createdBy: zod.number().nullish(),
+  allowedRoleIds: zod
+    .array(zod.number())
+    .describe(
+      "Role IDs that may access this checklist. Empty means unrestricted.",
+    ),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -866,6 +881,40 @@ export const UpdateChecklistTaskResponse = zod.object({
 export const DeleteChecklistTaskParams = zod.object({
   id: zod.coerce.number(),
   taskId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get role restrictions for a checklist
+ */
+export const GetChecklistRolesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetChecklistRolesResponse = zod.object({
+  allowedRoleIds: zod
+    .array(zod.number())
+    .describe(
+      "Role IDs that may access this checklist. Empty means unrestricted.",
+    ),
+});
+
+/**
+ * @summary Set role restrictions for a checklist
+ */
+export const UpdateChecklistRolesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateChecklistRolesBody = zod.object({
+  roleIds: zod.array(zod.number()),
+});
+
+export const UpdateChecklistRolesResponse = zod.object({
+  allowedRoleIds: zod
+    .array(zod.number())
+    .describe(
+      "Role IDs that may access this checklist. Empty means unrestricted.",
+    ),
 });
 
 /**

@@ -1,6 +1,13 @@
 import { Router, type IRouter } from "express";
-import { db, checklistsTable, checklistTasksTable, orgUnitsTable } from "@workspace/db";
-import { and, eq, asc } from "drizzle-orm";
+import {
+  db,
+  checklistsTable,
+  checklistTasksTable,
+  checklistRolesTable,
+  orgUnitsTable,
+  rolesTable,
+} from "@workspace/db";
+import { and, eq, asc, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   blockIfMustChangePassword,
@@ -15,13 +22,47 @@ router.use(requireAuth, blockIfMustChangePassword);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function shapeChecklist(row: typeof checklistsTable.$inferSelect) {
+const CHECKLIST_ADMIN_RIGHTS = new Set([
+  "create_checklists",
+  "edit_checklists",
+  "delete_checklists",
+  "view_reports",
+  "manage_checklist_settings",
+]);
+
+function hasChecklistAdminRight(rights: string[]): boolean {
+  return rights.some((r) => CHECKLIST_ADMIN_RIGHTS.has(r));
+}
+
+/** Fetch a map of checklistId → allowed roleIds for the given checklist IDs. */
+async function fetchRoleMap(
+  checklistIds: number[],
+): Promise<Map<number, number[]>> {
+  if (checklistIds.length === 0) return new Map();
+  const rows = await db
+    .select()
+    .from(checklistRolesTable)
+    .where(inArray(checklistRolesTable.checklistId, checklistIds));
+  const map = new Map<number, number[]>();
+  for (const row of rows) {
+    const arr = map.get(row.checklistId) ?? [];
+    arr.push(row.roleId);
+    map.set(row.checklistId, arr);
+  }
+  return map;
+}
+
+function shapeChecklist(
+  row: typeof checklistsTable.$inferSelect,
+  allowedRoleIds: number[],
+) {
   return {
     id: row.id,
     tenantId: row.tenantId,
     locationId: row.locationId ?? null,
     name: row.name,
     createdBy: row.createdBy ?? null,
+    allowedRoleIds,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -66,27 +107,46 @@ const TaskUpdateBody = z.object({
   sortOrder: z.number().int().optional(),
 });
 
+const RolesUpdateBody = z.object({
+  roleIds: z.array(z.number().int()),
+});
+
 // ── List checklists ───────────────────────────────────────────────────────────
+// Open to all authenticated tenant users; admins see all, others see only
+// checklists that are unrestricted or match their role.
 
-router.get(
-  "/checklists",
-  requireAnyRight("create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"),
-  async (req, res): Promise<void> => {
-    const u = req.user!;
-    if (u.role.isSystem) {
-      const rows = await db.select().from(checklistsTable);
-      res.json(rows.map(shapeChecklist));
-      return;
-    }
-    if (!u.tenantId) { res.json([]); return; }
+router.get("/checklists", async (req, res): Promise<void> => {
+  const u = req.user!;
 
-    const rows = await db
-      .select()
-      .from(checklistsTable)
-      .where(eq(checklistsTable.tenantId, u.tenantId));
-    res.json(rows.map(shapeChecklist));
-  },
-);
+  if (u.role.isSystem) {
+    const rows = await db.select().from(checklistsTable);
+    const ids = rows.map((r) => r.id);
+    const roleMap = await fetchRoleMap(ids);
+    res.json(rows.map((r) => shapeChecklist(r, roleMap.get(r.id) ?? [])));
+    return;
+  }
+
+  if (!u.tenantId) { res.json([]); return; }
+
+  const rows = await db
+    .select()
+    .from(checklistsTable)
+    .where(eq(checklistsTable.tenantId, u.tenantId));
+
+  const ids = rows.map((r) => r.id);
+  const roleMap = await fetchRoleMap(ids);
+
+  const isAdmin = hasChecklistAdminRight(u.role.rights as string[]);
+
+  const visible = isAdmin
+    ? rows
+    : rows.filter((r) => {
+        const allowed = roleMap.get(r.id) ?? [];
+        return allowed.length === 0 || allowed.includes(u.roleId);
+      });
+
+  res.json(visible.map((r) => shapeChecklist(r, roleMap.get(r.id) ?? [])));
+});
 
 // ── Create checklist ──────────────────────────────────────────────────────────
 
@@ -103,7 +163,6 @@ router.post(
     }
     const tenantId = u.tenantId!;
 
-    // Validate locationId belongs to this tenant.
     if (body.locationId != null) {
       const loc = await db
         .select()
@@ -126,7 +185,7 @@ router.post(
       })
       .returning();
 
-    res.status(201).json(shapeChecklist(created));
+    res.status(201).json(shapeChecklist(created, []));
   },
 );
 
@@ -134,7 +193,6 @@ router.post(
 
 router.get(
   "/checklists/:id",
-  requireAnyRight("create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"),
   async (req, res): Promise<void> => {
     const u = req.user!;
     const id = Number(req.params["id"]);
@@ -150,13 +208,23 @@ router.get(
     const cl = rows[0];
     if (!u.role.isSystem && cl.tenantId !== u.tenantId) { res.status(404).end(); return; }
 
+    const roleMap = await fetchRoleMap([id]);
+    const allowedRoleIds = roleMap.get(id) ?? [];
+
+    const isAdmin = u.role.isSystem || hasChecklistAdminRight(u.role.rights as string[]);
+    if (!isAdmin) {
+      if (allowedRoleIds.length > 0 && !allowedRoleIds.includes(u.roleId)) {
+        res.status(404).end(); return;
+      }
+    }
+
     const tasks = await db
       .select()
       .from(checklistTasksTable)
       .where(eq(checklistTasksTable.checklistId, id))
       .orderBy(asc(checklistTasksTable.sortOrder), asc(checklistTasksTable.createdAt));
 
-    res.json({ ...shapeChecklist(cl), tasks: tasks.map(shapeTask) });
+    res.json({ ...shapeChecklist(cl, allowedRoleIds), tasks: tasks.map(shapeTask) });
   },
 );
 
@@ -179,7 +247,6 @@ router.put(
     if (rows.length === 0) { res.status(404).end(); return; }
     if (!u.role.isSystem && rows[0].tenantId !== u.tenantId) { res.status(404).end(); return; }
 
-    // Validate locationId if provided.
     if (body.locationId != null) {
       const loc = await db
         .select()
@@ -200,7 +267,8 @@ router.put(
 
     await db.update(checklistsTable).set(updates).where(eq(checklistsTable.id, id));
     const [updated] = await db.select().from(checklistsTable).where(eq(checklistsTable.id, id));
-    res.json(shapeChecklist(updated));
+    const roleMap = await fetchRoleMap([id]);
+    res.json(shapeChecklist(updated, roleMap.get(id) ?? []));
   },
 );
 
@@ -224,6 +292,84 @@ router.delete(
 
     await db.delete(checklistsTable).where(eq(checklistsTable.id, id));
     res.status(204).end();
+  },
+);
+
+// ── Get checklist role restrictions ──────────────────────────────────────────
+
+router.get(
+  "/checklists/:id/roles",
+  requireAnyRight("edit_checklists", "manage_checklist_settings"),
+  async (req, res): Promise<void> => {
+    const u = req.user!;
+    const id = Number(req.params["id"]);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+    const rows = await db
+      .select()
+      .from(checklistsTable)
+      .where(eq(checklistsTable.id, id))
+      .limit(1);
+    if (rows.length === 0) { res.status(404).end(); return; }
+    if (!u.role.isSystem && rows[0].tenantId !== u.tenantId) { res.status(404).end(); return; }
+
+    const roleMap = await fetchRoleMap([id]);
+    res.json({ allowedRoleIds: roleMap.get(id) ?? [] });
+  },
+);
+
+// ── Update checklist role restrictions ────────────────────────────────────────
+
+router.put(
+  "/checklists/:id/roles",
+  requireRight("edit_checklists"),
+  async (req, res): Promise<void> => {
+    const u = req.user!;
+    const id = Number(req.params["id"]);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const body = RolesUpdateBody.parse(req.body);
+
+    const rows = await db
+      .select()
+      .from(checklistsTable)
+      .where(eq(checklistsTable.id, id))
+      .limit(1);
+    if (rows.length === 0) { res.status(404).end(); return; }
+    if (!u.role.isSystem && rows[0].tenantId !== u.tenantId) { res.status(404).end(); return; }
+
+    // Validate that all provided role IDs belong to this tenant.
+    if (body.roleIds.length > 0) {
+      const validRoles = await db
+        .select({ id: rolesTable.id })
+        .from(rolesTable)
+        .where(
+          and(
+            inArray(rolesTable.id, body.roleIds),
+            eq(rolesTable.tenantId, rows[0].tenantId),
+          ),
+        );
+      const validIds = new Set(validRoles.map((r) => r.id));
+      const invalid = body.roleIds.filter((rid) => !validIds.has(rid));
+      if (invalid.length > 0) {
+        res.status(400).json({ error: "Invalid role IDs", invalid });
+        return;
+      }
+    }
+
+    // Replace the entire set atomically.
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(checklistRolesTable)
+        .where(eq(checklistRolesTable.checklistId, id));
+      if (body.roleIds.length > 0) {
+        await tx.insert(checklistRolesTable).values(
+          body.roleIds.map((roleId) => ({ checklistId: id, roleId })),
+        );
+      }
+    });
+
+    const roleMap = await fetchRoleMap([id]);
+    res.json({ allowedRoleIds: roleMap.get(id) ?? [] });
   },
 );
 

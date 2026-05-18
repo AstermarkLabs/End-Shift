@@ -15,6 +15,8 @@ export interface ChecklistWithTasks {
   name: string;
   /** @nullable */
   createdBy?: number | null;
+  /** Role IDs that may access this checklist. Empty means unrestricted. */
+  allowedRoleIds: number[];
   createdAt: Date;
   updatedAt: Date;
   tasks: ChecklistTask[];

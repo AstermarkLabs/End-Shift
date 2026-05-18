@@ -6,16 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Checklist {
-  id: number;
-  tenantId: number;
-  /** @nullable */
-  locationId?: number | null;
-  name: string;
-  /** @nullable */
-  createdBy?: number | null;
+export interface ChecklistRoles {
   /** Role IDs that may access this checklist. Empty means unrestricted. */
   allowedRoleIds: number[];
-  createdAt: Date;
-  updatedAt: Date;
 }

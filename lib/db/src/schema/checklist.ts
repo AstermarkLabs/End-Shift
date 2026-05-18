@@ -5,9 +5,10 @@ import {
   integer,
   timestamp,
   boolean,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { tenantsTable, orgUnitsTable, usersTable } from "./auth";
+import { tenantsTable, orgUnitsTable, usersTable, rolesTable } from "./auth";
 
 // ── Checklists ────────────────────────────────────────────────────────────────
 // A checklist template owned by a specific location (org unit of type
@@ -99,6 +100,25 @@ export const shiftTaskCompletionsTable = pgTable("shift_task_completions", {
     .defaultNow(),
 });
 
+// ── Checklist Roles ───────────────────────────────────────────────────────────
+// Join table that restricts a checklist to specific roles.
+// If no rows exist for a checklist, the checklist is visible to everyone.
+
+export const checklistRolesTable = pgTable(
+  "checklist_roles",
+  {
+    checklistId: integer("checklist_id")
+      .notNull()
+      .references(() => checklistsTable.id, { onDelete: "cascade" }),
+    roleId: integer("role_id")
+      .notNull()
+      .references(() => rolesTable.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.checklistId, t.roleId] }),
+  }),
+);
+
 // ── Relations ─────────────────────────────────────────────────────────────────
 
 export const checklistsRelations = relations(
@@ -118,6 +138,7 @@ export const checklistsRelations = relations(
     }),
     tasks: many(checklistTasksTable),
     shiftLogs: many(shiftLogsTable),
+    roles: many(checklistRolesTable),
   }),
 );
 
@@ -179,6 +200,20 @@ export const shiftTaskCompletionsRelations = relations(
   }),
 );
 
+export const checklistRolesRelations = relations(
+  checklistRolesTable,
+  ({ one }) => ({
+    checklist: one(checklistsTable, {
+      fields: [checklistRolesTable.checklistId],
+      references: [checklistsTable.id],
+    }),
+    role: one(rolesTable, {
+      fields: [checklistRolesTable.roleId],
+      references: [rolesTable.id],
+    }),
+  }),
+);
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type Checklist = typeof checklistsTable.$inferSelect;
@@ -190,3 +225,4 @@ export type InsertShiftLog = typeof shiftLogsTable.$inferInsert;
 export type ShiftTaskCompletion = typeof shiftTaskCompletionsTable.$inferSelect;
 export type InsertShiftTaskCompletion =
   typeof shiftTaskCompletionsTable.$inferInsert;
+export type ChecklistRole = typeof checklistRolesTable.$inferSelect;

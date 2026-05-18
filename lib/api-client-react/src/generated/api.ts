@@ -20,6 +20,8 @@ import type {
   AuthResult,
   Checklist,
   ChecklistInput,
+  ChecklistRoles,
+  ChecklistRolesUpdate,
   ChecklistTask,
   ChecklistTaskInput,
   ChecklistTaskUpdate,
@@ -3073,6 +3075,180 @@ export const useDeleteChecklistTask = <
   TContext
 > => {
   return useMutation(getDeleteChecklistTaskMutationOptions(options));
+};
+
+/**
+ * @summary Get role restrictions for a checklist
+ */
+export const getGetChecklistRolesUrl = (id: number) => {
+  return `/api/checklists/${id}/roles`;
+};
+
+export const getChecklistRoles = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ChecklistRoles> => {
+  return customFetch<ChecklistRoles>(getGetChecklistRolesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetChecklistRolesQueryKey = (id: number) => {
+  return [`/api/checklists/${id}/roles`] as const;
+};
+
+export const getGetChecklistRolesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChecklistRoles>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChecklistRoles>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetChecklistRolesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChecklistRoles>>
+  > = ({ signal }) => getChecklistRoles(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChecklistRoles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChecklistRolesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChecklistRoles>>
+>;
+export type GetChecklistRolesQueryError = ErrorType<void>;
+
+/**
+ * @summary Get role restrictions for a checklist
+ */
+
+export function useGetChecklistRoles<
+  TData = Awaited<ReturnType<typeof getChecklistRoles>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChecklistRoles>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChecklistRolesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set role restrictions for a checklist
+ */
+export const getUpdateChecklistRolesUrl = (id: number) => {
+  return `/api/checklists/${id}/roles`;
+};
+
+export const updateChecklistRoles = async (
+  id: number,
+  checklistRolesUpdate: ChecklistRolesUpdate,
+  options?: RequestInit,
+): Promise<ChecklistRoles> => {
+  return customFetch<ChecklistRoles>(getUpdateChecklistRolesUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(checklistRolesUpdate),
+  });
+};
+
+export const getUpdateChecklistRolesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChecklistRoles>>,
+    TError,
+    { id: number; data: BodyType<ChecklistRolesUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChecklistRoles>>,
+  TError,
+  { id: number; data: BodyType<ChecklistRolesUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateChecklistRoles"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChecklistRoles>>,
+    { id: number; data: BodyType<ChecklistRolesUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateChecklistRoles(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChecklistRolesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChecklistRoles>>
+>;
+export type UpdateChecklistRolesMutationBody = BodyType<ChecklistRolesUpdate>;
+export type UpdateChecklistRolesMutationError = ErrorType<void>;
+
+/**
+ * @summary Set role restrictions for a checklist
+ */
+export const useUpdateChecklistRoles = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChecklistRoles>>,
+    TError,
+    { id: number; data: BodyType<ChecklistRolesUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateChecklistRoles>>,
+  TError,
+  { id: number; data: BodyType<ChecklistRolesUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateChecklistRolesMutationOptions(options));
 };
 
 /**

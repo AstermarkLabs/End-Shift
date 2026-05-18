@@ -231,6 +231,8 @@ export interface Checklist {
   name: string;
   /** @nullable */
   createdBy?: number | null;
+  /** Role IDs that may access this checklist. Empty means unrestricted. */
+  allowedRoleIds: number[];
   createdAt: string;
   updatedAt: string;
 }
@@ -291,9 +293,20 @@ export interface ChecklistWithTasks {
   name: string;
   /** @nullable */
   createdBy?: number | null;
+  /** Role IDs that may access this checklist. Empty means unrestricted. */
+  allowedRoleIds: number[];
   createdAt: string;
   updatedAt: string;
   tasks: ChecklistTask[];
+}
+
+export interface ChecklistRoles {
+  /** Role IDs that may access this checklist. Empty means unrestricted. */
+  allowedRoleIds: number[];
+}
+
+export interface ChecklistRolesUpdate {
+  roleIds: number[];
 }
 
 export interface ShiftLog {
