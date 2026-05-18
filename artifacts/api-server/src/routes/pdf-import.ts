@@ -48,69 +48,117 @@ interface PdfSection {
   tasks: PdfTask[];
 }
 
-const TASK_PREFIX =
-  /^(?:[-*•·→✓☐☑✗✘▸▹◦]|\[[\s xX]?\]|\d{1,2}[.)]\s|\([a-z]\)\s)/;
+// Lines that start with an explicit bullet/checkbox/number prefix
+const EXPLICIT_PREFIX =
+  /^(?:[-*•·→✓☐☑✗✘▸▹◦]|\[[\s xX]?\]|\d{1,3}[.)]\s+|\([a-zA-Z0-9]\)\s+)/;
 
 const REQUIRED_MARKER = /\b(?:required|mandatory|must)\b/i;
 
-function isTaskLine(line: string): boolean {
-  return TASK_PREFIX.test(line);
-}
+// Page numbers, separators, and other noise to skip entirely
+const SKIP_LINE =
+  /^[-=_]{2,}$|^\d{1,4}$|^page\s+\d/i;
 
 function isSectionHeader(line: string): boolean {
-  if (isTaskLine(line)) return false;
-  if (line.endsWith(":") && line.length > 3) return true;
+  if (EXPLICIT_PREFIX.test(line)) return false;
+  // Ends with colon (e.g. "Opening Tasks:")
+  if (line.endsWith(":") && line.length > 3 && line.length < 80) return true;
+  // Starts with a Roman numeral or numbered section heading like "I.", "II.", "1."
+  if (/^(?:[IVX]+\.|[A-Z]\.|Section\s+\d)/i.test(line) && line.length < 60) return true;
+  // ALL CAPS with at least 4 letters and <60 chars (typical section heading)
   const letters = line.replace(/[^a-zA-Z]/g, "");
   const uppers = line.replace(/[^A-Z]/g, "");
-  return letters.length >= 4 && uppers.length / letters.length >= 0.7;
+  return (
+    letters.length >= 4 &&
+    line.length < 60 &&
+    uppers.length / letters.length >= 0.75
+  );
 }
 
-function cleanTaskText(raw: string): string {
+function stripPrefix(raw: string): string {
   return raw
-    .replace(/^(?:[-*•·→✓☐☑✗✘▸▹◦]|\[[\s xX]?\]\s*|\d{1,2}[.)]\s|\([a-z]\)\s)\s*/, "")
+    .replace(/^(?:[-*•·→✓☐☑✗✘▸▹◦]|\[[\s xX]?\]\s*|\d{1,3}[.)]\s+|\([a-zA-Z0-9]\)\s+)\s*/, "")
     .replace(/\s*\(\s*required\s*\)\s*$/i, "")
     .replace(/\s*\*\s*$/, "")
     .trim();
 }
 
 function cleanSectionTitle(raw: string): string {
-  return raw.replace(/:+$/, "").replace(/^#+\s*/, "").trim();
+  return raw.replace(/:+$/, "").replace(/^#+\s*/, "").replace(/^(?:[IVX]+\.|[A-Z]\.)\s*/i, "").trim();
 }
 
 function isRequired(line: string): boolean {
   return REQUIRED_MARKER.test(line) || line.trimEnd().endsWith("*");
 }
 
+/**
+ * Decide whether a line looks like a useful task candidate in permissive mode.
+ * Rejects very short lines, very long paragraphs, and obvious noise.
+ */
+function isUsableLine(line: string): boolean {
+  if (line.length < 4 || line.length > 250) return false;
+  if (SKIP_LINE.test(line)) return false;
+  // Reject lines that are mostly punctuation / symbols
+  const alphaNum = line.replace(/[^a-zA-Z0-9]/g, "");
+  if (alphaNum.length < 3) return false;
+  return true;
+}
+
 function parsePdfText(text: string): { sections: PdfSection[] } {
-  const lines = text
+  const raw = text
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 1);
 
+  // ── Mode detection ──────────────────────────────────────────────────────────
+  // Count lines that carry an explicit prefix (bullet, checkbox, number).
+  // If we have at least 3, use strict prefix-based parsing.
+  // Otherwise fall back to permissive mode where every substantive non-header
+  // line is treated as a task.
+  const explicitCount = raw.filter((l) => EXPLICIT_PREFIX.test(l)).length;
+  const useStrict = explicitCount >= 3;
+
+  // ── Build sections ──────────────────────────────────────────────────────────
   const sections: PdfSection[] = [];
   let current: PdfSection = { title: "General Tasks", tasks: [] };
   let headerSeen = false;
 
-  for (const line of lines) {
-    if (/^[-=_]{2,}$/.test(line)) continue;
+  for (const line of raw) {
+    if (SKIP_LINE.test(line)) continue;
 
     if (isSectionHeader(line)) {
+      // Flush the in-progress section when we hit a new header
       if (headerSeen || current.tasks.length > 0) {
         sections.push(current);
         current = { title: cleanSectionTitle(line), tasks: [] };
         headerSeen = true;
       } else {
+        // First header before any tasks — use it as the section title
         current.title = cleanSectionTitle(line);
         headerSeen = true;
       }
-    } else if (isTaskLine(line)) {
-      const text = cleanTaskText(line);
-      if (text.length > 0) {
-        current.tasks.push({ text, required: isRequired(line) });
+      continue;
+    }
+
+    if (useStrict) {
+      // Strict mode: only lines with explicit prefixes become tasks
+      if (EXPLICIT_PREFIX.test(line)) {
+        const taskText = stripPrefix(line);
+        if (taskText.length > 0) {
+          current.tasks.push({ text: taskText, required: isRequired(line) });
+        }
+      }
+    } else {
+      // Permissive mode: every usable non-header line becomes a task
+      if (isUsableLine(line)) {
+        const taskText = stripPrefix(line); // strips prefix if present, else returns as-is
+        if (taskText.length > 0) {
+          current.tasks.push({ text: taskText, required: isRequired(line) });
+        }
       }
     }
   }
 
+  // Flush last section
   if (current.tasks.length > 0) sections.push(current);
 
   const nonEmpty = sections.filter((s) => s.tasks.length > 0);
@@ -177,7 +225,16 @@ router.post(
         return;
       }
 
+      const charCount = parsed.text.length;
+      const lineCount = parsed.text.split("\n").length;
+      req.log.info({ charCount, lineCount, pages: parsed.numpages }, "pdf text extracted");
+
       const result = parsePdfText(parsed.text);
+      const taskCount = result.sections.reduce((n, s) => n + s.tasks.length, 0);
+      req.log.info(
+        { sections: result.sections.length, tasks: taskCount },
+        "pdf parsed",
+      );
       res.json(result);
     } finally {
       await fs.unlink(inputPath).catch(() => {});
