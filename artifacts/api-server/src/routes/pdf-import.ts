@@ -92,9 +92,14 @@ function isRequired(line: string): boolean {
 
 /**
  * Decide whether a line looks like a useful task candidate in permissive mode.
- * Rejects column headers, form labels, copyright lines, and other noise.
+ *
+ * @param inSection - true once the first section header has been seen.
+ *   Column headers / form labels (Date, Completed, Initials…) appear in the
+ *   document preamble BEFORE any section, so we apply a tighter word-count
+ *   filter there. Once inside a section we relax it so that short-but-real
+ *   tasks like "Opening Cash" or "Closing Cash" are kept.
  */
-function isUsableLine(line: string): boolean {
+function isUsableLine(line: string, inSection: boolean): boolean {
   if (line.length < 4 || line.length > 250) return false;
   if (SKIP_LINE.test(line)) return false;
   // Skip copyright / legal boilerplate lines
@@ -108,17 +113,17 @@ function isUsableLine(line: string): boolean {
   const alphaNum = line.replace(/[^a-zA-Z0-9]/g, "");
   if (alphaNum.length < 3) return false;
 
-  // Evaluate word count using the cleaned text (after stripping any task prefix)
-  // so that "✓  Initials  Notes" is judged on "Initials Notes", not on "✓ ..."
+  // Evaluate word count on the cleaned text (after stripping any task prefix)
+  // so "✓  Initials  Notes" is judged as "Initials Notes", not as "✓ ..."
   const cleaned = stripPrefix(line).trim();
   const words = cleaned.split(/\s+/).filter((w) => w.length > 0);
 
-  // Single-word lines are almost always form labels (Date, Completed, Initials…)
+  // Single-word lines are always form labels — reject everywhere
   if (words.length <= 1) return false;
 
-  // Short 2-word lines are usually column headers; real 2-word tasks tend to be longer
-  // ("Opening Cash" = 12 chars is on the boundary, "Initials Notes" = 14 chars is a header)
-  if (words.length === 2 && cleaned.length < 16) return false;
+  // Short 2-word lines in the preamble are column headers (Date, Initials, Notes…).
+  // Once we're inside a named section they are real tasks (Opening Cash, etc.).
+  if (!inSection && words.length === 2 && cleaned.length < 16) return false;
 
   return true;
 }
@@ -169,7 +174,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
       }
     } else {
       // Permissive mode: every usable non-header line becomes a task
-      if (isUsableLine(line)) {
+      if (isUsableLine(line, headerSeen)) {
         const taskText = stripPrefix(line); // strips prefix if present, else returns as-is
         if (taskText.length > 0) {
           current.tasks.push({ text: taskText, required: isRequired(line) });
