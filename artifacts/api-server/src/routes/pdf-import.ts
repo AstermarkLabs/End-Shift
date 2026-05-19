@@ -144,7 +144,7 @@ function isUsableLine(line: string, inSection: boolean): boolean {
   return true;
 }
 
-function parsePdfText(text: string): { sections: PdfSection[] } {
+function parsePdfText(text: string): { sections: PdfSection[]; skippedRows: number } {
   const raw = text
     .split("\n")
     .map((l) => l.trim())
@@ -214,6 +214,7 @@ function parsePdfText(text: string): { sections: PdfSection[] } {
   return {
     sections:
       nonEmpty.length > 0 ? nonEmpty : [{ title: "General Tasks", tasks: [] }],
+    skippedRows: 0,
   };
 }
 

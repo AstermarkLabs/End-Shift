@@ -747,9 +747,8 @@ export const ImportChecklistFromPdfResponse = zod.object({
   skippedRows: zod
     .number()
     .min(importChecklistFromPdfResponseSkippedRowsMin)
-    .optional()
     .describe(
-      "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
+      "Number of rows skipped during import — includes blank rows (no task text) and rows where a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
     ),
 });
 
@@ -778,9 +777,8 @@ export const ImportChecklistFromDocxResponse = zod.object({
   skippedRows: zod
     .number()
     .min(importChecklistFromDocxResponseSkippedRowsMin)
-    .optional()
     .describe(
-      "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
+      "Number of rows skipped during import — includes blank rows (no task text) and rows where a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
     ),
 });
 
@@ -811,9 +809,8 @@ export const ImportChecklistFromSpreadsheetResponse = zod.object({
   skippedRows: zod
     .number()
     .min(importChecklistFromSpreadsheetResponseSkippedRowsMin)
-    .optional()
     .describe(
-      "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
+      "Number of rows skipped during import — includes blank rows (no task text) and rows where a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
     ),
 });
 

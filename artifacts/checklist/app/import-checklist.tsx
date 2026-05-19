@@ -491,11 +491,11 @@ export default function ImportChecklistScreen() {
           <View style={styles.skippedRowsBox}>
             <Text style={styles.skippedRowsText}>
               <Text style={styles.skippedRowsBold}>
-                {skippedRows} {skippedRows === 1 ? "row" : "rows"} skipped.{" "}
+                {skippedRows} {skippedRows === 1 ? "row was" : "rows were"} skipped.{" "}
               </Text>
               {skippedRows === 1
-                ? "That row contained an Excel formula error (e.g. #REF!, #VALUE!) and was left out."
-                : "Those rows contained Excel formula errors (e.g. #REF!, #VALUE!) and were left out."}
+                ? "That row was blank or contained a formula error and was not imported."
+                : "Those rows were blank or contained formula errors and were not imported."}
             </Text>
           </View>
         ) : null}

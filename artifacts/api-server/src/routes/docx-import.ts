@@ -74,7 +74,7 @@ function stripTaskPrefix(text: string): string {
  *   <p>            → task if it starts/ends with a recognised task marker,
  *                    or if we are already inside a section (permissive)
  */
-function parseDocxHtml(html: string): { sections: ImportSection[] } {
+function parseDocxHtml(html: string): { sections: ImportSection[]; skippedRows: number } {
   const sections: ImportSection[] = [];
   let current: ImportSection = { title: "General Tasks", tasks: [] };
   let currentSubsection: string | null = null;
@@ -169,6 +169,7 @@ function parseDocxHtml(html: string): { sections: ImportSection[] } {
   return {
     sections:
       nonEmpty.length > 0 ? nonEmpty : [{ title: "General Tasks", tasks: [] }],
+    skippedRows: 0,
   };
 }
 

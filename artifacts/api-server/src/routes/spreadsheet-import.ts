@@ -165,7 +165,10 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[]; skippedR
 
   for (const row of normalised) {
     const taskText = (row["task"] ?? row["text"] ?? "").trim();
-    if (!taskText) continue;
+    if (!taskText) {
+      skippedRows++;
+      continue;
+    }
 
     const sectionTitle = (row["section"] ?? "General Tasks").trim() || "General Tasks";
     const subsection = (row["subsection"] ?? "").trim() || null;
