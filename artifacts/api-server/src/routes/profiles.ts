@@ -76,6 +76,8 @@ export function profileFor(
       isSystem: role.isSystem,
       rights: role.rights,
     },
+    accountType: user.accountType,
+    sync: user.sync,
     mustChangePassword: user.mustChangePassword,
     isActive: user.isActive,
   };

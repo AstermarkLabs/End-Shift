@@ -80,6 +80,14 @@ export interface UpdateRoleRequest {
   rights?: Right[];
 }
 
+export type ProfileAccountType =
+  (typeof ProfileAccountType)[keyof typeof ProfileAccountType];
+
+export const ProfileAccountType = {
+  PERSONAL: "PERSONAL",
+  BUSINESS: "BUSINESS",
+} as const;
+
 export interface Profile {
   id: number;
   tenantId?: number | null;
@@ -91,6 +99,8 @@ export interface Profile {
   displayName: string;
   roleId: number;
   role: Role;
+  accountType: ProfileAccountType;
+  sync: boolean;
   mustChangePassword: boolean;
   isActive: boolean;
 }
@@ -146,6 +156,14 @@ export const RegisterRequestBusinessType = {
   "multi-unit": "multi-unit",
 } as const;
 
+export type RegisterRequestAccountType =
+  (typeof RegisterRequestAccountType)[keyof typeof RegisterRequestAccountType];
+
+export const RegisterRequestAccountType = {
+  PERSONAL: "PERSONAL",
+  BUSINESS: "BUSINESS",
+} as const;
+
 export interface RegisterRequest {
   /** @minLength 1 */
   username: string;
@@ -159,6 +177,8 @@ export interface RegisterRequest {
   /** @minLength 1 */
   businessName: string;
   businessType: RegisterRequestBusinessType;
+  accountType?: RegisterRequestAccountType;
+  sync?: boolean;
 }
 
 export interface LoginRequest {

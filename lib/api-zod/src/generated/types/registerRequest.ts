@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { RegisterRequestAccountType } from "./registerRequestAccountType";
 import type { RegisterRequestBusinessType } from "./registerRequestBusinessType";
 
 export interface RegisterRequest {
@@ -20,4 +21,6 @@ export interface RegisterRequest {
   /** @minLength 1 */
   businessName: string;
   businessType: RegisterRequestBusinessType;
+  accountType?: RegisterRequestAccountType;
+  sync?: boolean;
 }

@@ -1098,11 +1098,16 @@ components:
           type: integer
         role:
           $ref: "#/components/schemas/Role"
+        accountType:
+          type: string
+          enum: [PERSONAL, BUSINESS]
+        sync:
+          type: boolean
         mustChangePassword:
           type: boolean
         isActive:
           type: boolean
-      required: [id, username, displayName, roleId, role, mustChangePassword, isActive]
+      required: [id, username, displayName, roleId, role, accountType, sync, mustChangePassword, isActive]
 
     CreateProfileRequest:
       type: object
@@ -1185,6 +1190,13 @@ components:
         businessType:
           type: string
           enum: [single-unit, multi-unit]
+        accountType:
+          type: string
+          enum: [PERSONAL, BUSINESS]
+          default: BUSINESS
+        sync:
+          type: boolean
+          default: true
       required: [username, email, password, businessName, businessType]
 
     LoginRequest:

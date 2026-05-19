@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgEnum,
   serial,
   text,
   integer,
@@ -10,6 +11,13 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+
+// ── Account type enum ──────────────────────────────────────────────────────────
+// PERSONAL — individual user; sync flag controls whether data is cloud-backed.
+// BUSINESS — org-managed user; always cloud-synced.
+
+export const accountTypeEnum = pgEnum("account_type", ["PERSONAL", "BUSINESS"]);
+export type AccountType = (typeof accountTypeEnum.enumValues)[number];
 
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -89,6 +97,8 @@ export const usersTable = pgTable(
     roleId: integer("role_id")
       .notNull()
       .references(() => rolesTable.id),
+    accountType: accountTypeEnum("account_type").notNull().default("BUSINESS"),
+    sync: boolean("sync").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     currentChallenge: text("current_challenge"),

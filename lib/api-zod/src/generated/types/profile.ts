@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrgUnit } from "./orgUnit";
+import type { ProfileAccountType } from "./profileAccountType";
 import type { Role } from "./role";
 
 export interface Profile {
@@ -19,6 +20,8 @@ export interface Profile {
   displayName: string;
   roleId: number;
   role: Role;
+  accountType: ProfileAccountType;
+  sync: boolean;
   mustChangePassword: boolean;
   isActive: boolean;
 }

@@ -64,6 +64,8 @@ export const LoginResponse = zod.object({
         ]),
       ),
     }),
+    accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+    sync: zod.boolean(),
     mustChangePassword: zod.boolean(),
     isActive: zod.boolean(),
   }),
@@ -79,6 +81,9 @@ export const registerBodyPasswordRegExp = new RegExp(
   "^(?=.\*[A-Z])(?=.\*[a-z])(?=.\*\\d)(?=.\*[^A-Za-z0-9]).{12,}$",
 );
 
+export const registerBodyAccountTypeDefault = `BUSINESS`;
+export const registerBodySyncDefault = true;
+
 export const RegisterBody = zod.object({
   username: zod.string().min(1),
   email: zod.string().min(1),
@@ -88,6 +93,10 @@ export const RegisterBody = zod.object({
     .regex(registerBodyPasswordRegExp),
   businessName: zod.string().min(1),
   businessType: zod.enum(["single-unit", "multi-unit"]),
+  accountType: zod
+    .enum(["PERSONAL", "BUSINESS"])
+    .default(registerBodyAccountTypeDefault),
+  sync: zod.boolean().default(registerBodySyncDefault),
 });
 
 /**
@@ -146,6 +155,8 @@ export const RefreshResponse = zod.object({
         ]),
       ),
     }),
+    accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+    sync: zod.boolean(),
     mustChangePassword: zod.boolean(),
     isActive: zod.boolean(),
   }),
@@ -237,6 +248,8 @@ export const PasskeyAuthVerifyResponse = zod.object({
         ]),
       ),
     }),
+    accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+    sync: zod.boolean(),
     mustChangePassword: zod.boolean(),
     isActive: zod.boolean(),
   }),
@@ -284,6 +297,8 @@ export const GetMeResponse = zod.object({
       ]),
     ),
   }),
+  accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+  sync: zod.boolean(),
   mustChangePassword: zod.boolean(),
   isActive: zod.boolean(),
 });
@@ -348,6 +363,8 @@ export const UpdateMeResponse = zod.object({
       ]),
     ),
   }),
+  accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+  sync: zod.boolean(),
   mustChangePassword: zod.boolean(),
   isActive: zod.boolean(),
 });
@@ -394,6 +411,8 @@ export const ListProfilesResponseItem = zod.object({
       ]),
     ),
   }),
+  accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+  sync: zod.boolean(),
   mustChangePassword: zod.boolean(),
   isActive: zod.boolean(),
 });
@@ -487,6 +506,8 @@ export const UpdateProfileResponse = zod.object({
       ]),
     ),
   }),
+  accountType: zod.enum(["PERSONAL", "BUSINESS"]),
+  sync: zod.boolean(),
   mustChangePassword: zod.boolean(),
   isActive: zod.boolean(),
 });

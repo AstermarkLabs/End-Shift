@@ -385,6 +385,10 @@ router.post("/register", async (req, res) => {
 
   const ownerRole = seededRoles.find((r) => r.name === TENANT_OWNER_ROLE_NAME)!;
 
+  const accountType = body.accountType ?? "BUSINESS";
+  // Business accounts are always cloud-synced; personal accounts respect the flag.
+  const sync = accountType === "BUSINESS" ? true : (body.sync ?? true);
+
   const passwordHash = await hashPassword(body.password);
   const [user] = await db
     .insert(usersTable)
@@ -396,6 +400,8 @@ router.post("/register", async (req, res) => {
       displayName: body.businessName,
       passwordHash,
       roleId: ownerRole.id,
+      accountType,
+      sync,
       mustChangePassword: false,
     })
     .returning();
