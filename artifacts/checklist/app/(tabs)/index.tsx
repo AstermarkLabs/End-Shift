@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SortableList } from "@/components/SortableList";
+import { useAuth } from "@/context/AuthContext";
 import { ChecklistMeta, Task, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -105,6 +106,138 @@ function NameModal({
           </View>
         </View>
       </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Hamburger Menu ───────────────────────────────────────────────────────────
+
+function HamburgerMenu({
+  visible,
+  onClose,
+  onSettings,
+  onImportPdf,
+  onHistory,
+  onReset,
+  onSwitchAccount,
+  onSignOut,
+  historyCount,
+  isNoAuthMode,
+  isSignedIn,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSettings: () => void;
+  onImportPdf: () => void;
+  onHistory: () => void;
+  onReset: () => void;
+  onSwitchAccount: () => void;
+  onSignOut: () => void;
+  historyCount: number;
+  isNoAuthMode: boolean;
+  isSignedIn: boolean;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === "web";
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <Pressable style={styles.ctxBackdrop} onPress={onClose}>
+        <Pressable
+          style={[
+            styles.ctxSheet,
+            {
+              backgroundColor: colors.card,
+              paddingBottom: (isWeb ? 16 : insets.bottom) + 12,
+            },
+          ]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={[styles.ctxHandle, { backgroundColor: colors.border }]} />
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
+            onPress={onSettings}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>⚙️</Text>
+            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Settings</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
+            onPress={onImportPdf}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>📄</Text>
+            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Import from PDF</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
+            onPress={onHistory}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>🕐</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <Text style={[styles.ctxRowText, { color: colors.foreground }]}>History</Text>
+              {historyCount > 0 && (
+                <View style={[styles.menuBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.menuBadgeText}>
+                    {historyCount > 9 ? "9+" : historyCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctxRow, { borderBottomColor: isNoAuthMode || isSignedIn ? colors.border : "transparent" }]}
+            onPress={onReset}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.ctxRowIcon}>🔄</Text>
+            <Text style={[styles.ctxRowText, { color: colors.destructive }]}>Reset Shift</Text>
+          </TouchableOpacity>
+
+          {isNoAuthMode && (
+            <TouchableOpacity
+              style={[styles.ctxRow, { borderBottomColor: "transparent" }]}
+              onPress={onSwitchAccount}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.ctxRowIcon}>🔄</Text>
+              <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Switch Account</Text>
+            </TouchableOpacity>
+          )}
+
+          {isSignedIn && (
+            <TouchableOpacity
+              style={[styles.ctxRow, { borderBottomColor: "transparent" }]}
+              onPress={onSignOut}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.ctxRowIcon}>🚪</Text>
+              <Text style={[styles.ctxRowText, { color: colors.destructive }]}>Sign Out</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.ctxCancelBtn, { backgroundColor: colors.muted }]}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.ctxCancelText, { color: colors.foreground }]}>Cancel</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -533,10 +666,12 @@ export default function ChecklistScreen() {
 function ChecklistScreenNative() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { profile, signOut, noAuthMode } = useAuth();
   const router = useRouter();
   const { tasks, sections, toggleTask, resetChecklist, completeChecklist, completionHistory, appConfig } = useChecklist();
   const completeBannerAnim = useRef(new Animated.Value(0)).current;
   const isWeb = Platform.OS === "web";
+  const [hamburgerOpen, setHamburgerOpen] = useState(false);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
@@ -639,15 +774,6 @@ function ChecklistScreenNative() {
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              onPress={() => router.push("/import-pdf")}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="Import from PDF"
-            >
-              <Text style={styles.iconActionText}>📄</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={() => router.push("/reports")}
               style={styles.iconAction}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -657,28 +783,13 @@ function ChecklistScreenNative() {
               <Text style={styles.iconActionText}>📊</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push("/history")}
+              onPress={() => setHamburgerOpen(true)}
               style={styles.iconAction}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="More options"
             >
-              <Text style={styles.iconActionText}>🕐</Text>
-              {completionHistory.length > 0 && (
-                <View style={styles.historyBadge}>
-                  <Text style={styles.historyBadgeText}>
-                    {completionHistory.length > 9 ? "9+" : completionHistory.length}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push("/settings")}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.iconActionText}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleShiftMenu} style={styles.resetButton}>
-              <Text style={styles.resetButtonText}>Reset</Text>
+              <Text style={styles.hamburgerIcon}>☰</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -707,7 +818,7 @@ function ChecklistScreenNative() {
             No tasks yet
           </Text>
           <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-            Tap ⚙️ to add sections and tasks to this checklist.
+            Tap ☰ → Settings to add sections and tasks to this checklist.
           </Text>
         </View>
       )}
@@ -739,6 +850,26 @@ function ChecklistScreenNative() {
           paddingBottom: insets.bottom + 16,
         }}
         showsVerticalScrollIndicator={false}
+      />
+
+      <HamburgerMenu
+        visible={hamburgerOpen}
+        onClose={() => setHamburgerOpen(false)}
+        onSettings={() => { setHamburgerOpen(false); router.push("/settings"); }}
+        onImportPdf={() => { setHamburgerOpen(false); router.push("/import-pdf"); }}
+        onHistory={() => { setHamburgerOpen(false); router.push("/history"); }}
+        onReset={() => { setHamburgerOpen(false); handleShiftMenu(); }}
+        onSwitchAccount={() => { setHamburgerOpen(false); router.replace("/login"); }}
+        onSignOut={() => {
+          setHamburgerOpen(false);
+          Alert.alert("Sign Out", "Sign out of your account?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign Out", style: "destructive", onPress: () => { void signOut(); } },
+          ]);
+        }}
+        historyCount={completionHistory.length}
+        isNoAuthMode={noAuthMode}
+        isSignedIn={!!profile}
       />
 
       {/* Completion Footer */}
@@ -833,35 +964,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconActionText: { fontSize: 18 },
-  historyBadge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    backgroundColor: "#fff",
+  hamburgerIcon: {
+    fontSize: 22,
+    color: "#FFFFFF",
+    lineHeight: 26,
+  },
+  menuBadge: {
     borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    minWidth: 18,
+    height: 18,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
   },
-  historyBadgeText: {
-    fontSize: 9,
+  menuBadgeText: {
+    fontSize: 10,
     fontWeight: "700",
-    color: "#C1121F",
-    lineHeight: 12,
-  },
-  resetButton: {
-    backgroundColor: "transparent",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-  },
-  resetButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+    lineHeight: 14,
   },
   progressSection: { gap: 6 },
   progressLabelRow: {

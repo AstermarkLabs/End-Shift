@@ -286,6 +286,12 @@ router.post(
       }
     }
 
+    // Org-scoped callers cannot create tenant-wide (unscoped) users.
+    if (!u.role.isSystem && u.orgUnitId && requestedOrgUnitId === null) {
+      res.status(403).json({ error: "Assign the user to an org unit within your scope" });
+      return;
+    }
+
     const passwordHash = await hashPassword(body.password);
     let created: User;
     try {
@@ -343,6 +349,16 @@ router.put("/:id", requireAuth, async (req, res) => {
   }
 
   const isSelf = id === u.id;
+
+  // Org-scoped callers may only manage users within their subtree.
+  if (!isSelf && !u.role.isSystem && u.orgUnitId) {
+    const subtree = await orgUnitSubtreeIds(u.orgUnitId);
+    if (target.user.orgUnitId === null || !subtree.includes(target.user.orgUnitId)) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+  }
+
   const wantsRoleChange =
     body.roleId !== undefined && body.roleId !== target.user.roleId;
   const wantsOrgUnitChange =
@@ -479,6 +495,14 @@ router.delete(
     if (!u.role.isSystem && target.user.tenantId !== u.tenantId) {
       res.status(404).end();
       return;
+    }
+    // Org-scoped callers may only delete users within their subtree.
+    if (!u.role.isSystem && u.orgUnitId) {
+      const subtree = await orgUnitSubtreeIds(u.orgUnitId);
+      if (target.user.orgUnitId === null || !subtree.includes(target.user.orgUnitId)) {
+        res.status(404).end();
+        return;
+      }
     }
     if (!u.role.isSystem && target.role.level >= u.role.level) {
       res.status(403).json({ error: "Cannot delete user at or above your level" });

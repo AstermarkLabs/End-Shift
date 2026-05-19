@@ -39,6 +39,36 @@ import { validatePassword } from "@/utils/passwordValidation";
 
 const RIGHT_VALUES = Object.values(Right);
 
+function getSubtreeIds(orgUnits: OrgUnit[], rootId: number): Set<number> {
+  const result = new Set<number>([rootId]);
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    for (const u of orgUnits) {
+      if (u.parentId === curr) {
+        result.add(u.id);
+        queue.push(u.id);
+      }
+    }
+  }
+  return result;
+}
+
+function buildOrgUnitTree(orgUnits: OrgUnit[]): Array<{ unit: OrgUnit; depth: number }> {
+  const out: Array<{ unit: OrgUnit; depth: number }> = [];
+  const sorted = (arr: OrgUnit[]) => [...arr].sort((a, b) => a.name.localeCompare(b.name));
+  for (const region of sorted(orgUnits.filter((u) => u.type === "region"))) {
+    out.push({ unit: region, depth: 0 });
+    for (const district of sorted(orgUnits.filter((u) => u.parentId === region.id))) {
+      out.push({ unit: district, depth: 1 });
+      for (const loc of sorted(orgUnits.filter((u) => u.parentId === district.id))) {
+        out.push({ unit: loc, depth: 2 });
+      }
+    }
+  }
+  return out;
+}
+
 function generateTempPassword(): string {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const lower = "abcdefghjkmnpqrstuvwxyz";
@@ -124,7 +154,7 @@ export default function AdminScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.foreground, fontWeight: "600" }}>{p.displayName}</Text>
                 <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-                  @{p.username} · {p.role.name} {p.isActive ? "" : "· disabled"}
+                  @{p.username} · {p.role.name}{p.orgUnit ? ` · ${p.orgUnit.name}` : ""}{p.isActive ? "" : " · disabled"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -171,6 +201,8 @@ export default function AdminScreen() {
         state={profileModal}
         onClose={() => setProfileModal({ open: false, editing: null })}
         roles={roles}
+        orgUnits={orgUnits}
+        callerOrgUnitId={profile.orgUnitId ?? null}
         currentRoleLevel={profile.role.level}
         isSystem={profile.role.isSystem}
         onSaved={reload}
@@ -190,6 +222,8 @@ function ProfileEditModal({
   state,
   onClose,
   roles,
+  orgUnits,
+  callerOrgUnitId,
   currentRoleLevel,
   isSystem,
   onSaved,
@@ -197,6 +231,8 @@ function ProfileEditModal({
   state: { open: boolean; editing: Profile | null };
   onClose: () => void;
   roles: Role[];
+  orgUnits: OrgUnit[];
+  callerOrgUnitId: number | null;
   currentRoleLevel: number;
   isSystem: boolean;
   onSaved: () => void;
@@ -210,6 +246,7 @@ function ProfileEditModal({
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetSection, setResetSection] = useState(false);
   const [roleId, setRoleId] = useState<number | null>(null);
+  const [orgUnitId, setOrgUnitId] = useState<number | null>(null);
   const [active, setActive] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -222,6 +259,7 @@ function ProfileEditModal({
     setShowResetPassword(false);
     setResetSection(false);
     setRoleId(state.editing?.roleId ?? roles[0]?.id ?? null);
+    setOrgUnitId(state.editing?.orgUnitId ?? null);
     setActive(state.editing?.isActive ?? true);
   }, [state.open, state.editing, roles]);
 
@@ -240,6 +278,8 @@ function ProfileEditModal({
           patch.mustChangePassword = true;
         }
         if (roleId != null && roleId !== orig.roleId) patch.roleId = roleId;
+        const origOrgUnitId = orig.orgUnitId ?? null;
+        if (orgUnitId !== origOrgUnitId) patch.orgUnitId = orgUnitId;
         if (active !== orig.isActive) patch.isActive = active;
         if (Object.keys(patch).length === 0) {
           onClose();
@@ -259,13 +299,18 @@ function ProfileEditModal({
           setBusy(false);
           return;
         }
+        if (callerOrgUnitId !== null && orgUnitId === null) {
+          Alert.alert("Required", "Please assign the user to a location.");
+          setBusy(false);
+          return;
+        }
         const pwCheck = validatePassword(password);
         if (!pwCheck.valid) {
           Alert.alert("Weak password", pwCheck.errors.join("\n"));
           setBusy(false);
           return;
         }
-        await createProfile({ username, displayName, password, roleId });
+        await createProfile({ username, displayName, password, roleId, orgUnitId });
       }
       onSaved();
       onClose();
@@ -384,6 +429,54 @@ function ProfileEditModal({
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* ── Org Unit picker ───────────────────────────────────────────── */}
+        {(() => {
+          const subtreeSet = callerOrgUnitId !== null ? getSubtreeIds(orgUnits, callerOrgUnitId) : null;
+          const visibleUnits = buildOrgUnitTree(
+            subtreeSet !== null ? orgUnits.filter((u) => subtreeSet.has(u.id)) : orgUnits,
+          );
+          if (visibleUnits.length === 0 && callerOrgUnitId !== null) return null;
+          return (
+            <>
+              <Text style={[styles.label, { color: colors.foreground }]}>Location</Text>
+              <View style={{ gap: 6 }}>
+                {callerOrgUnitId === null && (
+                  <TouchableOpacity
+                    style={[styles.row, { backgroundColor: orgUnitId === null ? colors.secondary : colors.card, borderColor: colors.border }]}
+                    onPress={() => setOrgUnitId(null)}
+                  >
+                    <Text style={{ color: colors.foreground }}>None (Tenant-wide)</Text>
+                  </TouchableOpacity>
+                )}
+                {visibleUnits.map(({ unit, depth }) => (
+                  <TouchableOpacity
+                    key={unit.id}
+                    style={[
+                      styles.row,
+                      {
+                        backgroundColor: orgUnitId === unit.id ? colors.secondary : colors.card,
+                        borderColor: colors.border,
+                        marginLeft: depth * 14,
+                        flexDirection: "row",
+                        alignItems: "center",
+                      },
+                    ]}
+                    onPress={() => setOrgUnitId(unit.id)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.foreground }}>{unit.name}</Text>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 11, textTransform: "capitalize" }}>{unit.type}</Text>
+                    </View>
+                    {orgUnitId === unit.id && (
+                      <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 16 }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          );
+        })()}
 
         {state.editing && (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>

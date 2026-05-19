@@ -84,6 +84,8 @@ function configureApiBaseUrl() {
 interface AuthContextValue {
   ready: boolean;
   profile: Profile | null;
+  noAuthMode: boolean;
+  setNoAuthMode: (v: boolean) => void;
   signIn: (username: string, password: string) => Promise<void>;
   signInWithPasskey: (username?: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -96,6 +98,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [profile, setProfileState] = useState<Profile | null>(null);
+  const [noAuthMode, setNoAuthMode] = useState(false);
   const accessRef = useRef<string | null>(null);
   const refreshRef = useRef<string | null>(null);
   const refreshingRef = useRef<Promise<string | null> | null>(null);
@@ -160,11 +163,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [a, r, p] = await Promise.all([
+        const [a, r, p, modeRaw] = await Promise.all([
           storageGet(ACCESS_KEY),
           storageGet(REFRESH_KEY),
           storageGet(PROFILE_KEY),
+          AsyncStorage.getItem(STORAGE_MODE_KEY),
         ]);
+        setNoAuthMode(modeRaw === "local-no-auth");
         accessRef.current = a;
         refreshRef.current = r;
         if (p) {
@@ -260,13 +265,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ready,
       profile,
+      noAuthMode,
+      setNoAuthMode,
       signIn,
       signInWithPasskey,
       signOut,
       setProfile,
       getAccessToken,
     }),
-    [ready, profile, signIn, signInWithPasskey, signOut, setProfile, getAccessToken],
+    [ready, profile, noAuthMode, signIn, signInWithPasskey, signOut, setProfile, getAccessToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -289,21 +296,12 @@ export function describeApiError(err: unknown): string {
 
 // ─── Route guard hook ─────────────────────────────────────────────────────────
 export function useAuthRedirect() {
-  const { ready, profile } = useAuth();
+  const { ready, profile, noAuthMode } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  // null = still loading; re-read whenever profile changes (handles sign-in/out)
-  const [noAuthMode, setNoAuthMode] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setNoAuthMode(null);
-    AsyncStorage.getItem(STORAGE_MODE_KEY)
-      .then((mode) => setNoAuthMode(mode === "local-no-auth"))
-      .catch(() => setNoAuthMode(false));
-  }, [profile]);
-
-  useEffect(() => {
-    if (!ready || noAuthMode === null) return;
+    if (!ready) return;
     const inAuthScreen = segments[0] === "login";
     const inOnboardingScreen = segments[0] === "onboarding";
     const inProfileScreen = segments[0] === "profile";

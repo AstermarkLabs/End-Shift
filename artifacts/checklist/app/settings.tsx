@@ -363,7 +363,7 @@ export default function AppSettingsScreen() {
             <SettingsRow
               icon="👤"
               label="Profile & Passkeys"
-              subtitle="Change password, manage passkeys, sign out"
+              subtitle="Change password, manage passkeys"
               onPress={() => {
                 router.back();
                 setTimeout(() => router.push("/profile"), 50);

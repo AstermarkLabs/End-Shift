@@ -16,17 +16,26 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { register as apiRegister } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
+import { useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 import { saveStorageMode } from "@/utils/localChecklistStore";
 import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
+
+function toAppTitle(name: string): string {
+  const n = name.trim();
+  if (!n) return "My Day";
+  return n.endsWith("s") ? `${n}' Day` : `${n}'s Day`;
+}
 
 export default function CreateAccountScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, setNoAuthMode } = useAuth();
+  const { updateAppConfig } = useChecklist();
   const isWeb = Platform.OS === "web";
 
+  const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,23 +46,27 @@ export default function CreateAccountScreen() {
 
   const onContinue = async () => {
     setError(null);
+    if (!displayName.trim()) { setError("Your name is required."); return; }
     if (!username.trim()) { setError("Username is required."); return; }
     if (!email.trim()) { setError("Email is required."); return; }
     const pwCheck = validatePassword(password);
     if (!pwCheck.valid) { setError(pwCheck.errors[0]!); return; }
     if (password !== confirmPassword) { setError("Passwords do not match."); return; }
 
+    const title = toAppTitle(displayName);
     setBusy(true);
     try {
       await apiRegister({
         username: username.trim().toLowerCase(),
         email: email.trim().toLowerCase(),
         password,
-        businessName: username.trim(),
+        businessName: title,
         businessType: "single-unit",
       });
       await saveStorageMode("local");
+      setNoAuthMode(false);
       await signIn(username.trim().toLowerCase(), password);
+      updateAppConfig({ name: title });
       router.back();
     } catch (e) {
       setError(describeApiError(e));
@@ -87,6 +100,23 @@ export default function CreateAccountScreen() {
               <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
             </View>
           ) : null}
+
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>YOUR NAME</Text>
+          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+            {displayName.trim()
+              ? `Your app will be called "${toAppTitle(displayName)}"`
+              : "Used as your app title — e.g. Alice's Day"}
+          </Text>
+          <TextInput
+            value={displayName}
+            onChangeText={(v) => { setDisplayName(v); setError(null); }}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!busy}
+            style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+            placeholder="Alice"
+            placeholderTextColor={colors.mutedForeground}
+          />
 
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>USERNAME</Text>
           <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>

@@ -214,7 +214,7 @@ interface ChecklistContextValue {
 export const ChecklistContext = createContext<ChecklistContextValue | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
-  const { ready, profile } = useAuth();
+  const { ready, profile, noAuthMode } = useAuth();
 
   // ── Raw API/local data ──────────────────────────────────────────────────────
   const [apiChecklists, setApiChecklists] = useState<Checklist[]>([]);
@@ -233,6 +233,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const loaded = useRef(false);
   const hasFetchedRef = useRef(false);
+  const fetchVersionRef = useRef(0);
   const activeIdRef = useRef<number | null>(null);
   activeIdRef.current = activeId;
   const [storageLoaded, setStorageLoaded] = useState(false);
@@ -460,8 +461,10 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchAllLocal = useCallback(async () => {
+    const v = ++fetchVersionRef.current;
     try {
       const cls = await localListChecklists();
+      if (fetchVersionRef.current !== v) return;
       setApiChecklists(cls);
 
       const currentId = activeIdRef.current ?? cls[0]?.id ?? null;
@@ -473,6 +476,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         cls.map(async (c) => {
           try {
             const cl = await localGetChecklist(c.id);
+            if (fetchVersionRef.current !== v) return;
             clMemCacheRef.current.set(c.id, cl);
             if (c.id === currentId && c.id === activeIdRef.current) {
               setActiveCl(cl);
@@ -488,6 +492,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
           if (raw) storedShiftIds = JSON.parse(raw);
         } catch {}
 
+        if (fetchVersionRef.current !== v) return;
+
         const existingShiftId = storedShiftIds[String(currentId)];
         let shift: ShiftWithCompletions | null = null;
 
@@ -501,10 +507,12 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         if (!shift) {
           try {
             shift = await localOpenShift(currentId);
+            if (fetchVersionRef.current !== v) return;
             setActiveShiftIds((prev) => ({ ...prev, [String(currentId)]: shift!.id }));
           } catch {}
         }
 
+        if (fetchVersionRef.current !== v) return;
         if (shift && currentId === activeIdRef.current) {
           shiftMemCacheRef.current.set(currentId, shift);
           setActiveShift(shift);
@@ -515,6 +523,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
           const submitted = allShifts.filter((s) => s.submittedAt != null);
           const full = await Promise.all(submitted.map((s) => localGetShift(s.id).catch(() => null)));
           const valid = full.filter((s): s is ShiftWithCompletions => s !== null && s.submittedAt != null);
+          if (fetchVersionRef.current !== v) return;
           if (currentId === activeIdRef.current) {
             historyMemCacheRef.current.set(currentId, valid);
             setHistoryShifts(valid);
@@ -524,7 +533,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Local store unavailable — cached data already displayed
     } finally {
-      hasFetchedRef.current = true;
+      if (fetchVersionRef.current === v) hasFetchedRef.current = true;
     }
   }, []);
 
@@ -543,6 +552,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready || profile) return;
     const ids = apiChecklists.map((c) => c.id);
+    fetchVersionRef.current++; // cancel any in-flight fetch
     setApiChecklists([]);
     setActiveCl(null);
     setActiveShift(null);
@@ -556,7 +566,35 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     if (storageModeRef.current === "cloud") {
       ChecklistCache.clearAllByIds(ids).catch(() => null);
     }
-  }, [ready, profile]);
+    // Restore local data for non-noAuthMode local devices.
+    // noAuthMode devices switch back via the mode-switch effect below.
+    if (storageModeRef.current === "local") {
+      fetchAllLocal();
+    }
+  }, [ready, profile, fetchAllLocal]);
+
+  // For local-no-auth devices: dynamically switch between local and cloud mode
+  // as the user signs in/out of a cloud account.
+  useEffect(() => {
+    if (!storageLoaded) return;
+    if (noAuthMode && profile && storageModeRef.current !== "cloud") {
+      // Signed into cloud account from personal device — show cloud data
+      fetchVersionRef.current++;
+      setApiChecklists([]);
+      setActiveCl(null);
+      setActiveShift(null);
+      setHistoryShifts([]);
+      hasFetchedRef.current = false;
+      setStorageMode("cloud");
+    } else if (noAuthMode && !profile && storageModeRef.current === "cloud") {
+      // Signed out of cloud account — return to personal local data
+      fetchVersionRef.current++;
+      hasFetchedRef.current = false;
+      setStorageMode("local");
+    }
+  // !!profile captures sign-in/out without depending on identity changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noAuthMode, !!profile, storageLoaded]);
 
   // ── Auto-save cache when active checklist changes ───────────────────────────
   useEffect(() => {

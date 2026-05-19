@@ -28,7 +28,7 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
-  const { signIn, signInWithPasskey } = useAuth();
+  const { signIn, signInWithPasskey, noAuthMode } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -158,6 +158,17 @@ export default function LoginScreen() {
         >
           <Text style={[styles.createBtnText, { color: colors.primary }]}>Create an account</Text>
         </TouchableOpacity>
+
+        {noAuthMode && (
+          <TouchableOpacity
+            onPress={() => router.replace("/")}
+            disabled={busy}
+          >
+            <Text style={[styles.legalText, { color: colors.primary, textDecorationLine: "underline" }]}>
+              Back to personal account
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={[styles.legalText, { color: colors.mutedForeground }]}>
           By continuing you agree to the Terms and Privacy Policy.

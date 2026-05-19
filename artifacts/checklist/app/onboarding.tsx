@@ -30,7 +30,7 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
-type Step = "account-type" | "personal-account" | "personal-account-form" | "account" | "regions" | "locations" | "team" | "confirm";
+type Step = "account-type" | "personal-account-name" | "personal-account" | "personal-account-form" | "account" | "regions" | "locations" | "team" | "confirm";
 
 // ─── Reusable primitives ──────────────────────────────────────────────────────
 
@@ -198,7 +198,77 @@ function StepAccountType({
   );
 }
 
-// ─── Step 1 (Personal) — Account prompt ──────────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function toAppTitle(name: string): string {
+  const n = name.trim();
+  if (!n) return "My Day";
+  return n.endsWith("s") ? `${n}' Day` : `${n}'s Day`;
+}
+
+// ─── Step 1 (Personal) — Name ─────────────────────────────────────────────────
+
+function StepPersonalAccountName({
+  displayName,
+  onChange,
+  onContinue,
+}: {
+  displayName: string;
+  onChange: (v: string) => void;
+  onContinue: () => void;
+}) {
+  const colors = useColors();
+  const preview = toAppTitle(displayName);
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={[sh.scrollContent, { justifyContent: "center", flex: 1 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[sh.confirmCheck, { backgroundColor: colors.primary, alignSelf: "center", marginBottom: 20 }]}>
+          <Text style={sh.confirmCheckText}>✏️</Text>
+        </View>
+        <Text style={[sh.confirmTitle, { color: colors.foreground, textAlign: "center" }]}>
+          What should we call you?
+        </Text>
+        <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground, textAlign: "center", marginBottom: 24 }]}>
+          {displayName.trim()
+            ? `Your app will be called "${preview}"`
+            : "Your name becomes your app title."}
+        </Text>
+
+        <TextInput
+          value={displayName}
+          onChangeText={onChange}
+          autoCapitalize="words"
+          autoCorrect={false}
+          returnKeyType="done"
+          onSubmitEditing={onContinue}
+          style={[
+            sh.input,
+            { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card, fontSize: 20, textAlign: "center" },
+          ]}
+          placeholder="Your name"
+          placeholderTextColor={colors.mutedForeground}
+        />
+
+        <PrimaryButton
+          label="Continue"
+          onPress={onContinue}
+          colors={colors}
+          disabled={!displayName.trim()}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+// ─── Step 2 (Personal) — Account prompt ──────────────────────────────────────
 
 function StepPersonalAccount({
   onCreateAccount,
@@ -245,16 +315,18 @@ function StepPersonalAccount({
 function StepPersonalAccountForm({
   stepNum,
   totalSteps,
+  displayName,
   onBack,
   onDone,
 }: {
   stepNum: number;
   totalSteps: number;
+  displayName: string;
   onBack: () => void;
   onDone: () => void;
 }) {
   const colors = useColors();
-  const { signIn } = useAuth();
+  const { signIn, setNoAuthMode } = useAuth();
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -274,17 +346,15 @@ function StepPersonalAccountForm({
 
     setBusy(true);
     try {
-      // Register on the server (enables future cloud-sync upgrade).
-      // The username is used as the tenant name for personal accounts.
       await apiRegister({
         username: username.trim().toLowerCase(),
         email: email.trim().toLowerCase(),
         password,
-        businessName: username.trim(),
+        businessName: toAppTitle(displayName),
         businessType: "single-unit",
       });
-      // Mark this device as local-storage mode before signing in
       await saveStorageMode("local");
+      setNoAuthMode(false);
       await signIn(username.trim().toLowerCase(), password);
       onDone();
     } catch (e) {
@@ -1151,6 +1221,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { updateAppConfig } = useChecklist();
+  const { setNoAuthMode } = useAuth();
   const {
     accountKind,
     businessType,
@@ -1180,12 +1251,14 @@ export default function OnboardingScreen() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
   const [wantsAccount, setWantsAccount] = useState(false);
+  const [displayName, setDisplayName] = useState("");
 
   // Build the ordered list of steps based on account kind + business type + settings
   const buildSteps = useCallback(
     (aKind: "personal" | "business", bType: "single-unit" | "multi-unit", withForm: boolean): Step[] => {
       const steps: Step[] = ["account-type"];
       if (aKind === "personal") {
+        steps.push("personal-account-name");
         steps.push("personal-account");
         if (withForm) steps.push("personal-account-form");
       } else {
@@ -1230,6 +1303,11 @@ export default function OnboardingScreen() {
     [setAccountKind, buildSteps, businessType],
   );
 
+  const handlePersonalAccountNameDone = useCallback(() => {
+    updateAppConfig({ name: toAppTitle(displayName) });
+    setStep("personal-account");
+  }, [displayName, updateAppConfig]);
+
   const handlePersonalAccountCreateAccount = useCallback(() => {
     setWantsAccount(true);
     setStep("personal-account-form");
@@ -1237,8 +1315,9 @@ export default function OnboardingScreen() {
 
   const handlePersonalAccountSkip = useCallback(async () => {
     await saveStorageMode("local-no-auth");
+    setNoAuthMode(true);
     setStep("confirm");
-  }, []);
+  }, [setNoAuthMode]);
 
   const handlePersonalAccountFormDone = useCallback(() => {
     setStep("confirm");
@@ -1335,6 +1414,13 @@ export default function OnboardingScreen() {
       {step === "account-type" && (
         <StepAccountType onChoose={handleAccountTypeChosen} />
       )}
+      {step === "personal-account-name" && (
+        <StepPersonalAccountName
+          displayName={displayName}
+          onChange={setDisplayName}
+          onContinue={handlePersonalAccountNameDone}
+        />
+      )}
       {step === "personal-account" && (
         <StepPersonalAccount
           onCreateAccount={handlePersonalAccountCreateAccount}
@@ -1345,6 +1431,7 @@ export default function OnboardingScreen() {
         <StepPersonalAccountForm
           stepNum={stepNum}
           totalSteps={totalSteps}
+          displayName={displayName}
           onBack={goBack}
           onDone={handlePersonalAccountFormDone}
         />
