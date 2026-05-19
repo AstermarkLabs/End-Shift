@@ -103,7 +103,11 @@ const EXCEL_ERRORS = new Set([
 
 const REQUIRED_VALUES = new Set(["y", "yes", "true", "1"]);
 
-function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[]; skippedRows: number } {
+function parseSpreadsheet(buffer: Buffer): {
+  sections: ImportSection[];
+  skippedRows: number;
+  formulaErrorRows: number;
+} {
   let workbook: XLSX.WorkBook;
   try {
     workbook = XLSX.read(buffer, { type: "buffer" });
@@ -162,13 +166,10 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[]; skippedR
   const sectionsMap = new Map<string, ImportSection>();
   const sectionOrder: string[] = [];
   let skippedRows = 0;
+  let formulaErrorRows = 0;
 
   for (const row of normalised) {
     const taskText = (row["task"] ?? row["text"] ?? "").trim();
-    if (!taskText) {
-      skippedRows++;
-      continue;
-    }
 
     const sectionTitle = (row["section"] ?? "General Tasks").trim() || "General Tasks";
     const subsection = (row["subsection"] ?? "").trim() || null;
@@ -176,6 +177,12 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[]; skippedR
     // Skip rows where task or section columns contain Excel formula errors
     // (e.g. #REF!, #VALUE!, #N/A, #DIV/0!). These appear when a formula couldn't evaluate.
     if (EXCEL_ERRORS.has(taskText) || EXCEL_ERRORS.has(sectionTitle)) {
+      skippedRows++;
+      formulaErrorRows++;
+      continue;
+    }
+
+    if (!taskText) {
       skippedRows++;
       continue;
     }
@@ -198,6 +205,7 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[]; skippedR
   return {
     sections: sections.length > 0 ? sections : [{ title: "General Tasks", tasks: [] }],
     skippedRows,
+    formulaErrorRows,
   };
 }
 
@@ -244,7 +252,7 @@ router.post(
     try {
       const buffer = await fs.readFile(inputPath);
 
-      let result: { sections: ImportSection[]; skippedRows: number };
+      let result: { sections: ImportSection[]; skippedRows: number; formulaErrorRows: number };
       try {
         result = parseSpreadsheet(buffer);
       } catch (parseErr: unknown) {
@@ -255,8 +263,22 @@ router.post(
       }
 
       const taskCount = result.sections.reduce((n, s) => n + s.tasks.length, 0);
+
+      if (taskCount === 0 && result.formulaErrorRows > 0) {
+        res.status(422).json({
+          error:
+            "All rows contained formula errors — check the spreadsheet for #REF!, #VALUE!, or other error cells. No tasks were imported.",
+        });
+        return;
+      }
+
       req.log.info(
-        { sections: result.sections.length, tasks: taskCount, skippedRows: result.skippedRows },
+        {
+          sections: result.sections.length,
+          tasks: taskCount,
+          skippedRows: result.skippedRows,
+          formulaErrorRows: result.formulaErrorRows,
+        },
         "spreadsheet parsed",
       );
 
