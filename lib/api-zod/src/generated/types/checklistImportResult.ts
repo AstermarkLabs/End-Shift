@@ -9,4 +9,9 @@ import type { PdfImportSection } from "./pdfImportSection";
 
 export interface ChecklistImportResult {
   sections: PdfImportSection[];
+  /**
+   * Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N/A, #DIV/0!).
+   * @minimum 0
+   */
+  skippedRows?: number;
 }

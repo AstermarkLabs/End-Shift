@@ -574,7 +574,7 @@ paths:
         "400":
           description: No file uploaded or invalid file type
         "422":
-          description: Missing required task column
+          description: Missing required task column, or row/column count exceeds limits
 
   /checklists/import/spreadsheet/template:
     get:
@@ -1578,6 +1578,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PdfImportSection"
+        skippedRows:
+          type: integer
+          minimum: 0
+          description: "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N/A, #DIV/0!)."
       required: [sections]
 
     ShiftSubmitInput:

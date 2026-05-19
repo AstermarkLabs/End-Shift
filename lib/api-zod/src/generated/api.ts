@@ -729,6 +729,8 @@ export const ImportChecklistFromPdfBody = zod.object({
   file: zod.string().describe("PDF file contents (binary)"),
 });
 
+export const importChecklistFromPdfResponseSkippedRowsMin = 0;
+
 export const ImportChecklistFromPdfResponse = zod.object({
   sections: zod.array(
     zod.object({
@@ -742,6 +744,13 @@ export const ImportChecklistFromPdfResponse = zod.object({
       ),
     }),
   ),
+  skippedRows: zod
+    .number()
+    .min(importChecklistFromPdfResponseSkippedRowsMin)
+    .optional()
+    .describe(
+      "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
+    ),
 });
 
 /**
@@ -750,6 +759,8 @@ export const ImportChecklistFromPdfResponse = zod.object({
 export const ImportChecklistFromDocxBody = zod.object({
   file: zod.string().describe("Word document (.docx) file contents (binary)"),
 });
+
+export const importChecklistFromDocxResponseSkippedRowsMin = 0;
 
 export const ImportChecklistFromDocxResponse = zod.object({
   sections: zod.array(
@@ -764,6 +775,13 @@ export const ImportChecklistFromDocxResponse = zod.object({
       ),
     }),
   ),
+  skippedRows: zod
+    .number()
+    .min(importChecklistFromDocxResponseSkippedRowsMin)
+    .optional()
+    .describe(
+      "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
+    ),
 });
 
 /**
@@ -774,6 +792,8 @@ export const ImportChecklistFromSpreadsheetBody = zod.object({
     .string()
     .describe("Spreadsheet (.xlsx, .xls, .csv) file contents (binary)"),
 });
+
+export const importChecklistFromSpreadsheetResponseSkippedRowsMin = 0;
 
 export const ImportChecklistFromSpreadsheetResponse = zod.object({
   sections: zod.array(
@@ -788,6 +808,13 @@ export const ImportChecklistFromSpreadsheetResponse = zod.object({
       ),
     }),
   ),
+  skippedRows: zod
+    .number()
+    .min(importChecklistFromSpreadsheetResponseSkippedRowsMin)
+    .optional()
+    .describe(
+      "Number of rows skipped because a task or section cell contained an Excel formula error (e.g. #REF!, #VALUE!, #N\/A, #DIV\/0!).",
+    ),
 });
 
 /**

@@ -111,6 +111,7 @@ export default function ImportChecklistScreen() {
   const [error, setError] = useState<string | null>(null);
   const [templateCopied, setTemplateCopied] = useState(false);
   const [showHeadingTip, setShowHeadingTip] = useState(false);
+  const [skippedRows, setSkippedRows] = useState(0);
 
   const styles = makeStyles(colors);
   const config = IMPORT_CONFIG[importType];
@@ -193,6 +194,7 @@ export default function ImportChecklistScreen() {
         })),
       }));
       setSections(mapped);
+      setSkippedRows(result.skippedRows ?? 0);
       setShowHeadingTip(
         type === "docx" &&
           mapped.length === 1 &&
@@ -485,6 +487,19 @@ export default function ImportChecklistScreen() {
           </View>
         ) : null}
 
+        {skippedRows > 0 ? (
+          <View style={styles.skippedRowsBox}>
+            <Text style={styles.skippedRowsText}>
+              <Text style={styles.skippedRowsBold}>
+                {skippedRows} {skippedRows === 1 ? "row" : "rows"} skipped.{" "}
+              </Text>
+              {skippedRows === 1
+                ? "That row contained an Excel formula error (e.g. #REF!, #VALUE!) and was left out."
+                : "Those rows contained Excel formula errors (e.g. #REF!, #VALUE!) and were left out."}
+            </Text>
+          </View>
+        ) : null}
+
         <Text style={styles.nameLabel}>Checklist Name</Text>
         <TextInput
           style={styles.nameInput}
@@ -758,6 +773,25 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       color: colors.destructive,
       fontSize: 14,
       textAlign: "center",
+    },
+
+    // Skipped-rows warning banner (formula errors)
+    skippedRowsBox: {
+      backgroundColor: "#F59E0B18",
+      borderRadius: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "#F59E0B88",
+      padding: 12,
+      marginBottom: 8,
+    },
+    skippedRowsText: {
+      fontSize: 13,
+      color: colors.text,
+      lineHeight: 19,
+    },
+    skippedRowsBold: {
+      fontWeight: "700",
+      fontFamily: "Inter_700Bold",
     },
 
     // Heading tip banner

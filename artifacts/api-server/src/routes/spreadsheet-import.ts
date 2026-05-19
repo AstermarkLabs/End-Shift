@@ -77,11 +77,33 @@ interface ImportSection {
   tasks: ImportTask[];
 }
 
+/**
+ * Known Excel formula-error strings that XLSX may surface as cell values when
+ * a formula could not evaluate. Using an explicit allowlist avoids regex edge-
+ * cases (e.g. #N/A has no trailing punctuation; #DIV/0! contains a digit).
+ */
+const EXCEL_ERRORS = new Set([
+  "#NULL!",
+  "#DIV/0!",
+  "#VALUE!",
+  "#REF!",
+  "#NAME?",
+  "#NUM!",
+  "#N/A",
+  "#GETTING_DATA",
+  "#SPILL!",
+  "#BLOCKED!",
+  "#CONNECT!",
+  "#FIELD!",
+  "#CALC!",
+  "#ERROR!",
+]);
+
 // ── Parser ────────────────────────────────────────────────────────────────────
 
 const REQUIRED_VALUES = new Set(["y", "yes", "true", "1"]);
 
-function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[] } {
+function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[]; skippedRows: number } {
   let workbook: XLSX.WorkBook;
   try {
     workbook = XLSX.read(buffer, { type: "buffer" });
@@ -139,6 +161,7 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[] } {
 
   const sectionsMap = new Map<string, ImportSection>();
   const sectionOrder: string[] = [];
+  let skippedRows = 0;
 
   for (const row of normalised) {
     const taskText = (row["task"] ?? row["text"] ?? "").trim();
@@ -146,6 +169,14 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[] } {
 
     const sectionTitle = (row["section"] ?? "General Tasks").trim() || "General Tasks";
     const subsection = (row["subsection"] ?? "").trim() || null;
+
+    // Skip rows where task or section columns contain Excel formula errors
+    // (e.g. #REF!, #VALUE!, #N/A, #DIV/0!). These appear when a formula couldn't evaluate.
+    if (EXCEL_ERRORS.has(taskText) || EXCEL_ERRORS.has(sectionTitle)) {
+      skippedRows++;
+      continue;
+    }
+
     const reqRaw = (row["required"] ?? "").toLowerCase().trim();
     const required = REQUIRED_VALUES.has(reqRaw);
 
@@ -163,6 +194,7 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[] } {
 
   return {
     sections: sections.length > 0 ? sections : [{ title: "General Tasks", tasks: [] }],
+    skippedRows,
   };
 }
 
@@ -209,7 +241,7 @@ router.post(
     try {
       const buffer = await fs.readFile(inputPath);
 
-      let result: { sections: ImportSection[] };
+      let result: { sections: ImportSection[]; skippedRows: number };
       try {
         result = parseSpreadsheet(buffer);
       } catch (parseErr: unknown) {
@@ -220,7 +252,10 @@ router.post(
       }
 
       const taskCount = result.sections.reduce((n, s) => n + s.tasks.length, 0);
-      req.log.info({ sections: result.sections.length, tasks: taskCount }, "spreadsheet parsed");
+      req.log.info(
+        { sections: result.sections.length, tasks: taskCount, skippedRows: result.skippedRows },
+        "spreadsheet parsed",
+      );
 
       res.json(result);
     } finally {
