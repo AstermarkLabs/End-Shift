@@ -46,7 +46,7 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "modal" }}
       />
       <Stack.Screen
-        name="import-pdf"
+        name="import-checklist"
         options={{ headerShown: false, presentation: "modal" }}
       />
       <Stack.Screen

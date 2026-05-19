@@ -8,6 +8,8 @@ import orgUnitsRouter from "./org-units";
 import checklistsRouter from "./checklists";
 import shiftsRouter from "./shifts";
 import pdfImportRouter from "./pdf-import";
+import docxImportRouter from "./docx-import";
+import spreadsheetImportRouter from "./spreadsheet-import";
 
 const router: IRouter = Router();
 
@@ -18,6 +20,8 @@ router.use("/roles", rolesRouter);
 router.use("/onboarding", onboardingRouter);
 router.use("/org-units", orgUnitsRouter);
 router.use(pdfImportRouter);
+router.use(docxImportRouter);
+router.use(spreadsheetImportRouter);
 router.use(checklistsRouter);
 router.use(shiftsRouter);
 

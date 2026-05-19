@@ -19,6 +19,7 @@ import type {
 import type {
   AuthResult,
   Checklist,
+  ChecklistImportResult,
   ChecklistInput,
   ChecklistRoles,
   ChecklistRolesUpdate,
@@ -30,6 +31,7 @@ import type {
   CreateOrgUnitRequest,
   CreateProfileRequest,
   CreateRoleRequest,
+  DocxUpload,
   HealthStatus,
   JsonObject,
   LoginRequest,
@@ -41,7 +43,6 @@ import type {
   PasskeyAuthVerifyRequest,
   PasskeyCredential,
   PasskeyRegisterVerifyRequest,
-  PdfImportResult,
   PdfUpload,
   Profile,
   RefreshRequest,
@@ -51,6 +52,7 @@ import type {
   ShiftSubmitInput,
   ShiftTaskCompletion,
   ShiftWithCompletions,
+  SpreadsheetUpload,
   UpdateMeRequest,
   UpdateOrgUnitRequest,
   UpdateProfileRequest,
@@ -2394,11 +2396,11 @@ export const getImportChecklistFromPdfUrl = () => {
 export const importChecklistFromPdf = async (
   pdfUpload: PdfUpload,
   options?: RequestInit,
-): Promise<PdfImportResult> => {
+): Promise<ChecklistImportResult> => {
   const formData = new FormData();
   formData.append(`file`, pdfUpload.file);
 
-  return customFetch<PdfImportResult>(getImportChecklistFromPdfUrl(), {
+  return customFetch<ChecklistImportResult>(getImportChecklistFromPdfUrl(), {
     ...options,
     method: "POST",
     body: formData,
@@ -2471,6 +2473,262 @@ export const useImportChecklistFromPdf = <
 > => {
   return useMutation(getImportChecklistFromPdfMutationOptions(options));
 };
+
+/**
+ * @summary Upload a Word document and extract checklist sections and tasks
+ */
+export const getImportChecklistFromDocxUrl = () => {
+  return `/api/checklists/import/docx`;
+};
+
+export const importChecklistFromDocx = async (
+  docxUpload: DocxUpload,
+  options?: RequestInit,
+): Promise<ChecklistImportResult> => {
+  const formData = new FormData();
+  formData.append(`file`, docxUpload.file);
+
+  return customFetch<ChecklistImportResult>(getImportChecklistFromDocxUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getImportChecklistFromDocxMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importChecklistFromDocx>>,
+    TError,
+    { data: BodyType<DocxUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importChecklistFromDocx>>,
+  TError,
+  { data: BodyType<DocxUpload> },
+  TContext
+> => {
+  const mutationKey = ["importChecklistFromDocx"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importChecklistFromDocx>>,
+    { data: BodyType<DocxUpload> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importChecklistFromDocx(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportChecklistFromDocxMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importChecklistFromDocx>>
+>;
+export type ImportChecklistFromDocxMutationBody = BodyType<DocxUpload>;
+export type ImportChecklistFromDocxMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload a Word document and extract checklist sections and tasks
+ */
+export const useImportChecklistFromDocx = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importChecklistFromDocx>>,
+    TError,
+    { data: BodyType<DocxUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importChecklistFromDocx>>,
+  TError,
+  { data: BodyType<DocxUpload> },
+  TContext
+> => {
+  return useMutation(getImportChecklistFromDocxMutationOptions(options));
+};
+
+/**
+ * @summary Upload a spreadsheet (.xlsx, .xls, .csv) and extract checklist sections and tasks
+ */
+export const getImportChecklistFromSpreadsheetUrl = () => {
+  return `/api/checklists/import/spreadsheet`;
+};
+
+export const importChecklistFromSpreadsheet = async (
+  spreadsheetUpload: SpreadsheetUpload,
+  options?: RequestInit,
+): Promise<ChecklistImportResult> => {
+  const formData = new FormData();
+  formData.append(`file`, spreadsheetUpload.file);
+
+  return customFetch<ChecklistImportResult>(
+    getImportChecklistFromSpreadsheetUrl(),
+    {
+      ...options,
+      method: "POST",
+      body: formData,
+    },
+  );
+};
+
+export const getImportChecklistFromSpreadsheetMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importChecklistFromSpreadsheet>>,
+    TError,
+    { data: BodyType<SpreadsheetUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importChecklistFromSpreadsheet>>,
+  TError,
+  { data: BodyType<SpreadsheetUpload> },
+  TContext
+> => {
+  const mutationKey = ["importChecklistFromSpreadsheet"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importChecklistFromSpreadsheet>>,
+    { data: BodyType<SpreadsheetUpload> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importChecklistFromSpreadsheet(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportChecklistFromSpreadsheetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importChecklistFromSpreadsheet>>
+>;
+export type ImportChecklistFromSpreadsheetMutationBody =
+  BodyType<SpreadsheetUpload>;
+export type ImportChecklistFromSpreadsheetMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload a spreadsheet (.xlsx, .xls, .csv) and extract checklist sections and tasks
+ */
+export const useImportChecklistFromSpreadsheet = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importChecklistFromSpreadsheet>>,
+    TError,
+    { data: BodyType<SpreadsheetUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importChecklistFromSpreadsheet>>,
+  TError,
+  { data: BodyType<SpreadsheetUpload> },
+  TContext
+> => {
+  return useMutation(getImportChecklistFromSpreadsheetMutationOptions(options));
+};
+
+/**
+ * @summary Download a CSV template with the expected column layout (public — no auth required)
+ */
+export const getGetSpreadsheetTemplateUrl = () => {
+  return `/api/checklists/import/spreadsheet/template`;
+};
+
+export const getSpreadsheetTemplate = async (
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getGetSpreadsheetTemplateUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSpreadsheetTemplateQueryKey = () => {
+  return [`/api/checklists/import/spreadsheet/template`] as const;
+};
+
+export const getGetSpreadsheetTemplateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSpreadsheetTemplate>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSpreadsheetTemplate>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSpreadsheetTemplateQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSpreadsheetTemplate>>
+  > = ({ signal }) => getSpreadsheetTemplate({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSpreadsheetTemplate>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSpreadsheetTemplateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSpreadsheetTemplate>>
+>;
+export type GetSpreadsheetTemplateQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Download a CSV template with the expected column layout (public — no auth required)
+ */
+
+export function useGetSpreadsheetTemplate<
+  TData = Awaited<ReturnType<typeof getSpreadsheetTemplate>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSpreadsheetTemplate>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSpreadsheetTemplateQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a checklist with its tasks

@@ -5,10 +5,10 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -18,12 +18,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   createChecklist,
   createChecklistTask,
+  importChecklistFromDocx,
   importChecklistFromPdf,
+  importChecklistFromSpreadsheet,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { useChecklist } from "@/context/ChecklistContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+type ImportType = "pdf" | "docx" | "spreadsheet";
 
 interface ReviewTask {
   text: string;
@@ -39,51 +43,107 @@ interface ReviewSection {
 
 type Stage = "pick" | "uploading" | "review" | "creating";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const IMPORT_CONFIG: Record<
+  ImportType,
+  { label: string; icon: string; mimeType: string | string[]; ext: string; loadingText: string }
+> = {
+  pdf: {
+    label: "PDF",
+    icon: "📄",
+    mimeType: "application/pdf",
+    ext: ".pdf",
+    loadingText: "Analysing PDF…",
+  },
+  docx: {
+    label: "Word Document (.docx)",
+    icon: "📝",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ext: ".docx",
+    loadingText: "Reading Word document…",
+  },
+  spreadsheet: {
+    label: "Spreadsheet (.xlsx / .csv)",
+    icon: "📊",
+    mimeType: [
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "text/csv",
+    ],
+    ext: ".xlsx/.csv",
+    loadingText: "Reading spreadsheet…",
+  },
+};
+
+function stripExtension(name: string): string {
+  return name.replace(/\.(pdf|docx?|xlsx?|csv)$/i, "");
+}
+
+function getTemplateUrl(): string {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const base = domain ? `https://${domain}` : "";
+  return `${base}/api/checklists/import/spreadsheet/template`;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ImportPdfScreen() {
+export default function ImportChecklistScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { onChecklistImported } = useChecklist();
 
   const [stage, setStage] = useState<Stage>("pick");
+  const [importType, setImportType] = useState<ImportType>("pdf");
   const [sections, setSections] = useState<ReviewSection[]>([]);
   const [checklistName, setChecklistName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const styles = makeStyles(colors);
+  const config = IMPORT_CONFIG[importType];
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  async function handlePickPdf() {
+  async function handlePick(type: ImportType) {
+    setImportType(type);
+    const cfg = IMPORT_CONFIG[type];
     try {
       const picked = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
+        type: Array.isArray(cfg.mimeType) ? cfg.mimeType : [cfg.mimeType],
         copyToCacheDirectory: true,
       });
       if (picked.canceled) return;
 
       const asset = picked.assets[0];
-      const suggestedName = (asset.name ?? "Imported Checklist").replace(
-        /\.pdf$/i,
-        "",
-      );
+      const suggestedName = stripExtension(asset.name ?? "Imported Checklist");
       setChecklistName(suggestedName);
       setError(null);
       setStage("uploading");
 
-      const result = await importChecklistFromPdf({
-        file: {
-          uri: asset.uri,
-          name: asset.name ?? "document.pdf",
-          type: "application/pdf",
-        } as unknown as string,
-      });
+      const filePayload = {
+        uri: asset.uri,
+        name: asset.name ?? `document${cfg.ext}`,
+        type: Array.isArray(cfg.mimeType) ? cfg.mimeType[0] : cfg.mimeType,
+      } as unknown as string;
 
-      if (result.sections.length === 0 || result.sections.every((s) => s.tasks.length === 0)) {
+      let result: Awaited<ReturnType<typeof importChecklistFromPdf>>;
+
+      if (type === "pdf") {
+        result = await importChecklistFromPdf({ file: filePayload });
+      } else if (type === "docx") {
+        result = await importChecklistFromDocx({ file: filePayload });
+      } else {
+        result = await importChecklistFromSpreadsheet({ file: filePayload });
+      }
+
+      if (
+        result.sections.length === 0 ||
+        result.sections.every((s) => s.tasks.length === 0)
+      ) {
         setError(
-          "No tasks were found in this PDF. Make sure it contains a list of items.",
+          "No tasks were found in this file. Make sure it contains a list of items.",
         );
         setStage("pick");
         return;
@@ -103,7 +163,7 @@ export default function ImportPdfScreen() {
       setStage("review");
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to process the PDF.";
+        err instanceof Error ? err.message : "Failed to process the file.";
       setError(msg);
       setStage("pick");
     }
@@ -196,15 +256,18 @@ export default function ImportPdfScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Import from PDF</Text>
+          <Text style={styles.headerTitle}>Import Checklist</Text>
           <View style={styles.closeBtn} />
         </View>
 
-        <View style={styles.pickBody}>
-          <Text style={styles.pickIcon}>📄</Text>
-          <Text style={styles.pickTitle}>Upload a Checklist PDF</Text>
+        <ScrollView
+          contentContainerStyle={styles.pickBody}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.pickIcon}>📥</Text>
+          <Text style={styles.pickTitle}>Choose a file to import</Text>
           <Text style={styles.pickSubtitle}>
-            We'll scan the PDF and extract the tasks automatically.
+            We'll extract the tasks automatically and let you review before saving.
           </Text>
 
           {error ? (
@@ -216,14 +279,70 @@ export default function ImportPdfScreen() {
           {uploading ? (
             <View style={styles.loadingBox}>
               <ActivityIndicator size="large" color={colors.tint} />
-              <Text style={styles.loadingText}>Analysing PDF…</Text>
+              <Text style={styles.loadingText}>{config.loadingText}</Text>
             </View>
           ) : (
-            <TouchableOpacity style={styles.pickBtn} onPress={handlePickPdf}>
-              <Text style={styles.pickBtnText}>Choose PDF</Text>
-            </TouchableOpacity>
+            <View style={styles.pickOptions}>
+              <TouchableOpacity
+                style={styles.pickOption}
+                onPress={() => handlePick("pdf")}
+              >
+                <Text style={styles.pickOptionIcon}>📄</Text>
+                <View style={styles.pickOptionText}>
+                  <Text style={[styles.pickOptionLabel, { color: colors.text }]}>PDF</Text>
+                  <Text style={[styles.pickOptionDesc, { color: colors.mutedForeground }]}>
+                    Any checklist PDF — we'll scan and extract tasks automatically.
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.pickOption}
+                onPress={() => handlePick("docx")}
+              >
+                <Text style={styles.pickOptionIcon}>📝</Text>
+                <View style={styles.pickOptionText}>
+                  <Text style={[styles.pickOptionLabel, { color: colors.text }]}>
+                    Word Document (.docx)
+                  </Text>
+                  <Text style={[styles.pickOptionDesc, { color: colors.mutedForeground }]}>
+                    Headings become sections; bullet points and list items become tasks.
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.pickOption}>
+                <TouchableOpacity
+                  style={styles.pickOptionPressArea}
+                  onPress={() => handlePick("spreadsheet")}
+                >
+                  <Text style={styles.pickOptionIcon}>📊</Text>
+                  <View style={styles.pickOptionText}>
+                    <Text style={[styles.pickOptionLabel, { color: colors.text }]}>
+                      Spreadsheet (.xlsx / .xls / .csv)
+                    </Text>
+                    <Text style={[styles.pickOptionDesc, { color: colors.mutedForeground }]}>
+                      Columns: <Text style={styles.mono}>section</Text>,{" "}
+                      <Text style={styles.mono}>task</Text>,{" "}
+                      <Text style={styles.mono}>required</Text>,{" "}
+                      <Text style={styles.mono}>subsection</Text>
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.templateLinkBtn}
+                  onPress={() => {
+                    void Linking.openURL(getTemplateUrl());
+                  }}
+                >
+                  <Text style={[styles.templateLink, { color: colors.tint }]}>
+                    Download CSV template ↓
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -241,9 +360,7 @@ export default function ImportPdfScreen() {
       style={styles.fullScreen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View
-        style={[styles.header, { paddingTop: insets.top }]}
-      >
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity
           onPress={() => setStage("pick")}
           style={styles.closeBtn}
@@ -346,9 +463,7 @@ export default function ImportPdfScreen() {
         })}
       </ScrollView>
 
-      <View
-        style={[styles.footer, { paddingBottom: insets.bottom || 16 }]}
-      >
+      <View style={[styles.footer, { paddingBottom: insets.bottom || 16 }]}>
         {creating ? (
           <View style={styles.creatingRow}>
             <ActivityIndicator size="small" color={colors.tint} />
@@ -411,14 +526,14 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
 
     // Pick stage
     pickBody: {
-      flex: 1,
       alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 32,
+      paddingHorizontal: 24,
+      paddingTop: 32,
+      paddingBottom: 40,
       gap: 16,
     },
     pickIcon: {
-      fontSize: 64,
+      fontSize: 56,
     },
     pickTitle: {
       fontSize: 22,
@@ -433,21 +548,56 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       textAlign: "center",
       lineHeight: 22,
     },
-    pickBtn: {
+    pickOptions: {
+      width: "100%",
+      gap: 10,
       marginTop: 8,
-      backgroundColor: colors.tint,
-      paddingVertical: 14,
-      paddingHorizontal: 40,
-      borderRadius: 12,
     },
-    pickBtnText: {
-      color: "#fff",
-      fontSize: 16,
+    pickOption: {
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: "hidden",
+    },
+    pickOptionPressArea: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      padding: 16,
+      gap: 14,
+    },
+    pickOptionIcon: {
+      fontSize: 28,
+      lineHeight: 32,
+    },
+    pickOptionText: {
+      flex: 1,
+      gap: 4,
+    },
+    pickOptionLabel: {
+      fontSize: 15,
       fontWeight: "600",
       fontFamily: "Inter_600SemiBold",
     },
+    pickOptionDesc: {
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    mono: {
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: 12,
+    },
+    templateLinkBtn: {
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    templateLink: {
+      fontSize: 13,
+      fontWeight: "500",
+      textDecorationLine: "underline",
+    },
     loadingBox: {
-      marginTop: 8,
+      marginTop: 16,
       alignItems: "center",
       gap: 12,
     },

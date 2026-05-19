@@ -360,6 +360,16 @@ export interface PdfUpload {
   file: string;
 }
 
+export interface DocxUpload {
+  /** Word document (.docx) file contents (binary) */
+  file: string;
+}
+
+export interface SpreadsheetUpload {
+  /** Spreadsheet (.xlsx, .xls, .csv) file contents (binary) */
+  file: string;
+}
+
 export interface PdfImportTask {
   text: string;
   required: boolean;
@@ -373,6 +383,10 @@ export interface PdfImportSection {
 }
 
 export interface PdfImportResult {
+  sections: PdfImportSection[];
+}
+
+export interface ChecklistImportResult {
   sections: PdfImportSection[];
 }
 

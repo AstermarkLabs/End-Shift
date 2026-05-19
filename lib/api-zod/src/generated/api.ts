@@ -745,6 +745,52 @@ export const ImportChecklistFromPdfResponse = zod.object({
 });
 
 /**
+ * @summary Upload a Word document and extract checklist sections and tasks
+ */
+export const ImportChecklistFromDocxBody = zod.object({
+  file: zod.string().describe("Word document (.docx) file contents (binary)"),
+});
+
+export const ImportChecklistFromDocxResponse = zod.object({
+  sections: zod.array(
+    zod.object({
+      title: zod.string(),
+      tasks: zod.array(
+        zod.object({
+          text: zod.string(),
+          required: zod.boolean(),
+          subsection: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Upload a spreadsheet (.xlsx, .xls, .csv) and extract checklist sections and tasks
+ */
+export const ImportChecklistFromSpreadsheetBody = zod.object({
+  file: zod
+    .string()
+    .describe("Spreadsheet (.xlsx, .xls, .csv) file contents (binary)"),
+});
+
+export const ImportChecklistFromSpreadsheetResponse = zod.object({
+  sections: zod.array(
+    zod.object({
+      title: zod.string(),
+      tasks: zod.array(
+        zod.object({
+          text: zod.string(),
+          required: zod.boolean(),
+          subsection: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
  * @summary Get a checklist with its tasks
  */
 export const GetChecklistParams = zod.object({

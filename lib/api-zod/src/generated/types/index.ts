@@ -8,6 +8,7 @@
 
 export * from "./authResult";
 export * from "./checklist";
+export * from "./checklistImportResult";
 export * from "./checklistInput";
 export * from "./checklistRoles";
 export * from "./checklistRolesUpdate";
@@ -19,6 +20,7 @@ export * from "./checklistWithTasks";
 export * from "./createOrgUnitRequest";
 export * from "./createProfileRequest";
 export * from "./createRoleRequest";
+export * from "./docxUpload";
 export * from "./healthStatus";
 export * from "./jsonObject";
 export * from "./loginRequest";
@@ -47,6 +49,7 @@ export * from "./shiftLog";
 export * from "./shiftSubmitInput";
 export * from "./shiftTaskCompletion";
 export * from "./shiftWithCompletions";
+export * from "./spreadsheetUpload";
 export * from "./updateMeRequest";
 export * from "./updateOrgUnitRequest";
 export * from "./updateProfileRequest";

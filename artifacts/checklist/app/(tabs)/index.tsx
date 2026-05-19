@@ -176,8 +176,8 @@ function HamburgerMenu({
             onPress={onImportPdf}
             activeOpacity={0.7}
           >
-            <Text style={styles.ctxRowIcon}>📄</Text>
-            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Import from PDF</Text>
+            <Text style={styles.ctxRowIcon}>📥</Text>
+            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Import Checklist</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -856,7 +856,7 @@ function ChecklistScreenNative() {
         visible={hamburgerOpen}
         onClose={() => setHamburgerOpen(false)}
         onSettings={() => { setHamburgerOpen(false); router.push("/settings"); }}
-        onImportPdf={() => { setHamburgerOpen(false); router.push("/import-pdf"); }}
+        onImportPdf={() => { setHamburgerOpen(false); router.push("/import-checklist"); }}
         onHistory={() => { setHamburgerOpen(false); router.push("/history"); }}
         onReset={() => { setHamburgerOpen(false); handleShiftMenu(); }}
         onSwitchAccount={() => { setHamburgerOpen(false); router.replace("/login"); }}

@@ -522,11 +522,72 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PdfImportResult"
+                $ref: "#/components/schemas/ChecklistImportResult"
         "400":
           description: No file uploaded or invalid file type
         "422":
           description: Could not extract text from PDF
+
+  /checklists/import/docx:
+    post:
+      operationId: importChecklistFromDocx
+      tags: [checklists]
+      summary: Upload a Word document and extract checklist sections and tasks
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocxUpload"
+      responses:
+        "200":
+          description: Parsed checklist structure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistImportResult"
+        "400":
+          description: No file uploaded or invalid file type
+        "422":
+          description: Could not extract content from document
+
+  /checklists/import/spreadsheet:
+    post:
+      operationId: importChecklistFromSpreadsheet
+      tags: [checklists]
+      summary: Upload a spreadsheet (.xlsx, .xls, .csv) and extract checklist sections and tasks
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SpreadsheetUpload"
+      responses:
+        "200":
+          description: Parsed checklist structure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistImportResult"
+        "400":
+          description: No file uploaded or invalid file type
+        "422":
+          description: Missing required task column
+
+  /checklists/import/spreadsheet/template:
+    get:
+      operationId: getSpreadsheetTemplate
+      tags: [checklists]
+      summary: Download a CSV template with the expected column layout (public — no auth required)
+      responses:
+        "200":
+          description: CSV template file
+          content:
+            text/csv:
+              schema:
+                type: string
 
   /checklists/{id}:
     get:
@@ -1463,6 +1524,22 @@ components:
           type: string
           description: PDF file contents (binary)
 
+    DocxUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          description: Word document (.docx) file contents (binary)
+
+    SpreadsheetUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          description: Spreadsheet (.xlsx, .xls, .csv) file contents (binary)
+
     PdfImportTask:
       type: object
       properties:
@@ -1486,6 +1563,15 @@ components:
       required: [title, tasks]
 
     PdfImportResult:
+      type: object
+      properties:
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/PdfImportSection"
+      required: [sections]
+
+    ChecklistImportResult:
       type: object
       properties:
         sections:
