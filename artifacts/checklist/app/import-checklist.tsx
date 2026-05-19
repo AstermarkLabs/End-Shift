@@ -83,6 +83,13 @@ function stripExtension(name: string): string {
   return name.replace(/\.(pdf|docx?|xlsx?|csv)$/i, "");
 }
 
+const TEMPLATE_PREVIEW_COLS = ["section", "task", "required", "subsection"] as const;
+const TEMPLATE_PREVIEW_ROWS: [string, string, string, string][] = [
+  ["Opening", "Count registers", "yes", ""],
+  ["Opening", "Check stock levels", "no", "Dry goods"],
+  ["Closing", "Lock all doors", "yes", ""],
+];
+
 function getTemplateUrl(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   const base = domain ? `https://${domain}` : "";
@@ -355,6 +362,43 @@ export default function ImportChecklistScreen() {
                     </Text>
                   </View>
                 </TouchableOpacity>
+                {/* Inline template preview */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.previewScroll}
+                  contentContainerStyle={styles.previewScrollContent}
+                >
+                  <View style={[styles.previewTable, { borderColor: colors.border }]}>
+                    <View style={[styles.previewRow, styles.previewRowHeader, { backgroundColor: colors.muted ?? colors.secondary, borderBottomColor: colors.border }]}>
+                      {TEMPLATE_PREVIEW_COLS.map((col) => (
+                        <Text key={col} style={[styles.previewCell, styles.previewCellHeader, { color: colors.mutedForeground }]}>
+                          {col}
+                        </Text>
+                      ))}
+                    </View>
+                    {TEMPLATE_PREVIEW_ROWS.map((row, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.previewRow,
+                          i < TEMPLATE_PREVIEW_ROWS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                        ]}
+                      >
+                        {row.map((cell, j) => (
+                          <Text
+                            key={j}
+                            numberOfLines={1}
+                            style={[styles.previewCell, { color: cell ? colors.text : colors.mutedForeground }]}
+                          >
+                            {cell || "—"}
+                          </Text>
+                        ))}
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+
                 <View style={styles.templateLinkBtn}>
                   <TouchableOpacity
                     onPress={() => { void Linking.openURL(getTemplateUrl()); }}
@@ -639,6 +683,39 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     shareIcon: {
       fontSize: 13,
       fontWeight: "500",
+    },
+
+    // Template preview table
+    previewScroll: {
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    previewScrollContent: {
+      flexGrow: 1,
+    },
+    previewTable: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: 8,
+      overflow: "hidden",
+      flexDirection: "column",
+    },
+    previewRow: {
+      flexDirection: "row",
+    },
+    previewRowHeader: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    previewCell: {
+      width: 88,
+      paddingHorizontal: 7,
+      paddingVertical: 5,
+      fontSize: 11,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    },
+    previewCellHeader: {
+      fontWeight: "700",
+      letterSpacing: 0.2,
     },
     loadingBox: {
       marginTop: 16,
