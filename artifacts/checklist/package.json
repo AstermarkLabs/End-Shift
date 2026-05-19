@@ -63,11 +63,12 @@
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
+    "expo": "~54.0.34",
+    "expo-clipboard": "^55.0.13",
     "expo-document-picker": "^55.0.13",
     "expo-secure-store": "^55.0.13",
-    "react-native-passkeys": "^0.4.1",
-    "expo": "~54.0.34",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "react-native-passkeys": "^0.4.1"
   }
 }

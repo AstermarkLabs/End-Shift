@@ -1,3 +1,4 @@
+import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -8,6 +9,7 @@ import {
   Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -100,11 +102,31 @@ export default function ImportChecklistScreen() {
   const [sections, setSections] = useState<ReviewSection[]>([]);
   const [checklistName, setChecklistName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [templateCopied, setTemplateCopied] = useState(false);
 
   const styles = makeStyles(colors);
   const config = IMPORT_CONFIG[importType];
 
   // ── Handlers ───────────────────────────────────────────────────────────────
+
+  async function handleShareTemplate() {
+    const url = getTemplateUrl();
+    if (Platform.OS === "web") {
+      try {
+        await Clipboard.setStringAsync(url);
+        setTemplateCopied(true);
+        setTimeout(() => setTemplateCopied(false), 2000);
+      } catch {}
+    } else {
+      try {
+        await Share.share(
+          Platform.OS === "android"
+            ? { message: url, title: "CSV Checklist Template" }
+            : { url, message: "CSV Checklist Template" },
+        );
+      } catch {}
+    }
+  }
 
   async function handlePick(type: ImportType) {
     setImportType(type);
@@ -329,16 +351,26 @@ export default function ImportChecklistScreen() {
                     </Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.templateLinkBtn}
-                  onPress={() => {
-                    void Linking.openURL(getTemplateUrl());
-                  }}
-                >
-                  <Text style={[styles.templateLink, { color: colors.tint }]}>
-                    Download CSV template ↓
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.templateLinkBtn}>
+                  <TouchableOpacity
+                    onPress={() => { void Linking.openURL(getTemplateUrl()); }}
+                    onLongPress={() => { void handleShareTemplate(); }}
+                    delayLongPress={400}
+                  >
+                    <Text style={[styles.templateLink, { color: colors.tint }]}>
+                      Download CSV template ↓
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { void handleShareTemplate(); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.shareIconBtn}
+                  >
+                    <Text style={[styles.shareIcon, { color: templateCopied ? colors.tint : colors.mutedForeground }]}>
+                      {templateCopied ? "Copied!" : "⎘"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           )}
@@ -588,13 +620,23 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontSize: 12,
     },
     templateLinkBtn: {
+      flexDirection: "row",
+      alignItems: "center",
       paddingHorizontal: 16,
       paddingBottom: 12,
+      gap: 10,
     },
     templateLink: {
       fontSize: 13,
       fontWeight: "500",
       textDecorationLine: "underline",
+    },
+    shareIconBtn: {
+      marginLeft: "auto",
+    },
+    shareIcon: {
+      fontSize: 13,
+      fontWeight: "500",
     },
     loadingBox: {
       marginTop: 16,
