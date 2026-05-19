@@ -1077,6 +1077,9 @@ components:
         tenantId:
           type: integer
           nullable: true
+        tenantName:
+          type: string
+          nullable: true
         orgUnitId:
           type: integer
           nullable: true

@@ -15,30 +15,34 @@ export const RP_ID = process.env["WEBAUTHN_RP_ID"] ?? "localhost";
 // Web origin (HTTPS for production, HTTP for localhost dev).
 const WEB_ORIGIN = process.env["WEBAUTHN_ORIGIN"] ?? `http://${RP_ID}`;
 
-// Android native passkey origin: derived from the app signing certificate's
-// SHA-256 fingerprint.  Supply WEBAUTHN_ANDROID_SHA256 as a colon-separated
-// hex string (the format shown in Android Studio / Play Console), e.g.
-//   AA:BB:CC:DD:...
+// Android native passkey origins: derived from app signing certificate SHA-256
+// fingerprints.  Supply WEBAUTHN_ANDROID_SHA256 as one or more colon-separated
+// hex fingerprints (the format shown in Android Studio / Play Console), joined
+// by commas when multiple keys are needed (e.g. debug + release builds):
+//   AA:BB:CC:DD:...,EE:FF:00:11:...
 // If not set, Android native passkeys cannot be verified server-side.
-function computeAndroidOrigin(): string | null {
-  const hex = process.env["WEBAUTHN_ANDROID_SHA256"];
-  if (!hex) return null;
-  try {
-    const bytes = Buffer.from(hex.replace(/:/g, ""), "hex");
-    return `android:apk-key-hash:${bytes.toString("base64url")}`;
-  } catch {
-    return null;
-  }
+function computeAndroidOrigins(): string[] {
+  const raw = process.env["WEBAUTHN_ANDROID_SHA256"];
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((hex) => hex.trim())
+    .filter(Boolean)
+    .flatMap((hex) => {
+      try {
+        const bytes = Buffer.from(hex.replace(/:/g, ""), "hex");
+        return [`android:apk-key-hash:${bytes.toString("base64url")}`];
+      } catch {
+        return [];
+      }
+    });
 }
 
-const ANDROID_ORIGIN = computeAndroidOrigin();
+const ANDROID_ORIGINS = computeAndroidOrigins();
 
 // Build the full list of accepted origins.  Verification calls accept an
 // array so both web and Android native credentials work against the same RP.
-export const EXPECTED_ORIGINS: string[] = [
-  WEB_ORIGIN,
-  ...(ANDROID_ORIGIN ? [ANDROID_ORIGIN] : []),
-];
+export const EXPECTED_ORIGINS: string[] = [WEB_ORIGIN, ...ANDROID_ORIGINS];
 
 // Convenience alias kept for callers that only need a single-origin string.
 export const EXPECTED_ORIGIN = WEB_ORIGIN;

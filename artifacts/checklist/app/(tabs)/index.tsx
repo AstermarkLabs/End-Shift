@@ -116,7 +116,6 @@ function HamburgerMenu({
   visible,
   onClose,
   onSettings,
-  onImportPdf,
   onHistory,
   onReset,
   onSwitchAccount,
@@ -128,7 +127,6 @@ function HamburgerMenu({
   visible: boolean;
   onClose: () => void;
   onSettings: () => void;
-  onImportPdf: () => void;
   onHistory: () => void;
   onReset: () => void;
   onSwitchAccount: () => void;
@@ -169,15 +167,6 @@ function HamburgerMenu({
           >
             <Text style={styles.ctxRowIcon}>⚙️</Text>
             <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Settings</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
-            onPress={onImportPdf}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>📥</Text>
-            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Import Checklist</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -783,6 +772,15 @@ function ChecklistScreenNative() {
               <Text style={styles.iconActionText}>📊</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={() => router.push("/import-checklist")}
+              style={styles.iconAction}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Import Checklist"
+            >
+              <Text style={styles.iconActionText}>📥</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => setHamburgerOpen(true)}
               style={styles.iconAction}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -856,7 +854,6 @@ function ChecklistScreenNative() {
         visible={hamburgerOpen}
         onClose={() => setHamburgerOpen(false)}
         onSettings={() => { setHamburgerOpen(false); router.push("/settings"); }}
-        onImportPdf={() => { setHamburgerOpen(false); router.push("/import-checklist"); }}
         onHistory={() => { setHamburgerOpen(false); router.push("/history"); }}
         onReset={() => { setHamburgerOpen(false); handleShiftMenu(); }}
         onSwitchAccount={() => { setHamburgerOpen(false); router.replace("/login"); }}

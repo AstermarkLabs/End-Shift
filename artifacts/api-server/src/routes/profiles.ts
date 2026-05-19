@@ -4,6 +4,7 @@ import {
   usersTable,
   rolesTable,
   orgUnitsTable,
+  tenantsTable,
   passkeyCredentialsTable,
   type User,
   type Role,
@@ -46,10 +47,12 @@ export function profileFor(
   user: User,
   role: Role,
   orgUnit: OrgUnit | null | undefined,
+  tenantName?: string | null,
 ) {
   return {
     id: user.id,
     tenantId: user.tenantId ?? null,
+    tenantName: tenantName ?? null,
     orgUnitId: user.orgUnitId ?? null,
     orgUnit: orgUnit
       ? {
@@ -82,14 +85,16 @@ type ProfileRow = {
   user: User;
   role: Role;
   orgUnit: OrgUnit | null;
+  tenantName: string | null;
 };
 
 async function loadProfile(id: number): Promise<ProfileRow | null> {
   const rows = await db
-    .select({ user: usersTable, role: rolesTable, orgUnit: orgUnitsTable })
+    .select({ user: usersTable, role: rolesTable, orgUnit: orgUnitsTable, tenant: tenantsTable })
     .from(usersTable)
     .innerJoin(rolesTable, eq(usersTable.roleId, rolesTable.id))
     .leftJoin(orgUnitsTable, eq(usersTable.orgUnitId, orgUnitsTable.id))
+    .leftJoin(tenantsTable, eq(usersTable.tenantId, tenantsTable.id))
     .where(eq(usersTable.id, id))
     .limit(1);
   if (!rows[0]) return null;
@@ -100,6 +105,7 @@ async function loadProfile(id: number): Promise<ProfileRow | null> {
     // Drizzle returns orgUnit columns as null when left join finds no match.
     // Detect this via the primary key.
     orgUnit: row.orgUnit?.id !== null && row.orgUnit?.id !== undefined ? (row.orgUnit as OrgUnit) : null,
+    tenantName: row.tenant?.name ?? null,
   };
 }
 
@@ -110,7 +116,7 @@ router.get("/me", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(profileFor(row.user, row.role, row.orgUnit));
+  res.json(profileFor(row.user, row.role, row.orgUnit, row.tenantName));
 });
 
 router.put("/me", requireAuth, async (req, res) => {
@@ -153,7 +159,7 @@ router.put("/me", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(profileFor(reloaded.user, reloaded.role, reloaded.orgUnit));
+  res.json(profileFor(reloaded.user, reloaded.role, reloaded.orgUnit, reloaded.tenantName));
 });
 
 // ── List profiles ─────────────────────────────────────────────────────────────
@@ -466,7 +472,7 @@ router.put("/:id", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(profileFor(reloaded.user, reloaded.role, reloaded.orgUnit));
+  res.json(profileFor(reloaded.user, reloaded.role, reloaded.orgUnit, reloaded.tenantName));
 });
 
 // ── Delete profile ────────────────────────────────────────────────────────────

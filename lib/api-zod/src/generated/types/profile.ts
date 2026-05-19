@@ -11,6 +11,7 @@ import type { Role } from "./role";
 export interface Profile {
   id: number;
   tenantId?: number | null;
+  tenantName?: string | null;
   orgUnitId?: number | null;
   orgUnit?: OrgUnit | null;
   username: string;

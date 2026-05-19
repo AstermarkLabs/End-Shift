@@ -83,6 +83,7 @@ export interface UpdateRoleRequest {
 export interface Profile {
   id: number;
   tenantId?: number | null;
+  tenantName?: string | null;
   orgUnitId?: number | null;
   orgUnit?: OrgUnit | null;
   username: string;

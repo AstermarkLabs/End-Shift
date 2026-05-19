@@ -1074,7 +1074,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         clearHistory,
         clearMockHistory,
         seedHistory,
-        appConfig,
+        appConfig: profile?.tenantName ? { ...appConfig, name: profile.tenantName } : appConfig,
         updateAppConfig,
         onChecklistImported,
         storageMode,

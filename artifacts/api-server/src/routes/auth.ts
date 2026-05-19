@@ -43,16 +43,17 @@ async function issueTokensForUser(user: { id: number; username: string }): Promi
 router.post("/login", async (req, res) => {
   const body = LoginBody.parse(req.body);
   const rows = await db
-    .select({ user: usersTable, role: rolesTable })
+    .select({ user: usersTable, role: rolesTable, tenant: tenantsTable })
     .from(usersTable)
     .innerJoin(rolesTable, eq(usersTable.roleId, rolesTable.id))
+    .leftJoin(tenantsTable, eq(usersTable.tenantId, tenantsTable.id))
     .where(eq(usersTable.username, body.username))
     .limit(1);
   if (rows.length === 0) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
-  const { user, role } = rows[0];
+  const { user, role, tenant } = rows[0];
   if (!user.isActive || !user.passwordHash) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
@@ -66,7 +67,7 @@ router.post("/login", async (req, res) => {
   res.json({
     accessToken,
     refreshToken,
-    profile: profileFor(user, role, null),
+    profile: profileFor(user, role, null, tenant?.name ?? null),
   });
 });
 
@@ -112,16 +113,17 @@ router.post("/refresh", async (req, res) => {
   }
 
   const rows = await db
-    .select({ user: usersTable, role: rolesTable })
+    .select({ user: usersTable, role: rolesTable, tenant: tenantsTable })
     .from(usersTable)
     .innerJoin(rolesTable, eq(usersTable.roleId, rolesTable.id))
+    .leftJoin(tenantsTable, eq(usersTable.tenantId, tenantsTable.id))
     .where(eq(usersTable.id, payload.sub))
     .limit(1);
   if (rows.length === 0 || !rows[0].user.isActive) {
     res.status(401).json({ error: "Invalid session" });
     return;
   }
-  const { user, role } = rows[0];
+  const { user, role, tenant } = rows[0];
 
   await db
     .update(refreshTokensTable)
@@ -129,7 +131,7 @@ router.post("/refresh", async (req, res) => {
     .where(eq(refreshTokensTable.tokenId, payload.jti));
 
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.json({ accessToken, refreshToken, profile: profileFor(user, role, null) });
+  res.json({ accessToken, refreshToken, profile: profileFor(user, role, null, tenant?.name ?? null) });
 });
 
 // ── Passkey registration (requires auth) ────────────────────────────────────
@@ -272,16 +274,17 @@ router.post("/passkey/auth-verify", async (req, res) => {
   }
   const cred = credRows[0];
   const userRows = await db
-    .select({ user: usersTable, role: rolesTable })
+    .select({ user: usersTable, role: rolesTable, tenant: tenantsTable })
     .from(usersTable)
     .innerJoin(rolesTable, eq(usersTable.roleId, rolesTable.id))
+    .leftJoin(tenantsTable, eq(usersTable.tenantId, tenantsTable.id))
     .where(eq(usersTable.id, cred.userId))
     .limit(1);
   if (userRows.length === 0 || !userRows[0].user.isActive) {
     res.status(401).json({ error: "Invalid session" });
     return;
   }
-  const { user, role } = userRows[0];
+  const { user, role, tenant } = userRows[0];
 
   const assertedChallenge = decodeChallengeFromAssertion(body.response);
   if (!assertedChallenge) {
@@ -327,7 +330,7 @@ router.post("/passkey/auth-verify", async (req, res) => {
     .set({ currentChallenge: null })
     .where(eq(usersTable.id, user.id));
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.json({ accessToken, refreshToken, profile: profileFor(user, role, null) });
+  res.json({ accessToken, refreshToken, profile: profileFor(user, role, null, tenant?.name ?? null) });
 });
 
 // ── Self-registration ────────────────────────────────────────────────────────
@@ -398,7 +401,7 @@ router.post("/register", async (req, res) => {
     .returning();
 
   const { accessToken, refreshToken } = await issueTokensForUser(user);
-  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, ownerRole, null) });
+  res.status(201).json({ accessToken, refreshToken, profile: profileFor(user, ownerRole, null, tenant.name) });
 });
 
 export default router;

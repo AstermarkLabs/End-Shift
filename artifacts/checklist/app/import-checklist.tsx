@@ -324,7 +324,7 @@ export default function ImportChecklistScreen() {
           ) : (
             <View style={styles.pickOptions}>
               <TouchableOpacity
-                style={styles.pickOption}
+                style={[styles.pickOption, styles.pickOptionPressArea]}
                 onPress={() => handlePick("pdf")}
               >
                 <Text style={styles.pickOptionIcon}>📄</Text>
@@ -337,7 +337,7 @@ export default function ImportChecklistScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.pickOption}
+                style={[styles.pickOption, styles.pickOptionPressArea]}
                 onPress={() => handlePick("docx")}
               >
                 <Text style={styles.pickOptionIcon}>📝</Text>

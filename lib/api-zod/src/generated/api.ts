@@ -28,6 +28,7 @@ export const LoginResponse = zod.object({
   profile: zod.object({
     id: zod.number(),
     tenantId: zod.number().nullish(),
+    tenantName: zod.string().nullish(),
     orgUnitId: zod.number().nullish(),
     orgUnit: zod
       .object({
@@ -109,6 +110,7 @@ export const RefreshResponse = zod.object({
   profile: zod.object({
     id: zod.number(),
     tenantId: zod.number().nullish(),
+    tenantName: zod.string().nullish(),
     orgUnitId: zod.number().nullish(),
     orgUnit: zod
       .object({
@@ -199,6 +201,7 @@ export const PasskeyAuthVerifyResponse = zod.object({
   profile: zod.object({
     id: zod.number(),
     tenantId: zod.number().nullish(),
+    tenantName: zod.string().nullish(),
     orgUnitId: zod.number().nullish(),
     orgUnit: zod
       .object({
@@ -245,6 +248,7 @@ export const PasskeyAuthVerifyResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.number(),
   tenantId: zod.number().nullish(),
+  tenantName: zod.string().nullish(),
   orgUnitId: zod.number().nullish(),
   orgUnit: zod
     .object({
@@ -308,6 +312,7 @@ export const UpdateMeBody = zod.object({
 export const UpdateMeResponse = zod.object({
   id: zod.number(),
   tenantId: zod.number().nullish(),
+  tenantName: zod.string().nullish(),
   orgUnitId: zod.number().nullish(),
   orgUnit: zod
     .object({
@@ -353,6 +358,7 @@ export const UpdateMeResponse = zod.object({
 export const ListProfilesResponseItem = zod.object({
   id: zod.number(),
   tenantId: zod.number().nullish(),
+  tenantName: zod.string().nullish(),
   orgUnitId: zod.number().nullish(),
   orgUnit: zod
     .object({
@@ -445,6 +451,7 @@ export const UpdateProfileBody = zod.object({
 export const UpdateProfileResponse = zod.object({
   id: zod.number(),
   tenantId: zod.number().nullish(),
+  tenantName: zod.string().nullish(),
   orgUnitId: zod.number().nullish(),
   orgUnit: zod
     .object({
