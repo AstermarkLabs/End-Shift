@@ -116,15 +116,19 @@ export default function ImportChecklistScreen() {
         await Clipboard.setStringAsync(url);
         setTemplateCopied(true);
         setTimeout(() => setTemplateCopied(false), 2000);
-      } catch {}
+      } catch {
+        Alert.alert("Could not copy", "Please copy the link manually: " + url);
+      }
     } else {
       try {
-        await Share.share(
-          Platform.OS === "android"
-            ? { message: url, title: "CSV Checklist Template" }
-            : { url, message: "CSV Checklist Template" },
-        );
-      } catch {}
+        await Share.share({ url, message: url, title: "CSV Checklist Template" });
+      } catch (err) {
+        // Ignore user-dismissed share sheet; only surface real errors
+        const errMsg = err instanceof Error ? err.message : "";
+        if (!errMsg.includes("dismissed")) {
+          Alert.alert("Share failed", "Could not open the share sheet. Please try again.");
+        }
+      }
     }
   }
 
@@ -354,8 +358,6 @@ export default function ImportChecklistScreen() {
                 <View style={styles.templateLinkBtn}>
                   <TouchableOpacity
                     onPress={() => { void Linking.openURL(getTemplateUrl()); }}
-                    onLongPress={() => { void handleShareTemplate(); }}
-                    delayLongPress={400}
                   >
                     <Text style={[styles.templateLink, { color: colors.tint }]}>
                       Download CSV template ↓
