@@ -110,6 +110,7 @@ export default function ImportChecklistScreen() {
   const [checklistName, setChecklistName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [templateCopied, setTemplateCopied] = useState(false);
+  const [showHeadingTip, setShowHeadingTip] = useState(false);
 
   const styles = makeStyles(colors);
   const config = IMPORT_CONFIG[importType];
@@ -182,16 +183,20 @@ export default function ImportChecklistScreen() {
         return;
       }
 
-      setSections(
-        result.sections.map((s) => ({
-          title: s.title,
-          tasks: s.tasks.map((t) => ({
-            text: t.text,
-            required: t.required,
-            included: true,
-            subsection: t.subsection ?? null,
-          })),
+      const mapped = result.sections.map((s) => ({
+        title: s.title,
+        tasks: s.tasks.map((t) => ({
+          text: t.text,
+          required: t.required,
+          included: true,
+          subsection: t.subsection ?? null,
         })),
+      }));
+      setSections(mapped);
+      setShowHeadingTip(
+        type === "docx" &&
+          mapped.length === 1 &&
+          mapped[0].title === "General Tasks",
       );
       setStage("review");
     } catch (err: unknown) {
@@ -462,6 +467,23 @@ export default function ImportChecklistScreen() {
           Toggle tasks to include or exclude them. Tap "Required" to change
           whether a task is mandatory.
         </Text>
+
+        {showHeadingTip ? (
+          <View style={styles.headingTipBox}>
+            <Text style={styles.headingTipText}>
+              <Text style={styles.headingTipBold}>Tip: </Text>
+              Add Heading 1 / Heading 2 styles in Word to split tasks into
+              sections automatically.
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowHeadingTip(false)}
+              style={styles.headingTipDismiss}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.headingTipDismissText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <Text style={styles.nameLabel}>Checklist Name</Text>
         <TextInput
@@ -736,6 +758,36 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       color: colors.destructive,
       fontSize: 14,
       textAlign: "center",
+    },
+
+    // Heading tip banner
+    headingTipBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      backgroundColor: colors.tint + "18",
+      borderRadius: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.tint + "55",
+      padding: 12,
+      marginBottom: 8,
+      gap: 10,
+    },
+    headingTipText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.text,
+      lineHeight: 19,
+    },
+    headingTipBold: {
+      fontWeight: "700",
+      fontFamily: "Inter_700Bold",
+    },
+    headingTipDismiss: {
+      paddingTop: 1,
+    },
+    headingTipDismissText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
     },
 
     // Review stage
