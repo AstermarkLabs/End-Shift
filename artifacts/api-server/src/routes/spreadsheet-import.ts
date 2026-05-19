@@ -24,6 +24,14 @@ router.get("/checklists/import/spreadsheet/template", (_req: Request, res: Respo
 
 router.use(requireAuth, blockIfMustChangePassword);
 
+// ── Import limits ─────────────────────────────────────────────────────────────
+
+/** Maximum upload size accepted by multer (bytes). */
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/** Maximum number of data rows allowed in a single import. */
+const MAX_ROW_COUNT = 5_000;
+
 // ── Multer setup ──────────────────────────────────────────────────────────────
 
 const ACCEPTED_MIMES = new Set([
@@ -53,7 +61,7 @@ const upload = multer({
       cb(new Error("Only spreadsheet files (.xlsx, .xls, .csv) are accepted"));
     }
   },
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: MAX_FILE_SIZE_BYTES },
 });
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -74,7 +82,15 @@ interface ImportSection {
 const REQUIRED_VALUES = new Set(["y", "yes", "true", "1"]);
 
 function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[] } {
-  const workbook = XLSX.read(buffer, { type: "buffer" });
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(buffer, { type: "buffer" });
+  } catch {
+    throw new Error(
+      "Could not read this spreadsheet. The file may be corrupt or in an unsupported format.",
+    );
+  }
+
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
     throw new Error("The spreadsheet appears to be empty.");
@@ -88,6 +104,16 @@ function parseSpreadsheet(buffer: Buffer): { sections: ImportSection[] } {
 
   if (rows.length === 0) {
     throw new Error("The spreadsheet has no data rows.");
+  }
+
+  if (rows.length > MAX_ROW_COUNT) {
+    throw Object.assign(
+      new Error(
+        `The spreadsheet contains ${rows.length.toLocaleString()} rows, which exceeds the ${MAX_ROW_COUNT.toLocaleString()}-row import limit. ` +
+          "Please split the file into smaller batches and try again.",
+      ),
+      { statusCode: 422 },
+    );
   }
 
   // Normalise headers to lowercase for flexible matching
@@ -148,7 +174,18 @@ function handleMulterError(
   res: Response,
   next: NextFunction,
 ): void {
-  if (err instanceof multer.MulterError || err instanceof Error) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      const limitMB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
+      res.status(422).json({
+        error: `The file exceeds the ${limitMB} MB size limit. Please reduce the file size and try again.`,
+      });
+      return;
+    }
+    res.status(400).json({ error: err.message });
+    return;
+  }
+  if (err instanceof Error) {
     res.status(400).json({ error: err.message });
     return;
   }
