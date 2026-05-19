@@ -163,6 +163,7 @@ function parsePdfText(text: string): { sections: PdfSection[]; skippedRows: numb
   let current: PdfSection = { title: "General Tasks", tasks: [] };
   let headerSeen = false;
   let currentSubsection: string | null = null;
+  let skippedRows = 0;
 
   for (const line of raw) {
     if (SKIP_LINE.test(line)) continue;
@@ -194,6 +195,9 @@ function parsePdfText(text: string): { sections: PdfSection[]; skippedRows: numb
         const taskText = stripPrefix(line);
         if (taskText.length > 0) {
           current.tasks.push({ text: taskText, required: true, subsection: currentSubsection });
+        } else {
+          // Had a task marker but no usable text after stripping
+          skippedRows++;
         }
       }
     } else {
@@ -202,6 +206,9 @@ function parsePdfText(text: string): { sections: PdfSection[]; skippedRows: numb
         const taskText = stripPrefix(line); // strips prefix if present, else returns as-is
         if (taskText.length > 0) {
           current.tasks.push({ text: taskText, required: true, subsection: currentSubsection });
+        } else {
+          // Passed usability check but stripped down to nothing
+          skippedRows++;
         }
       }
     }
@@ -214,7 +221,7 @@ function parsePdfText(text: string): { sections: PdfSection[]; skippedRows: numb
   return {
     sections:
       nonEmpty.length > 0 ? nonEmpty : [{ title: "General Tasks", tasks: [] }],
-    skippedRows: 0,
+    skippedRows,
   };
 }
 

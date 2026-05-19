@@ -78,6 +78,7 @@ function parseDocxHtml(html: string): { sections: ImportSection[]; skippedRows: 
   const sections: ImportSection[] = [];
   let current: ImportSection = { title: "General Tasks", tasks: [] };
   let currentSubsection: string | null = null;
+  let skippedRows = 0;
 
   // Unwrap <ul> and <ol> containers so their <li> children are top-level
   // block elements that the regex below can match individually.  Without this
@@ -140,6 +141,9 @@ function parseDocxHtml(html: string): { sections: ImportSection[]; skippedRows: 
           required: isRequired(rawText),
           subsection: currentSubsection,
         });
+      } else {
+        // List item had content but stripped down to nothing
+        skippedRows++;
       }
       continue;
     }
@@ -157,6 +161,9 @@ function parseDocxHtml(html: string): { sections: ImportSection[]; skippedRows: 
             required: isRequired(rawText),
             subsection: currentSubsection,
           });
+        } else {
+          // Paragraph looked like a task candidate but was too short after stripping
+          skippedRows++;
         }
       }
     }
@@ -169,7 +176,7 @@ function parseDocxHtml(html: string): { sections: ImportSection[]; skippedRows: 
   return {
     sections:
       nonEmpty.length > 0 ? nonEmpty : [{ title: "General Tasks", tasks: [] }],
-    skippedRows: 0,
+    skippedRows,
   };
 }
 

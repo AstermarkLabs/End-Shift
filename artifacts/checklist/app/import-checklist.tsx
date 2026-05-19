@@ -491,11 +491,23 @@ export default function ImportChecklistScreen() {
           <View style={styles.skippedRowsBox}>
             <Text style={styles.skippedRowsText}>
               <Text style={styles.skippedRowsBold}>
-                {skippedRows} {skippedRows === 1 ? "row was" : "rows were"} skipped.{" "}
+                {skippedRows}{" "}
+                {importType === "spreadsheet"
+                  ? skippedRows === 1
+                    ? "row was"
+                    : "rows were"
+                  : skippedRows === 1
+                    ? "item was"
+                    : "items were"}{" "}
+                skipped.{" "}
               </Text>
-              {skippedRows === 1
-                ? "That row was blank or contained a formula error and was not imported."
-                : "Those rows were blank or contained formula errors and were not imported."}
+              {importType === "spreadsheet"
+                ? skippedRows === 1
+                  ? "That row was blank or contained a formula error and was not imported."
+                  : "Those rows were blank or contained formula errors and were not imported."
+                : skippedRows === 1
+                  ? "That item was blank or unreadable and was not imported."
+                  : "Those items were blank or unreadable and were not imported."}
             </Text>
           </View>
         ) : null}
