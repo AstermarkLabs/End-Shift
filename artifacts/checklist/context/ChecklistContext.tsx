@@ -77,6 +77,12 @@ export interface AppConfig {
   primaryColor: string;
   icon: string;
   customIconUri?: string;
+  // Export layout settings
+  exportLogoEnabled: boolean;
+  exportLogoPosition: "left" | "center" | "right";
+  exportTitlePosition: "left" | "center" | "right";
+  exportDateEnabled: boolean;
+  exportDatePosition: "left" | "center" | "right";
 }
 
 export interface CompletedChecklist {
@@ -109,6 +115,11 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   name: "End Shift",
   primaryColor: "#C8102E",
   icon: "🕐",
+  exportLogoEnabled: true,
+  exportLogoPosition: "left",
+  exportTitlePosition: "center",
+  exportDateEnabled: true,
+  exportDatePosition: "right",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -574,11 +585,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   }, [ready, profile, fetchAllLocal]);
 
   // For local-no-auth devices: dynamically switch between local and cloud mode
-  // as the user signs in/out of a cloud account.
+  // as the user signs in/out of a cloud account. The signed-in account's
+  // `sync` flag controls whether we surface cloud data — false keeps the
+  // user's personal local data visible even while authenticated.
   useEffect(() => {
     if (!storageLoaded) return;
-    if (noAuthMode && profile && storageModeRef.current !== "cloud") {
-      // Signed into cloud account from personal device — show cloud data
+    if (noAuthMode && profile && profile.sync && storageModeRef.current !== "cloud") {
+      // Signed into a sync-enabled cloud account from a personal device —
+      // show cloud data.
       fetchVersionRef.current++;
       setApiChecklists([]);
       setActiveCl(null);
@@ -587,14 +601,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       hasFetchedRef.current = false;
       setStorageMode("cloud");
     } else if (noAuthMode && !profile && storageModeRef.current === "cloud") {
-      // Signed out of cloud account — return to personal local data
+      // Signed out of cloud account — return to personal local data.
       fetchVersionRef.current++;
       hasFetchedRef.current = false;
       setStorageMode("local");
     }
-  // !!profile captures sign-in/out without depending on identity changes
+  // !!profile / profile.sync capture sign-in/out without depending on identity changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noAuthMode, !!profile, storageLoaded]);
+  }, [noAuthMode, !!profile, profile?.sync, storageLoaded]);
 
   // ── Auto-save cache when active checklist changes ───────────────────────────
   useEffect(() => {

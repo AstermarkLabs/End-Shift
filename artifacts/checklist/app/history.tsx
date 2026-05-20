@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ExportModal } from "@/components/ExportModal";
 import { CompletedChecklist, useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -47,6 +48,7 @@ function HistoryCard({ entry }: { entry: CompletedChecklist }) {
   const colors = useColors();
   const { deleteHistoryEntry } = useChecklist();
   const [expanded, setExpanded] = useState(false);
+  const [exportVisible, setExportVisible] = useState(false);
 
   const total = entry.tasks.length;
   const done = entry.tasks.filter((t) => t.completed).length;
@@ -83,11 +85,28 @@ function HistoryCard({ entry }: { entry: CompletedChecklist }) {
           <Text style={[styles.timeAgo, { color: colors.mutedForeground }]}>
             {formatDuration(entry.completedAt)}
           </Text>
+          <TouchableOpacity
+            onPress={() => setExportVisible(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.actionIcon}>📤</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.deleteIcon}>🗑️</Text>
+            <Text style={styles.actionIcon}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      <ExportModal
+        visible={exportVisible}
+        onClose={() => setExportVisible(false)}
+        data={{
+          checklistName: entry.checklistName,
+          sections: entry.sections,
+          tasks: entry.tasks,
+          completedAt: entry.completedAt,
+        }}
+      />
 
       {/* Date */}
       <Text style={[styles.dateText, { color: colors.mutedForeground }]}>
@@ -321,7 +340,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   timeAgo: { fontSize: 12 },
-  deleteIcon: { fontSize: 16 },
+  actionIcon: { fontSize: 16 },
   dateText: {
     fontSize: 12,
     paddingHorizontal: 14,

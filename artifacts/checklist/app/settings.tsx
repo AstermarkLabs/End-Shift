@@ -219,14 +219,19 @@ export default function AppSettingsScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleNameSave}
                 onBlur={handleNameSave}
+                editable={!profile?.tenantName}
                 placeholder="App name"
                 placeholderTextColor={colors.mutedForeground}
                 style={[
                   styles.nameInput,
-                  { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
+                  {
+                    color: colors.foreground,
+                    borderColor: nameDirty ? colors.primary : colors.border,
+                    opacity: profile?.tenantName ? 0.6 : 1,
+                  },
                 ]}
               />
-              {nameDirty && (
+              {nameDirty && !profile?.tenantName && (
                 <TouchableOpacity
                   onPress={handleNameSave}
                   style={[styles.nameSaveBtn, { backgroundColor: colors.primary }]}
@@ -235,6 +240,11 @@ export default function AppSettingsScreen() {
                 </TouchableOpacity>
               )}
             </View>
+            {profile?.tenantName ? (
+              <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
+                Set from your business profile.
+              </Text>
+            ) : null}
           </View>
 
           {/* Color picker */}
@@ -348,7 +358,7 @@ export default function AppSettingsScreen() {
         {/* ── Account ── */}
         <SectionLabel title="ACCOUNT" />
         <View style={[styles.group, { borderColor: colors.border }]}>
-          {isNoAuthMode && (
+          {isNoAuthMode && !profile && (
             <SettingsRow
               icon="🔐"
               label="Create Account"
@@ -381,6 +391,20 @@ export default function AppSettingsScreen() {
               }}
             />
           )}
+        </View>
+
+        {/* ── Export ── */}
+        <SectionLabel title="EXPORT" />
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <SettingsRow
+            icon="📤"
+            label="Export Settings"
+            subtitle="Logo, title, date positioning"
+            onPress={() => {
+              router.back();
+              setTimeout(() => router.push("/export-settings"), 50);
+            }}
+          />
         </View>
 
         {/* ── Shift History ── */}

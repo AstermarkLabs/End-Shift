@@ -53,6 +53,10 @@ function RootLayoutNav() {
         name="create-account"
         options={{ headerShown: false, presentation: "modal" }}
       />
+      <Stack.Screen
+        name="export-settings"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
     </Stack>
   );
 }

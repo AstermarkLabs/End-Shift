@@ -19,6 +19,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Ionicons } from "@expo/vector-icons";
+
+import { ExportModal } from "@/components/ExportModal";
 import { SortableList } from "@/components/SortableList";
 import { useAuth } from "@/context/AuthContext";
 import { ChecklistMeta, Task, useChecklist } from "@/context/ChecklistContext";
@@ -661,6 +664,7 @@ function ChecklistScreenNative() {
   const completeBannerAnim = useRef(new Animated.Value(0)).current;
   const isWeb = Platform.OS === "web";
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
+  const [exportVisible, setExportVisible] = useState(false);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
@@ -778,7 +782,16 @@ function ChecklistScreenNative() {
               accessibilityRole="button"
               accessibilityLabel="Import Checklist"
             >
-              <Text style={styles.iconActionText}>📥</Text>
+              <Ionicons name="download-outline" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setExportVisible(true)}
+              style={styles.iconAction}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Export Checklist"
+            >
+              <Ionicons name="share-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setHamburgerOpen(true)}
@@ -867,6 +880,16 @@ function ChecklistScreenNative() {
         historyCount={completionHistory.length}
         isNoAuthMode={noAuthMode}
         isSignedIn={!!profile}
+      />
+
+      <ExportModal
+        visible={exportVisible}
+        onClose={() => setExportVisible(false)}
+        data={{
+          checklistName: appConfig.name,
+          sections,
+          tasks,
+        }}
       />
 
       {/* Completion Footer */}
