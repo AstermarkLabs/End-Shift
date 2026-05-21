@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 
 import { useChecklist } from '@/context/ChecklistContext';
 import { useColors } from '@/hooks/useColors';
+import { useAuth } from '@/context/AuthContext';
 import { generateMockHistory } from '@/utils/mockData';
 
 import { BreakdownCard } from '@/components/dashboard/BreakdownCard';
@@ -67,8 +68,17 @@ export default function ReportsScreen() {
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all');
   const [checklistPickerOpen, setChecklistPickerOpen] = useState(false);
 
+  const { profile } = useAuth();
   const isWeb = Platform.OS === 'web';
   const isWide = width >= 900;
+
+  const showAdminLink = isWeb && !!profile && (
+    profile.role.isSystem ||
+    profile.role.rights.includes("manage_profiles") ||
+    profile.role.rights.includes("manage_roles") ||
+    profile.role.rights.includes("assign_roles") ||
+    profile.role.rights.includes("manage_org_units")
+  );
 
   // ── Derived runs ────────────────────────────────────────────────────────────
 
@@ -142,6 +152,16 @@ export default function ReportsScreen() {
           <View style={styles.brandSep} />
           <Text style={styles.crumb}>Shift Reports</Text>
           <View style={styles.topbarSpacer} />
+          {showAdminLink && (
+            <Pressable
+              onPress={() => router.push('/admin')}
+              style={styles.topbarBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Admin panel"
+            >
+              <Text style={styles.topbarBtnText}>Admin</Text>
+            </Pressable>
+          )}
           {!isWeb && (
             <Pressable
               onPress={() => router.back()}

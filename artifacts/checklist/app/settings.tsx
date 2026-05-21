@@ -92,14 +92,6 @@ export default function AppSettingsScreen() {
       .catch(() => setIsNoAuthMode(false));
   }, [profile]);
 
-  const showAdminLink =
-    !!profile && (
-      profile.role.isSystem ||
-      profile.role.rights.includes("manage_profiles") ||
-      profile.role.rights.includes("manage_roles") ||
-      profile.role.rights.includes("assign_roles") ||
-      profile.role.rights.includes("manage_org_units")
-    );
   const topPadding = isWeb ? 67 : insets.top;
 
   const [nameValue, setNameValue] = useState(appConfig.name);
@@ -377,17 +369,6 @@ export default function AppSettingsScreen() {
               onPress={() => {
                 router.back();
                 setTimeout(() => router.push("/profile"), 50);
-              }}
-            />
-          )}
-          {showAdminLink && (
-            <SettingsRow
-              icon="🛡️"
-              label="Admin"
-              subtitle="Users & roles"
-              onPress={() => {
-                router.back();
-                setTimeout(() => router.push("/admin"), 50);
               }}
             />
           )}
