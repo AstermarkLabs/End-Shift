@@ -2,17 +2,6 @@
 
 ## Workspace
 
-pnpm monorepo (Node.js 24, TypeScript 5.9). `pnpm` enforced — `preinstall` rejects npm/yarn.
-
-Packages:
-- `artifacts/api-server` — Express API (`@workspace/api-server`)
-- `artifacts/checklist` — Expo Router app, iOS/Android/web (`@workspace/checklist`)
-- `artifacts/mockup-sandbox` — Vite+React dev playground, **not deployed**
-- `lib/db` — Drizzle ORM + Postgres (`@workspace/db`)
-- `lib/api-spec` — OpenAPI spec + Orval codegen config (`@workspace/api-spec`)
-- `lib/api-client-react` — Generated TanStack Query hooks (`@workspace/api-client-react`)
-- `lib/api-zod` — Generated Zod validators (`@workspace/api-zod`)
-
 **Dep versions live in `pnpm-workspace.yaml` `catalog:` — update the catalog, not individual `package.json` files.**
 
 ## Rules
@@ -50,4 +39,4 @@ Replit auto-applies schema via post-merge hook; local dev does not. After pullin
 
 ### TypeScript
 
-Root `tsconfig.json` only project-references libs — artifacts typecheck via their own `tsc -p`. `strictFunctionTypes: false` is intentional. No test runner is configured.
+Artifacts typecheck via their own `tsc -p`. `strictFunctionTypes: false` is intentional.
