@@ -16,6 +16,8 @@ import {
   type Role,
 } from "@workspace/api-client-react";
 
+import { RoleHierarchyModal } from "./RoleHierarchyModal";
+
 import { describeApiError } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -160,6 +162,8 @@ export function RolesPanel({
   onReload: () => void;
 }) {
   const colors = useColors();
+  const isOwner = currentUser.role.name === "Owner";
+  const [showHierarchy, setShowHierarchy] = useState(false);
 
   // Local rights state — optimistic updates
   const [rightsMap, setRightsMap] = useState<Record<number, Right[]>>({});
@@ -223,12 +227,31 @@ export function RolesPanel({
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 32, paddingBottom: 64 }}>
+      <RoleHierarchyModal
+        roles={roles}
+        visible={showHierarchy}
+        onClose={() => setShowHierarchy(false)}
+        onSaved={onReload}
+      />
+
       {/* Header */}
-      <View style={{ marginBottom: 24 }}>
-        <Text style={[r.title, { color: colors.foreground }]}>Roles & Permissions</Text>
-        <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 2 }}>
-          Control what each role can do across the app.
-        </Text>
+      <View style={{ marginBottom: 24, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <View>
+          <Text style={[r.title, { color: colors.foreground }]}>Roles & Permissions</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 2 }}>
+            Control what each role can do across the app.
+          </Text>
+        </View>
+        {isOwner && (
+          <TouchableOpacity
+            onPress={() => setShowHierarchy(true)}
+            style={[r.editHierarchyBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+          >
+            <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: "600" }}>
+              Edit Hierarchy
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Matrix table */}
@@ -246,7 +269,8 @@ export function RolesPanel({
                   <View key={role.id} style={[r.roleHeaderCell, { width: ROLE_COL_WIDTH }]}>
                     <View
                       style={{
-                        paddingHorizontal: 10,
+                        alignSelf: "stretch",
+                        alignItems: "center",
                         paddingVertical: 4,
                         borderRadius: 999,
                         borderWidth: 1,
@@ -261,11 +285,15 @@ export function RolesPanel({
                         {role.name}
                       </Text>
                     </View>
-                    {locked && (
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 3 }}>
-                        🔒 locked
-                      </Text>
-                    )}
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        marginTop: 3,
+                        color: locked ? colors.mutedForeground : "transparent",
+                      }}
+                    >
+                      🔒 locked
+                    </Text>
                   </View>
                 );
               })}
@@ -362,16 +390,23 @@ const r = StyleSheet.create({
   },
   headerRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     borderBottomWidth: 1,
     paddingVertical: 14,
     paddingHorizontal: 8,
   },
   roleHeaderCell: {
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     paddingHorizontal: 8,
     gap: 2,
+  },
+  editHierarchyBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
   },
   groupRow: {
     flexDirection: "row",
