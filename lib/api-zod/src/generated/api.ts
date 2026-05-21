@@ -314,6 +314,7 @@ export const updateMeBodyNewPasswordRegExp = new RegExp(
 );
 
 export const UpdateMeBody = zod.object({
+  username: zod.string().min(1).optional(),
   displayName: zod.string().min(1).optional(),
   email: zod.string().email().nullish(),
   currentPassword: zod.string().optional(),

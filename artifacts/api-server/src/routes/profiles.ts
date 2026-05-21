@@ -125,6 +125,18 @@ router.put("/me", requireAuth, async (req, res) => {
   const u = req.user!;
   const body = UpdateMeBody.parse(req.body);
   const updates: Partial<typeof usersTable.$inferInsert> = {};
+  if (body.username) {
+    const existing = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.username, body.username))
+      .limit(1);
+    if (existing.length > 0 && existing[0]!.id !== u.id) {
+      res.status(409).json({ error: "Username already taken" });
+      return;
+    }
+    updates.username = body.username;
+  }
   if (body.displayName) updates.displayName = body.displayName;
   if ("email" in body) {
     const newEmail = body.email ?? null;

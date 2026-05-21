@@ -1157,6 +1157,9 @@ components:
     UpdateMeRequest:
       type: object
       properties:
+        username:
+          type: string
+          minLength: 1
         displayName:
           type: string
           minLength: 1

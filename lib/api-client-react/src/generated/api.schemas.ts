@@ -138,6 +138,8 @@ export interface UpdateProfileRequest {
 
 export interface UpdateMeRequest {
   /** @minLength 1 */
+  username?: string;
+  /** @minLength 1 */
   displayName?: string;
   email?: string | null;
   currentPassword?: string;

@@ -11,7 +11,7 @@ A mobile app for managing end-of-shift closing checklists, with multiple named c
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 - Auth env (optional, have sensible dev defaults):
-  - `JWT_SECRET`, `JWT_REFRESH_SECRET` — sign access/refresh tokens (required in production)
+  - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` — sign access/refresh tokens (required in production)
   - `WEBAUTHN_RP_ID` — domain used as WebAuthn relying party ID (default: `localhost`)
   - `WEBAUTHN_ORIGIN` — expected web origin (default: `http://localhost`)
   - `WEBAUTHN_RP_NAME` — display name shown in passkey dialogs (default: `End Shift`)
