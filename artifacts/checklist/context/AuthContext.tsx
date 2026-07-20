@@ -74,7 +74,11 @@ function configureApiBaseUrl() {
     // Use the explicit domain on all platforms (native and EAS-hosted web).
     // On web without a domain configured, fall back to relative URLs so the
     // dev Metro server and Replit-hosted web build work without extra config.
-    setBaseUrl(`https://${domain}`);
+    // A bare host (e.g. "api.example.com") defaults to https; local dev can
+    // pass an explicit scheme (e.g. "http://localhost:8080") to hit a plain
+    // HTTP backend without a cert.
+    const url = /^https?:\/\//.test(domain) ? domain : `https://${domain}`;
+    setBaseUrl(url);
     return;
   }
   setBaseUrl(null);

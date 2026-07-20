@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+**/static-build
+**/.expo
+**/.expo-shared
+.git
+.claude
+.agents
+tmp
+out-tsc
+coverage
+attached_assets
+*.tsbuildinfo
+End Shift — Design System.pdf
