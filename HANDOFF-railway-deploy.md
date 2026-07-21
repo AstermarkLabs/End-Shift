@@ -56,13 +56,33 @@ Ruled out along the way (don't re-investigate):
 
 Verified locally: `build` succeeds and emits `dist/migrations/`; `typecheck` clean.
 
+- Pushed to `main` (`0b21b85`).
+- Repointed the Railway service source from the Docker image to the GitHub repo
+  via `railway service source connect --repo The-App-Foundry/End-Shift --branch main`.
+  Confirmed `source = {"image": null, "repo": "The-App-Foundry/End-Shift"}`.
+
+**Deploy is green.** Verified on Railway:
+
+```
+builder: DOCKERFILE   dockerfilePath: artifacts/api-server/Dockerfile
+healthcheckPath: /api/healthz   timeout: 300
+
+[INFO] Applying database migrations  migrationsFolder="/app/.../dist/migrations"
+[INFO] Database migrations up to date
+[INFO] Seeded system admin role  roleId=1
+[INFO] Server listening  port=8080
+[INFO] request completed  req={GET /api/healthz} res={"statusCode":200}
+```
+
 ## Next steps
 
-1. Commit + push to `main`.
-2. Repoint the Railway service source from the Docker image to the GitHub repo
-   `The-App-Foundry/End-Shift`, branch `main`, so `railway.json` (Dockerfile
-   builder + healthcheck) takes effect.
-3. Redeploy and confirm: migrations log, `verifySchema` passes, healthcheck green.
+1. **URGENT / security.** The first successful boot printed bootstrap admin
+   credentials in plaintext into the Railway deploy logs, because
+   `DEFAULT_ADMIN_USERNAME` / `DEFAULT_ADMIN_PASSWORD` are unset:
+   `bootstrapUsername="sysadmin"`. Change the password via the app, then set
+   both env vars so future boots stop generating and logging one.
+2. Convert `DATABASE_URL` to the `${{Postgres.DATABASE_URL}}` reference variable.
+3. Decide on the `push` vs `migrate` drift below and update CLAUDE.md.
 
 ## Open decisions / gotchas
 
