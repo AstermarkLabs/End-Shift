@@ -76,13 +76,29 @@ healthcheckPath: /api/healthz   timeout: 300
 
 ## Next steps
 
-1. **URGENT / security.** The first successful boot printed bootstrap admin
-   credentials in plaintext into the Railway deploy logs, because
-   `DEFAULT_ADMIN_USERNAME` / `DEFAULT_ADMIN_PASSWORD` are unset:
-   `bootstrapUsername="sysadmin"`. Change the password via the app, then set
-   both env vars so future boots stop generating and logging one.
-2. Convert `DATABASE_URL` to the `${{Postgres.DATABASE_URL}}` reference variable.
-3. Decide on the `push` vs `migrate` drift below and update CLAUDE.md.
+1. **URGENT / security.** The first successful boot (empty DB) printed the
+   bootstrap admin credentials in plaintext into the Railway deploy logs, because
+   `DEFAULT_ADMIN_USERNAME` / `DEFAULT_ADMIN_PASSWORD` were unset:
+   `bootstrapUsername="sysadmin"`. Anyone with read access to those logs has
+   system-admin access.
+
+   Note the exact semantics of `seedAuth()`: `resolveBootstrapCredentials()` is
+   called *inside* the `existingUsers.length === 0` branch, so it runs exactly
+   once, on the first boot against an empty users table. Therefore:
+   - The credential in that first boot's log is the **live** one. Later boots
+     generate and log nothing.
+   - **Setting `DEFAULT_ADMIN_*` now will NOT rotate it** — `seedAuth` skips the
+     whole branch once any user exists. Those vars only matter for a fresh DB.
+   - To actually rotate: log in and change the password (the user is created with
+     `mustChangePassword: true`, so the app should force this), or set
+     `RESET_ADMIN_PASSWORD` for one boot and then **remove the var**.
+2. **Stop building/pushing the `c0dezer019/api-server` Docker Hub image.** It is
+   no longer what production runs. Pushing to it now silently does nothing.
+   Deployment is `git push` to `main` → Railway auto-builds from the Dockerfile.
+3. Convert `DATABASE_URL` to the `${{Postgres.DATABASE_URL}}` reference variable.
+4. Reconcile the `profile-refactor` branch: all fix commits were pushed to `main`
+   via `git push origin profile-refactor:main`, so `origin/profile-refactor` is
+   stale and diverged. Decide whether to abandon the branch or reset it to `main`.
 
 - **RESOLVED — unhandled pg pool error crashed the server.** `lib/db/src/index.ts`
   created the `Pool` with no `'error'` listener. node-postgres emits `'error'` on
