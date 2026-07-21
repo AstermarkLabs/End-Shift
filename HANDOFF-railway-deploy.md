@@ -86,11 +86,21 @@ healthcheckPath: /api/healthz   timeout: 300
 
 ## Open decisions / gotchas
 
-- **`push` vs `migrate` drift.** `lib/db` still exposes `push` / `push-force`,
-  and the project CLAUDE.md documents `push` for local dev. Production now uses
-  committed migrations. Using `push` locally will drift local schema away from
-  the migration history. Recommend moving local dev to
-  `generate` + `migrate` and updating CLAUDE.md — not done yet, flagged.
+- **RESOLVED — pre-existing DBs need baselining.** Generated migrations use bare
+  `CREATE TABLE` (no `IF NOT EXISTS`), so any DB built by the old `drizzle-kit
+  push` workflow has the tables but no `drizzle.__drizzle_migrations` journal and
+  crashes on boot with `relation "..." already exists`. Production was empty so
+  it was unaffected, but every local dev DB hits this.
+  Fixed by `lib/db/src/baseline.ts` (`pnpm --filter @workspace/db run baseline`),
+  which records existing migrations as applied without running their SQL. It uses
+  drizzle's own `readMigrationFiles` so hashes match the migrator exactly, is
+  idempotent, and refuses to run against an empty database.
+  CLAUDE.md updated to mandate `generate` + committed SQL over `push`.
+
+  Verified against a throwaway Postgres 18 container: empty DB refused; `push`-built
+  DB reproduced the `type "account_type" already exists` crash; baseline then
+  migrate succeeded as a no-op; re-running baseline was idempotent; the built
+  server booted clean against the baselined DB.
 - **`DATABASE_URL` is a hardcoded literal**, not `${{Postgres.DATABASE_URL}}`,
   with an inline password. There are also two *detached* postgres volumes. Works
   today; a Postgres recreate silently breaks it. Worth converting to a reference

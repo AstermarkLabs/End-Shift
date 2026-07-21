@@ -33,9 +33,25 @@ Web: access token in memory only; refresh token + profile in `sessionStorage`. S
 
 `tenantId=null` → system user; `tenantId` set + `orgUnitId=null` → tenant-wide; both set → org-unit subtree. All queries must respect this or they leak cross-tenant data.
 
-### DB schema — push manually on local dev
+### DB schema — generated migrations, not `push`
 
-Replit auto-applies schema via post-merge hook; local dev does not. After pulling changes that touch `lib/db/src/schema/`, run `pnpm --filter @workspace/db run push`.
+Schema changes ship as **committed SQL migrations**, not runtime `drizzle-kit push`.
+
+After editing `lib/db/src/schema/`:
+1. `pnpm --filter @workspace/db run generate` — writes SQL to `lib/db/migrations/`
+2. Commit the generated SQL alongside the schema change. It is reviewable and is the source of truth for what production applies.
+
+The api-server applies pending migrations on startup via drizzle-orm's migrator (`runMigrations()` in `artifacts/api-server/src/index.ts`). `build.mjs` copies `lib/db/migrations` into `dist/`, so the runtime image needs no drizzle-kit and never prompts on a non-TTY container. Do not chain `drizzle-kit push` into a container `CMD`.
+
+**Pre-existing DBs built with `push` must be baselined once** — they have the tables but no `drizzle.__drizzle_migrations` journal, so the migrator would replay `0000` and crash with `relation "..." already exists`:
+
+```
+pnpm --filter @workspace/db run baseline
+```
+
+Records existing migrations as applied without running their SQL. Idempotent, and refuses to run against an empty database. Empty DBs need no baseline — just start the server.
+
+`push` / `push-force` still exist for throwaway local experiments, but anything that ships must go through `generate`. Using `push` on a DB you intend to keep will drift it from the migration history.
 
 ### esbuild external list
 
