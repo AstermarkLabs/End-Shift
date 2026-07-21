@@ -50,3 +50,6 @@ Thumbs.db
 
 # Claude
 .claude
+
+# Local secrets (never commit)
+*.secret

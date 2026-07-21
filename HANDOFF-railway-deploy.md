@@ -117,6 +117,39 @@ healthcheckPath: /api/healthz   timeout: 300
   `terminating connection due to administrator command`, and still served
   `/api/healthz` 200.
 
+## Security remediation (done this session)
+
+- **JWT secrets were never set in production** — root cause of `POST /api/auth/login`
+  returning `500`. `getSecret()` in `lib/auth.ts` throws in production unless
+  `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` are ≥16 chars. Both were missing, so
+  login authenticated the password then crashed at token issuance. **Login had never
+  worked on this deployment** — which is also why the leaked bootstrap password was
+  never actually usable. Set both to 64-char random values via `railway variable set
+  --stdin` (values never printed).
+- **Leaked `sysadmin` password rotated.** The first-boot bootstrap password
+  (`sysadmin`) was in the Railway deploy logs. After fixing JWT secrets, logged in
+  with the old password and rotated via `PUT /api/profiles/me`. Verified: old
+  password now `401`, new password `200`, `must_change_password` gate lifted
+  (`GET /api/roles` → 200). New password stored only in
+  `.sysadmin-password.secret` (repo root, chmod 600, gitignored via `*.secret`).
+  Note the app password policy: min 12, needs upper+lower+digit+symbol
+  (`lib/api-zod` UpdateMeBody regex).
+- **`DEFAULT_ADMIN_USERNAME` / `DEFAULT_ADMIN_PASSWORD`** set (password matches the
+  rotated one), so a future fresh DB seeds with a known password instead of logging
+  a random one. Does not affect the existing user — `seedAuth` skips once a user
+  exists.
+- **`DATABASE_URL` on api-server** switched to the `${{Postgres.DATABASE_URL}}`
+  reference variable (was a hardcoded literal with an inline superuser password).
+- **Stale `DATABASE_PUBLIC_URL` deleted** from the Postgres service. The user had
+  already removed the public TCP proxy, leaving that variable pointing at an empty
+  host while still carrying the superuser password. The DB now has no public
+  ingress — reach it via `railway connect` / temporary proxy if ever needed.
+
+Still worth doing (not blocking): the `postgres` superuser password itself was
+exposed as a literal earlier and could be rotated with `ALTER USER postgres` +
+updating `POSTGRES_PASSWORD`. Lower priority now that public ingress is closed and
+`DATABASE_URL` is a reference.
+
 ## Open decisions / gotchas
 
 - **RESOLVED — pre-existing DBs need baselining.** Generated migrations use bare
