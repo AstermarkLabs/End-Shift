@@ -84,6 +84,23 @@ healthcheckPath: /api/healthz   timeout: 300
 2. Convert `DATABASE_URL` to the `${{Postgres.DATABASE_URL}}` reference variable.
 3. Decide on the `push` vs `migrate` drift below and update CLAUDE.md.
 
+- **RESOLVED — unhandled pg pool error crashed the server.** `lib/db/src/index.ts`
+  created the `Pool` with no `'error'` listener. node-postgres emits `'error'` on
+  *idle* pooled clients when the backend drops a connection (server restart,
+  network blip, deployment swap). With no listener, Node rethrows it as an
+  unhandled exception and kills the process, even though the pool itself recovers.
+
+  Seen in production immediately after the first good deploy: healthy boot at
+  19:16:10, then `Error: Connection terminated unexpectedly` at pg-pool's
+  `idleListener` 7s later, process dead, restart. Pre-existing bug — it only
+  became reachable once the server stayed up long enough to hold idle connections.
+
+  Fixed by attaching a logging `pool.on("error", ...)`. Verified with a control:
+  same test against a build *without* the handler killed the process
+  (`Unhandled 'error' event`); with the handler the process survived, logged
+  `terminating connection due to administrator command`, and still served
+  `/api/healthz` 200.
+
 ## Open decisions / gotchas
 
 - **RESOLVED — pre-existing DBs need baselining.** Generated migrations use bare
