@@ -6,6 +6,10 @@
 
 ## Rules
 
+### Handoff docs for multi-step work
+
+Multi-step task or goal spanning several sessions: write/update a handoff doc (`HANDOFF.md` in repo root, or task-specific `HANDOFF-<name>.md`) covering: goal, done so far, next steps, open decisions, gotchas hit. Update it before ending session or when context resets. Read it first thing when resuming known multi-step work.
+
 ### API contract is generated
 
 `lib/api-spec/openapi.yaml` is source of truth. **Never edit files under `generated/`** — change `openapi.yaml` and re-run codegen (`pnpm --filter @workspace/api-spec run codegen`).

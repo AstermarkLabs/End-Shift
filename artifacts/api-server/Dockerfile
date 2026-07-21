@@ -15,6 +15,10 @@ RUN pnpm --filter @workspace/api-server run build
 
 # esbuild produces a single self-contained dist/index.mjs (see build.mjs) —
 # the runtime image needs no node_modules, only the Node runtime + ocrmypdf.
+# build.mjs also copies lib/db/migrations into dist/migrations; the server
+# applies them on startup via drizzle-orm's migrator (see src/index.ts), so
+# drizzle-kit is never needed at runtime and migrations never prompt on a
+# non-TTY container.
 FROM node:24-bookworm-slim AS runtime
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ocrmypdf ca-certificates \
