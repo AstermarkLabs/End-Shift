@@ -47,6 +47,7 @@ onlyBuiltDependencies:
 
 overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
+  supports-color: ^8.1.1
   '@expo/cli>picomatch': ^4.0.4
   '@expo/metro-config>picomatch': ^4.0.4
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'

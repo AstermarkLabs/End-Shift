@@ -48,8 +48,7 @@ Thumbs.db
 .cache/
 .local/
 
-# Claude
-.claude
+graphify-out/cache
 
 # Local secrets (never commit)
 *.secret
