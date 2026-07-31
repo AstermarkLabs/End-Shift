@@ -155,6 +155,12 @@ const qrLibSource = fs.readFileSync(QR_LIB_PATH, "utf-8");
 const qrLibInline = qrLibSource.replace(/\/\/# sourceMappingURL=\S+/g, "");
 const appName = getAppName();
 
+// Matches android/app/debug.keystore. This public debug signing fingerprint is
+// a development-only fallback so `assetlinks.json` can authorize locally built
+// APKs. Production must provide the release certificate fingerprint.
+const DEBUG_ANDROID_SHA256 =
+  "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C";
+
 // ─── .well-known handlers ────────────────────────────────────────────────────
 // These files are required for native passkey support:
 //   iOS  → apple-app-site-association (Associated Domains)
@@ -186,8 +192,10 @@ function serveAppleAppSiteAssociation(res) {
 }
 
 function serveAssetLinks(res) {
-  const pkg = process.env["WEBAUTHN_ANDROID_PACKAGE"];
-  const sha256 = process.env["WEBAUTHN_ANDROID_SHA256"];
+  const pkg = process.env["WEBAUTHN_ANDROID_PACKAGE"] ?? "com.theappfoundry.endshift";
+  const sha256 =
+    process.env["WEBAUTHN_ANDROID_SHA256"] ??
+    (process.env["NODE_ENV"] === "production" ? undefined : DEBUG_ANDROID_SHA256);
   if (!pkg || !sha256) {
     res.writeHead(404, { "content-type": "application/json" });
     res.end(

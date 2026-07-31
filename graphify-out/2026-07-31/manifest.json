@@ -45,8 +45,8 @@
     "semantic_hash": "7c55cdace807bded687aac9594c4d818"
   },
   "artifacts/api-server/src/lib/webauthn.ts": {
-    "mtime": 1785525546.054249,
-    "ast_hash": "0dbf7c6ffefd648ccbec49d1fe77e5a4",
+    "mtime": 1785519838.8549988,
+    "ast_hash": "0bfb9a75e6e92f738fd0c97031de5cc9",
     "semantic_hash": ""
   },
   "artifacts/api-server/src/middlewares/auth.ts": {
@@ -375,9 +375,9 @@
     "semantic_hash": "3bd1eb2efd4a4f4ec12e6f142c205d89"
   },
   "artifacts/checklist/server/serve.js": {
-    "mtime": 1785525546.3752618,
-    "ast_hash": "bda084109f41df336cc67abf6391922a",
-    "semantic_hash": ""
+    "mtime": 1778874913.9805753,
+    "ast_hash": "0c73e5ee26626bbfe30984d99496054c",
+    "semantic_hash": "0c73e5ee26626bbfe30984d99496054c"
   },
   "artifacts/checklist/tsconfig.json": {
     "mtime": 1778195810.0,

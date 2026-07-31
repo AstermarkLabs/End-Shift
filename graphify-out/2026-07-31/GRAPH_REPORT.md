@@ -1,11 +1,11 @@
 # Graph Report - End-Shift  (2026-07-31)
 
 ## Corpus Check
-- 242 files · ~129,343 words
+- 242 files · ~129,241 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2294 nodes · 3795 edges · 270 communities (122 shown, 148 thin omitted)
+- 2294 nodes · 3795 edges · 269 communities (122 shown, 147 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 23 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -280,7 +280,6 @@
 - getRefreshMutationOptions
 - getUpdateMeMutationOptions
 - getUpdateProfileMutationOptions
-- ResponseParseError
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 138 edges
@@ -312,7 +311,7 @@
 ## Hyperedges (group relationships)
 - **API Contract Generation** — lib_api_spec_openapi, lib_api_zod, claude [EXTRACTED 1.00]
 
-## Communities (270 total, 148 thin omitted)
+## Communities (269 total, 147 thin omitted)
 
 ### Community 0 - "API Client Mutations"
 Cohesion: 0.01
@@ -387,8 +386,8 @@ Cohesion: 0.08
 Nodes (31): AccessTokenPayload, getSecret(), RefreshTokenPayload, signAccessToken(), signRefreshToken(), verifyAccessToken(), verifyPassword(), verifyRefreshToken() (+23 more)
 
 ### Community 18 - "Custom Fetch Client"
-Cohesion: 0.16
-Nodes (22): applyBaseUrl(), BodyType, CustomFetchOptions, ErrorType, getMediaType(), hasNoBody(), inferResponseType(), isJsonMediaType() (+14 more)
+Cohesion: 0.13
+Nodes (20): ApiError, applyBaseUrl(), AuthRefreshHandler, AuthTokenGetter, BodyType, buildErrorMessage(), CustomFetchOptions, ErrorType (+12 more)
 
 ### Community 19 - "Web Build Script"
 Cohesion: 0.12
@@ -451,8 +450,8 @@ Cohesion: 0.24
 Nodes (19): ReportsScreen(), addDays(), buildBuckets(), computeMissedSteps(), counts(), daysBetween(), DOW_SHORT, endOfDay() (+11 more)
 
 ### Community 34 - "Authcontext"
-Cohesion: 0.17
-Nodes (18): AuthContext, AuthContextValue, AuthProvider(), configureApiBaseUrl(), storageDel(), storageGet(), storageSet(), AuthRefreshHandler (+10 more)
+Cohesion: 0.21
+Nodes (14): AuthContext, AuthContextValue, AuthProvider(), configureApiBaseUrl(), storageDel(), storageGet(), storageSet(), setBaseUrl() (+6 more)
 
 ### Community 35 - "Checklistcontext"
 Cohesion: 0.16
@@ -468,7 +467,7 @@ Nodes (19): dependencies, bcryptjs, cookie-parser, drizzle-orm, express, pdf-par
 
 ### Community 38 - "Package"
 Cohesion: 0.11
-Nodes (19): devDependencies, chokidar, clsx, input-otp, @radix-ui/react-avatar, @radix-ui/react-label, @radix-ui/react-navigation-menu, @radix-ui/react-popover (+11 more)
+Nodes (19): devDependencies, class-variance-authority, clsx, input-otp, @radix-ui/react-avatar, @radix-ui/react-label, @radix-ui/react-navigation-menu, @radix-ui/react-popover (+11 more)
 
 ### Community 39 - "Exportmodal"
 Cohesion: 0.21
@@ -568,7 +567,7 @@ Nodes (10): fmtDate(), fmtTime(), timeAgo(), HistoryCard(), HistoryCardProps, OU
 
 ### Community 63 - "Package"
 Cohesion: 0.18
-Nodes (11): devDependencies, @babel/core, babel-plugin-react-compiler, @expo/ngrok, expo-router, typescript, typescript, @babel/core (+3 more)
+Nodes (11): devDependencies, babel-plugin-react-compiler, expo-blur, @expo/ngrok, expo-router, typescript, typescript, babel-plugin-react-compiler (+3 more)
 
 ### Community 64 - "Chart"
 Cohesion: 0.18
@@ -762,10 +761,6 @@ Nodes (3): getListRolesQueryKey(), getListRolesQueryOptions(), useListRoles()
 Cohesion: 0.67
 Nodes (3): getListShiftsQueryKey(), getListShiftsQueryOptions(), useListShifts()
 
-### Community 128 - "Package"
-Cohesion: 0.40
-Nodes (4): ApiError, buildErrorMessage(), getStringField(), truncate()
-
 ### Community 166 - "Package"
 Cohesion: 0.25
 Nodes (7): Gotchas, Local-no-auth bypass, Prerequisites, Profile screen (requires cloud auth), Run (agent path), Run (human path), Troubleshooting
@@ -782,6 +777,10 @@ Nodes (3): Codebase-specific knowledge (binding, from project CLAUDE.md), Respon
 Cohesion: 0.17
 Nodes (9): CHECKLIST_ADMIN_RIGHTS, CreateBody, hasChecklistAdminRight(), RolesUpdateBody, router, TaskCreateBody, TaskUpdateBody, UpdateBody (+1 more)
 
+### Community 236 - "parseErrorBody"
+Cohesion: 0.25
+Nodes (11): getMediaType(), hasNoBody(), inferResponseType(), isJsonMediaType(), isTextMediaType(), looksLikeJson(), NO_BODY_STATUS, parseErrorBody() (+3 more)
+
 ### Community 242 - "avatar.tsx"
 Cohesion: 0.50
 Nodes (3): Avatar, AvatarFallback, AvatarImage
@@ -789,7 +788,7 @@ Nodes (3): Avatar, AvatarFallback, AvatarImage
 ## Knowledge Gaps
 - **964 isolated node(s):** `artifactDir`, `name`, `version`, `private`, `type` (+959 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **148 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **147 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

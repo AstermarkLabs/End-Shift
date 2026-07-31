@@ -267,6 +267,5 @@
   "265": "getPasskeyRegisterVerifyMutationOptions",
   "266": "getRefreshMutationOptions",
   "267": "getUpdateMeMutationOptions",
-  "268": "getUpdateProfileMutationOptions",
-  "269": "ResponseParseError"
+  "268": "getUpdateProfileMutationOptions"
 }

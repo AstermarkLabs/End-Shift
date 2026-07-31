@@ -17,7 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.theappfoundry.endshift",
       "associatedDomains": [
-        "webcredentials:REPLACE_WITH_YOUR_DOMAIN"
+        "webcredentials:end-shift.replit.app"
       ]
     },
     "android": {
