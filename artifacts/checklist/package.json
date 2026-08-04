@@ -1,10 +1,10 @@
 {
   "name": "@workspace/checklist",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT --clear",
+    "dev": "pnpm exec expo start --localhost --clear",
     "dev:local": "expo start --clear",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
@@ -28,6 +28,7 @@
     "@ungap/structured-clone": "^1.3.3",
     "@workspace/api-client-react": "workspace:*",
     "babel-plugin-react-compiler": "19.0.0-beta-ebf51a3-20250411",
+    "babel-preset-expo": "~54.0.12",
     "expo": "~54.0.36",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
@@ -62,7 +63,10 @@
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
     "docx": "^9.7.1",
+    "dotenv": "^17.4.2",
+    "expo": "~54.0.36",
     "expo-clipboard": "~8.0.8",
+    "expo-dev-client": "~6.0.21",
     "expo-document-picker": "~14.0.8",
     "expo-print": "^15.0.8",
     "expo-secure-store": "~15.0.8",

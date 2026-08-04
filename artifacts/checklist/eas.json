@@ -7,15 +7,17 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "http://10.100.13.66:8081"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
-      "node": "24.15.0",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "end-shift.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "https://api-server-production-bdc6.up.railway.app"
       },
       "android": {
         "buildType": "apk"
@@ -24,7 +26,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "end-shift.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "https://api-server-production-bdc6.up.railway.app"
       },
       "android": {
         "buildType": "app-bundle"

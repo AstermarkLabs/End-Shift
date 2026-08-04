@@ -17,7 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.theappfoundry.endshift",
       "associatedDomains": [
-        "webcredentials:end-shift.replit.app"
+        "webcredentials:api-server-production-bdc6.up.railway.app"
       ]
     },
     "android": {

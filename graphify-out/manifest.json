@@ -340,9 +340,9 @@
     "semantic_hash": "7a106a99d5eef976847bda19cdaf8a3f"
   },
   "artifacts/checklist/eas.json": {
-    "mtime": 1778739707.546361,
-    "ast_hash": "b1b174a1ef07ce54e60c057a6138f78f",
-    "semantic_hash": "b1b174a1ef07ce54e60c057a6138f78f"
+    "mtime": 1785533779.686342,
+    "ast_hash": "8ccb6f25827c2d0f1b34ae2185c7bec8",
+    "semantic_hash": ""
   },
   "artifacts/checklist/hooks/useColors.ts": {
     "mtime": 1778287284.0,
@@ -360,8 +360,8 @@
     "semantic_hash": "7b5b5b15e7d735cd66c9777d522847f4"
   },
   "artifacts/checklist/package.json": {
-    "mtime": 1784745197.4268174,
-    "ast_hash": "9aa8752a4ac790eedb5b50636e0aeb8e",
+    "mtime": 1785533561.3858576,
+    "ast_hash": "309064e7191e61013e8fccc5d62f3c9d",
     "semantic_hash": ""
   },
   "artifacts/checklist/scripts/build.js": {
