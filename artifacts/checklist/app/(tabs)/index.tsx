@@ -763,7 +763,9 @@ function ChecklistScreenNative() {
                 <Text style={styles.headerIconText}>{appConfig.icon}</Text>
               )}
             </View>
-            <Text style={styles.headerTitle}>{appConfig.name}</Text>
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+              {appConfig.name}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -952,6 +954,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    flexShrink: 1,
+    marginRight: 8,
   },
   headerIconWrap: {
     width: 36,
@@ -969,11 +973,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
+    flexShrink: 1,
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
+    flexShrink: 0,
   },
   iconAction: {
     width: 36,

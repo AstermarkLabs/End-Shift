@@ -16,6 +16,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ProfileAccountType } from "@workspace/api-client-react";
+
 import { useAuth } from "@/context/AuthContext";
 import { useChecklist } from "@/context/ChecklistContext";
 import { useColors } from "@/hooks/useColors";
@@ -83,6 +85,7 @@ export default function AppSettingsScreen() {
   const router = useRouter();
   const { completionHistory, clearHistory, resetChecklist, appConfig, updateAppConfig } = useChecklist();
   const { profile } = useAuth();
+  const isBusiness = profile?.accountType === ProfileAccountType.BUSINESS;
   const isWeb = Platform.OS === "web";
   const [isNoAuthMode, setIsNoAuthMode] = useState(false);
 
@@ -96,6 +99,7 @@ export default function AppSettingsScreen() {
 
   const [nameValue, setNameValue] = useState(appConfig.name);
   const [nameDirty, setNameDirty] = useState(false);
+  const APP_NAME_MAX_LENGTH = 24;
 
   useEffect(() => {
     setNameValue(appConfig.name);
@@ -133,8 +137,9 @@ export default function AppSettingsScreen() {
   };
 
   const handleNameSave = () => {
-    const trimmed = nameValue.trim();
+    const trimmed = nameValue.trim().slice(0, APP_NAME_MAX_LENGTH);
     if (!trimmed) return;
+    setNameValue(trimmed);
     updateAppConfig({ name: trimmed });
     setNameDirty(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -142,12 +147,17 @@ export default function AppSettingsScreen() {
 
   const handleClearHistory = () => {
     if (completionHistory.length === 0) {
-      Alert.alert("No History", "There are no saved shifts to clear.");
+      Alert.alert(
+        "No History",
+        isBusiness ? "There are no saved shifts to clear." : "There is nothing saved to clear."
+      );
       return;
     }
     Alert.alert(
-      "Clear Shift History",
-      `Delete all ${completionHistory.length} saved shift${completionHistory.length !== 1 ? "s" : ""}? This cannot be undone.`,
+      isBusiness ? "Clear Shift History" : "Clear History",
+      isBusiness
+        ? `Delete all ${completionHistory.length} saved shift${completionHistory.length !== 1 ? "s" : ""}? This cannot be undone.`
+        : `Delete all ${completionHistory.length} saved ${completionHistory.length !== 1 ? "entries" : "entry"}? This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -211,7 +221,8 @@ export default function AppSettingsScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleNameSave}
                 onBlur={handleNameSave}
-                editable={!profile?.tenantName}
+                editable={!isBusiness}
+                maxLength={APP_NAME_MAX_LENGTH}
                 placeholder="App name"
                 placeholderTextColor={colors.mutedForeground}
                 style={[
@@ -219,11 +230,11 @@ export default function AppSettingsScreen() {
                   {
                     color: colors.foreground,
                     borderColor: nameDirty ? colors.primary : colors.border,
-                    opacity: profile?.tenantName ? 0.6 : 1,
+                    opacity: isBusiness ? 0.6 : 1,
                   },
                 ]}
               />
-              {nameDirty && !profile?.tenantName && (
+              {nameDirty && !isBusiness && (
                 <TouchableOpacity
                   onPress={handleNameSave}
                   style={[styles.nameSaveBtn, { backgroundColor: colors.primary }]}
@@ -232,9 +243,9 @@ export default function AppSettingsScreen() {
                 </TouchableOpacity>
               )}
             </View>
-            {profile?.tenantName ? (
+            {isBusiness ? (
               <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
-                Set from your business profile.
+                Set from your profile.
               </Text>
             ) : null}
           </View>
@@ -388,16 +399,18 @@ export default function AppSettingsScreen() {
           />
         </View>
 
-        {/* ── Shift History ── */}
-        <SectionLabel title="SHIFT HISTORY" />
+        {/* ── History ── */}
+        <SectionLabel title={isBusiness ? "SHIFT HISTORY" : "HISTORY"} />
         <View style={[styles.group, { borderColor: colors.border }]}>
           <SettingsRow
             icon="🕐"
-            label="View Shift History"
+            label={isBusiness ? "View Shift History" : "View History"}
             subtitle={
               completionHistory.length === 0
-                ? "No saved shifts yet"
-                : `${completionHistory.length} saved shift${completionHistory.length !== 1 ? "s" : ""}`
+                ? isBusiness ? "No saved shifts yet" : "No saved entries yet"
+                : isBusiness
+                  ? `${completionHistory.length} saved shift${completionHistory.length !== 1 ? "s" : ""}`
+                  : `${completionHistory.length} saved ${completionHistory.length !== 1 ? "entries" : "entry"}`
             }
             onPress={() => {
               router.back();
@@ -406,8 +419,8 @@ export default function AppSettingsScreen() {
           />
           <SettingsRow
             icon="🗑️"
-            label="Clear Shift History"
-            subtitle="Permanently delete all saved shifts"
+            label={isBusiness ? "Clear Shift History" : "Clear History"}
+            subtitle={isBusiness ? "Permanently delete all saved shifts" : "Permanently delete all saved entries"}
             onPress={handleClearHistory}
             destructive
           />
