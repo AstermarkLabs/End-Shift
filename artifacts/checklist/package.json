@@ -4,12 +4,12 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "pnpm exec expo start --localhost --clear",
+    "dev": "pnpm exec expo start --localhost --clear --port 8082",
     "dev:local": "expo start --clear",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "android": "expo run:android",
+    "android": "expo run:android --port 8082",
     "start": "expo start",
     "rel": "expo run:android --variant release",
     "ios": "expo run:ios"

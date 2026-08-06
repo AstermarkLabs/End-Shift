@@ -40,7 +40,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
-  const { profile, setProfile, signOut } = useAuth();
+  const { profile, setProfile, signOut, signInWithPasskey } = useAuth();
   const { width } = useWindowDimensions();
   const isWebDesktop = Platform.OS === "web" && width >= 640;
 
@@ -167,11 +167,24 @@ export default function ProfileScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          setBusy(true);
+          try {
+            // Require fresh passkey proof-of-possession before allowing
+            // removal — prevents a hijacked/left-open session from silently
+            // stripping a user's second factor.
+            await signInWithPasskey(profile.username);
+          } catch (e) {
+            setBusy(false);
+            Alert.alert("Verification failed", describeApiError(e));
+            return;
+          }
           try {
             await deleteProfilePasskey(profile.id, cred.credentialId);
             await loadPasskeys();
           } catch (e) {
             Alert.alert("Delete failed", describeApiError(e));
+          } finally {
+            setBusy(false);
           }
         },
       },
@@ -343,20 +356,22 @@ export default function ProfileScreen() {
               Added {new Date(p.createdAt).toLocaleDateString()}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => onDeletePasskey(p)}>
+          <TouchableOpacity onPress={() => onDeletePasskey(p)} disabled={busy}>
             <Text style={{ color: colors.destructive, fontWeight: "600" }}>Delete</Text>
           </TouchableOpacity>
         </View>
       ))}
-      <TouchableOpacity
-        style={[styles.cancelBtn, { borderColor: colors.border, marginTop: 8 }]}
-        onPress={onRegisterPasskey}
-        disabled={busy}
-      >
-        <Text style={[styles.actionBtnText, { color: colors.foreground }]}>
-          {busy ? "Registering…" : "Register this device"}
-        </Text>
-      </TouchableOpacity>
+      {passkeys.length === 0 && (
+        <TouchableOpacity
+          style={[styles.cancelBtn, { borderColor: colors.border, marginTop: 8 }]}
+          onPress={onRegisterPasskey}
+          disabled={busy}
+        >
+          <Text style={[styles.actionBtnText, { color: colors.foreground }]}>
+            {busy ? "Registering…" : "Register this device"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 

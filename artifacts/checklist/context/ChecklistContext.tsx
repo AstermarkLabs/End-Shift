@@ -45,6 +45,7 @@ import {
   submitShift,
   completeShiftTask,
   uncompleteShiftTask,
+  ProfileAccountType,
 } from "@workspace/api-client-react";
 
 import type {
@@ -1088,7 +1089,10 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         clearHistory,
         clearMockHistory,
         seedHistory,
-        appConfig: profile?.tenantName ? { ...appConfig, name: profile.tenantName } : appConfig,
+        appConfig:
+          profile?.accountType === ProfileAccountType.BUSINESS && profile?.tenantName
+            ? { ...appConfig, name: profile.tenantName }
+            : appConfig,
         updateAppConfig,
         onChecklistImported,
         storageMode,
