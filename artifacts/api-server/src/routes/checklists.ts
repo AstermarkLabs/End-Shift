@@ -34,6 +34,17 @@ function hasChecklistAdminRight(rights: string[]): boolean {
   return rights.some((r) => CHECKLIST_ADMIN_RIGHTS.has(r));
 }
 
+// Postgres `integer` columns (id PKs here) are 4-byte, max 2147483647. Client-generated
+// local-storage IDs (Date.now()-based, see localChecklistStore.ts) exceed this — reject
+// before they hit the DB driver as an unhandled 500.
+const PG_INT4_MAX = 2147483647;
+
+function parseId(raw: string | string[] | undefined): number | null {
+  const id = Number(raw);
+  if (!Number.isFinite(id) || !Number.isInteger(id) || id < 1 || id > PG_INT4_MAX) return null;
+  return id;
+}
+
 /** Fetch a map of checklistId → allowed roleIds for the given checklist IDs. */
 async function fetchRoleMap(
   checklistIds: number[],
@@ -195,8 +206,8 @@ router.get(
   "/checklists/:id",
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
     const rows = await db
       .select()
@@ -235,8 +246,8 @@ router.put(
   requireRight("edit_checklists"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
     const body = UpdateBody.parse(req.body);
 
     const rows = await db
@@ -279,8 +290,8 @@ router.delete(
   requireRight("delete_checklists"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
     const rows = await db
       .select()
@@ -302,8 +313,8 @@ router.get(
   requireAnyRight("edit_checklists", "manage_checklist_settings"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
     const rows = await db
       .select()
@@ -325,8 +336,8 @@ router.put(
   requireRight("edit_checklists"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
     const body = RolesUpdateBody.parse(req.body);
 
     const rows = await db
@@ -380,8 +391,8 @@ router.get(
   requireAnyRight("create_checklists", "edit_checklists", "delete_checklists", "view_reports", "manage_checklist_settings"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
     const cl = await db.select().from(checklistsTable).where(eq(checklistsTable.id, id)).limit(1);
     if (cl.length === 0) { res.status(404).end(); return; }
@@ -403,8 +414,8 @@ router.post(
   requireRight("edit_checklists"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const id = parseId(req.params["id"]);
+    if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
     const body = TaskCreateBody.parse(req.body);
 
     const cl = await db.select().from(checklistsTable).where(eq(checklistsTable.id, id)).limit(1);
@@ -434,9 +445,9 @@ router.put(
   requireRight("edit_checklists"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    const taskId = Number(req.params["taskId"]);
-    if (!Number.isFinite(id) || !Number.isFinite(taskId)) {
+    const id = parseId(req.params["id"]);
+    const taskId = parseId(req.params["taskId"]);
+    if (id === null || taskId === null) {
       res.status(400).json({ error: "Invalid id" }); return;
     }
     const body = TaskUpdateBody.parse(req.body);
@@ -472,9 +483,9 @@ router.delete(
   requireRight("edit_checklists"),
   async (req, res): Promise<void> => {
     const u = req.user!;
-    const id = Number(req.params["id"]);
-    const taskId = Number(req.params["taskId"]);
-    if (!Number.isFinite(id) || !Number.isFinite(taskId)) {
+    const id = parseId(req.params["id"]);
+    const taskId = parseId(req.params["taskId"]);
+    if (id === null || taskId === null) {
       res.status(400).json({ error: "Invalid id" }); return;
     }
 

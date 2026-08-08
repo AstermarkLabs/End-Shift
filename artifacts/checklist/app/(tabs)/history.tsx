@@ -6,14 +6,18 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, Card, Checkbox, Divider, IconButton, ProgressBar } from "react-native-paper";
+
+import { Ionicons } from "@expo/vector-icons";
 
 import { ExportModal } from "@/components/ExportModal";
 import { CompletedChecklist, useChecklist } from "@/context/ChecklistContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +49,7 @@ function formatDuration(iso: string): string {
 // ─── Entry Card ───────────────────────────────────────────────────────────────
 
 function HistoryCard({ entry }: { entry: CompletedChecklist }) {
-  const colors = useColors();
+  const md = useMd();
   const { deleteHistoryEntry } = useChecklist();
   const [expanded, setExpanded] = useState(false);
   const [exportVisible, setExportVisible] = useState(false);
@@ -73,27 +77,32 @@ function HistoryCard({ entry }: { entry: CompletedChecklist }) {
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <Card mode="elevated" style={[styles.card, { backgroundColor: md.surfaceContainerHigh, borderRadius: shape.lg }]}>
       {/* Card header */}
       <View style={styles.cardHeader}>
-        <View style={[styles.checklistBadge, { backgroundColor: colors.primary + "18" }]}>
-          <Text style={[styles.checklistBadgeText, { color: colors.primary }]} numberOfLines={1}>
+        <View style={[styles.checklistBadge, { backgroundColor: md.primaryContainer, borderRadius: shape.sm }]}>
+          <Text style={[typeStyle("labelLarge"), { color: md.onPrimaryContainer }]} numberOfLines={1}>
             {entry.checklistName}
           </Text>
         </View>
         <View style={styles.cardHeaderRight}>
-          <Text style={[styles.timeAgo, { color: colors.mutedForeground }]}>
+          <Text style={[typeStyle("labelMedium"), { color: md.onSurfaceVariant }]}>
             {formatDuration(entry.completedAt)}
           </Text>
-          <TouchableOpacity
+          <IconButton
+            icon={() => <Ionicons name="share-outline" size={18} color={md.onSurfaceVariant} />}
+            size={18}
             onPress={() => setExportVisible(true)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.actionIcon}>📤</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.actionIcon}>🗑️</Text>
-          </TouchableOpacity>
+            accessibilityLabel="Export shift"
+            style={styles.cardActionBtn}
+          />
+          <IconButton
+            icon={() => <Ionicons name="trash-outline" size={18} color={md.error} />}
+            size={18}
+            onPress={handleDelete}
+            accessibilityLabel="Delete shift record"
+            style={styles.cardActionBtn}
+          />
         </View>
       </View>
 
@@ -109,95 +118,112 @@ function HistoryCard({ entry }: { entry: CompletedChecklist }) {
       />
 
       {/* Date */}
-      <Text style={[styles.dateText, { color: colors.mutedForeground }]}>
+      <Text style={[typeStyle("bodySmall"), styles.dateText, { color: md.onSurfaceVariant }]}>
         {formatDate(entry.completedAt)}
       </Text>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
-        <View style={styles.statBadge}>
-          <Text style={[styles.statNum, { color: colors.foreground }]}>{done}/{total}</Text>
-          <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>tasks done</Text>
+        <View style={[styles.statBadge, { backgroundColor: md.surfaceContainerHighest, borderRadius: shape.sm }]}>
+          <Text style={[typeStyle("titleMedium"), { color: md.onSurface }]}>{done}/{total}</Text>
+          <Text style={[typeStyle("labelSmall"), styles.statLabel, { color: md.onSurfaceVariant }]}>tasks done</Text>
         </View>
-        <View style={[styles.statBadge, { backgroundColor: allRequired ? colors.primary + "15" : colors.muted }]}>
-          <Text style={[styles.statNum, { color: allRequired ? colors.primary : colors.foreground }]}>
+        <View
+          style={[
+            styles.statBadge,
+            { borderRadius: shape.sm, backgroundColor: allRequired ? md.successContainer : md.surfaceContainerHighest },
+          ]}
+        >
+          <Text style={[typeStyle("titleMedium"), { color: allRequired ? md.onSuccessContainer : md.onSurface }]}>
             {requiredDone}/{requiredTotal}
           </Text>
-          <Text style={[styles.statLabel, { color: allRequired ? colors.primary : colors.mutedForeground }]}>
+          <Text style={[typeStyle("labelSmall"), styles.statLabel, { color: allRequired ? md.onSuccessContainer : md.onSurfaceVariant }]}>
             required
           </Text>
         </View>
       </View>
 
       {/* Progress bar */}
-      <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${progress * 100}%` as any, backgroundColor: progress === 1 ? colors.primary : colors.primary + "80" },
-          ]}
+      <View style={styles.progressWrap}>
+        <ProgressBar
+          progress={progress}
+          color={progress === 1 ? md.success : md.primary}
+          style={{ backgroundColor: md.surfaceContainerHighest, borderRadius: shape.full, height: 4 }}
         />
       </View>
 
       {/* Expand / collapse */}
-      <TouchableOpacity
-        style={[styles.expandBtn, { borderTopColor: colors.border }]}
+      <Divider style={{ backgroundColor: md.outlineVariant, marginTop: 8 }} />
+      <Button
+        mode="text"
         onPress={() => setExpanded((e) => !e)}
+        icon={expanded ? "chevron-up" : "chevron-down"}
+        contentStyle={{ flexDirection: "row-reverse" }}
+        style={styles.expandBtn}
       >
-        <Text style={[styles.expandBtnText, { color: colors.primary }]}>
-          {expanded ? "Hide Tasks ▲" : "Show Tasks ▼"}
-        </Text>
-      </TouchableOpacity>
+        {expanded ? "Hide Tasks" : "Show Tasks"}
+      </Button>
 
       {/* Task detail */}
       {expanded && (
-        <View style={[styles.taskList, { borderTopColor: colors.border }]}>
+        <View>
+          <Divider style={{ backgroundColor: md.outlineVariant }} />
           {entry.sections.map((section) => {
             const sectionTasks = entry.tasks.filter((t) => t.category === section);
             if (sectionTasks.length === 0) return null;
             const sectionDone = sectionTasks.filter((t) => t.completed).length;
             return (
               <View key={section}>
-                <View style={[styles.sectionHeader, { backgroundColor: colors.muted, borderLeftColor: colors.primary }]}>
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]} numberOfLines={1}>
+                <View
+                  style={[
+                    styles.sectionHeader,
+                    { backgroundColor: md.surfaceContainerHighest, borderLeftColor: md.primary },
+                  ]}
+                >
+                  <Text style={[typeStyle("labelMedium"), styles.sectionTitle, { color: md.onSurface }]} numberOfLines={1}>
                     {section}
                   </Text>
-                  <Text style={[styles.sectionBadge, { color: colors.mutedForeground }]}>
+                  <Text style={[typeStyle("labelSmall"), { color: md.onSurfaceVariant }]}>
                     {sectionDone}/{sectionTasks.length}
                   </Text>
                 </View>
                 {sectionTasks.map((task) => (
-                  <View key={task.id} style={[styles.taskRow, { borderBottomColor: colors.border }]}>
-                    <View
-                      style={[
-                        styles.taskIcon,
-                        {
-                          backgroundColor: task.completed ? colors.primary : "transparent",
-                          borderColor: task.completed ? colors.primary : colors.border,
-                        },
-                      ]}
-                    >
-                      {task.completed && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <Text
-                      style={[
-                        styles.taskText,
-                        {
-                          color: task.completed ? colors.mutedForeground : colors.foreground,
-                          textDecorationLine: task.completed ? "line-through" : "none",
-                          fontWeight: task.required && !task.completed ? "600" : "400",
-                          opacity: task.completed ? 0.6 : 1,
-                          flex: 1,
-                        },
-                      ]}
-                    >
-                      {task.text}
-                    </Text>
-                    {!task.required && (
-                      <Text style={[styles.optBadge, { color: colors.mutedForeground, borderColor: colors.border }]}>
-                        opt
+                  <View key={task.id}>
+                    <View style={styles.taskRow}>
+                      <Checkbox
+                        status={task.completed ? "checked" : "unchecked"}
+                        disabled
+                        color={md.primary}
+                        uncheckedColor={md.onSurfaceVariant}
+                      />
+                      <Text
+                        style={[
+                          typeStyle("bodyMedium"),
+                          {
+                            color: task.completed ? md.onSurfaceVariant : md.onSurface,
+                            textDecorationLine: task.completed ? "line-through" : "none",
+                            fontFamily:
+                              task.required && !task.completed ? "Inter_500Medium" : "Inter_400Regular",
+                            opacity: task.completed ? 0.6 : 1,
+                            flex: 1,
+                          },
+                        ]}
+                      >
+                        {task.text}
                       </Text>
-                    )}
+                      {!task.required && (
+                        <Text
+                          style={[
+                            styles.optBadge,
+                            typeStyle("labelSmall"),
+                            { color: md.onSurfaceVariant, borderColor: md.outlineVariant, borderRadius: shape.xs },
+                          ]}
+                        >
+                          opt
+                        </Text>
+                      )}
+                    </View>
+                    <Divider style={{ backgroundColor: md.outlineVariant, marginLeft: 14 }} />
                   </View>
                 ))}
               </View>
@@ -205,14 +231,14 @@ function HistoryCard({ entry }: { entry: CompletedChecklist }) {
           })}
         </View>
       )}
-    </View>
+    </Card>
   );
 }
 
 // ─── History Screen ───────────────────────────────────────────────────────────
 
 export default function HistoryScreen() {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { completionHistory, clearHistory } = useChecklist();
@@ -227,27 +253,29 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shift History</Text>
-        {completionHistory.length > 0 ? (
-          <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
-            <Text style={styles.clearBtnText}>Clear All</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
+    <View style={[styles.container, { backgroundColor: md.surface }]}>
+      {/* Top app bar */}
+      <View style={[styles.header, { backgroundColor: md.surface, paddingTop: topPadding }]}>
+        <View style={styles.headerTop}>
+          {/* No back affordance — this is a tab, there is nothing to go back to. */}
+          <View style={styles.headerLeft}>
+            <Text style={[typeStyle("headlineMedium"), styles.headerTitle, { color: md.onSurface }]} numberOfLines={1}>
+              Shift History
+            </Text>
+          </View>
+          {completionHistory.length > 0 && (
+            <Button mode="text" textColor={md.error} onPress={handleClearAll}>
+              Clear All
+            </Button>
+          )}
+        </View>
       </View>
 
       {completionHistory.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No history yet</Text>
-          <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
+          <Ionicons name="clipboard-outline" size={48} color={md.onSurfaceVariant} />
+          <Text style={[typeStyle("titleMedium"), { color: md.onSurface }]}>No history yet</Text>
+          <Text style={[typeStyle("bodyMedium"), styles.emptyHint, { color: md.onSurfaceVariant }]}>
             Complete a shift from the checklist screen to save a record here.
           </Text>
         </View>
@@ -263,7 +291,7 @@ export default function HistoryScreen() {
           }}
           renderItem={({ item }) => <HistoryCard entry={item} />}
           ListHeaderComponent={
-            <Text style={[styles.recordCount, { color: colors.mutedForeground }]}>
+            <Text style={[typeStyle("labelMedium"), styles.recordCount, { color: md.onSurfaceVariant }]}>
               {completionHistory.length} shift{completionHistory.length !== 1 ? "s" : ""} recorded
             </Text>
           }
@@ -278,40 +306,32 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
+    paddingHorizontal: 8,
+    paddingBottom: 4,
+    zIndex: 10,
+  },
+  headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  backBtn: { width: 70 },
-  backBtnText: { color: "#fff", fontSize: 17, fontWeight: "500" },
-  headerTitle: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
-    fontFamily: "Inter_700Bold",
-  },
-  clearBtn: { width: 70, alignItems: "flex-end" },
-  clearBtnText: { color: "rgba(255,255,255,0.85)", fontSize: 14 },
-
-  recordCount: {
-    fontSize: 12,
-    fontStyle: "italic",
+    justifyContent: "space-between",
     marginBottom: 4,
-    paddingHorizontal: 2,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  headerIconBtn: { margin: 0 },
+  headerTitle: { flexShrink: 1 },
+
+  recordCount: { marginBottom: 4, paddingHorizontal: 2 },
 
   // Card
   card: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
   cardHeader: {
@@ -326,27 +346,15 @@ const styles = StyleSheet.create({
   cardHeaderRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 2,
   },
   checklistBadge: {
-    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
     flexShrink: 1,
   },
-  checklistBadgeText: {
-    fontSize: 13,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  timeAgo: { fontSize: 12 },
-  actionIcon: { fontSize: 16 },
-  dateText: {
-    fontSize: 12,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
-    lineHeight: 16,
-  },
+  cardActionBtn: { margin: 0 },
+  dateText: { paddingHorizontal: 14, paddingBottom: 10 },
 
   // Stats
   statsRow: {
@@ -356,38 +364,25 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statBadge: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  statNum: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
-  statLabel: { fontSize: 11 },
+  statLabel: { textTransform: "uppercase", letterSpacing: 0.5 },
 
   // Progress
-  progressTrack: {
-    height: 4,
+  progressWrap: {
     marginHorizontal: 14,
     marginBottom: 2,
-    borderRadius: 2,
-    overflow: "hidden",
   },
-  progressFill: { height: "100%", borderRadius: 2 },
 
   // Expand
   expandBtn: {
-    paddingVertical: 10,
-    alignItems: "center",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: 8,
+    marginVertical: 2,
   },
-  expandBtnText: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 
   // Task list
-  taskList: { borderTopWidth: StyleSheet.hairlineWidth },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -396,39 +391,16 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderLeftWidth: 3,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    flex: 1,
-  },
-  sectionBadge: { fontSize: 11 },
+  sectionTitle: { textTransform: "uppercase", letterSpacing: 0.8, flex: 1 },
   taskRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 10,
-  },
-  taskIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-    flexShrink: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    gap: 4,
   },
-  checkmark: { color: "#fff", fontSize: 10, fontWeight: "700", lineHeight: 12 },
-  taskText: { fontSize: 13, lineHeight: 18 },
   optBadge: {
-    fontSize: 9,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 3,
     paddingHorizontal: 3,
     paddingVertical: 1,
     marginTop: 3,
@@ -443,7 +415,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     gap: 12,
   },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 20, fontWeight: "700", fontFamily: "Inter_700Bold" },
-  emptyHint: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  emptyHint: { textAlign: "center" },
 });

@@ -22,7 +22,8 @@ import { OrgUnitsPanel } from "@/components/admin/web/OrgUnitsPanel";
 import { RolesPanel } from "@/components/admin/web/RolesPanel";
 import { UsersPanel } from "@/components/admin/web/UsersPanel";
 import { describeApiError, useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 
 type Tab = "users" | "roles" | "orgunits";
 
@@ -34,7 +35,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function AdminWebScreen() {
   const router = useRouter();
-  const colors = useColors();
+  const md = useMd();
   const { profile: currentUser } = useAuth();
 
   const [tab, setTab] = useState<Tab>("users");
@@ -65,18 +66,18 @@ export default function AdminWebScreen() {
   const canManageOrgUnits = isSystem || currentUser.role.rights.includes("manage_org_units");
 
   return (
-    <View style={[s.page, { backgroundColor: colors.background }]}>
+    <View style={[s.page, { backgroundColor: md.surface }]}>
       {/* Top bar */}
-      <View style={[s.topBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <Text style={[s.brand, { color: colors.mutedForeground }]}>END SHIFT ADMIN</Text>
+      <View style={[s.topBar, { backgroundColor: md.surfaceContainerLow, borderBottomColor: md.outlineVariant }]}>
+        <Text style={[s.brand, { color: md.onSurfaceVariant }]}>END SHIFT ADMIN</Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>← Back</Text>
+          <Text style={{ color: md.primary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>← Back</Text>
         </TouchableOpacity>
       </View>
 
       <View style={s.body}>
         {/* Sidebar */}
-        <View style={[s.sidebar, { backgroundColor: colors.card, borderRightColor: colors.border }]}>
+        <View style={[s.sidebar, { backgroundColor: md.surfaceContainerLow, borderRightColor: md.outlineVariant }]}>
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
@@ -84,12 +85,12 @@ export default function AdminWebScreen() {
                 key={t.id}
                 style={[
                   s.sideTab,
-                  { borderLeftColor: active ? colors.primary : "transparent" },
-                  active && { backgroundColor: colors.secondary },
+                  { borderLeftColor: active ? md.primary : "transparent" },
+                  active && { backgroundColor: md.secondaryContainer, borderRadius: shape.xs },
                 ]}
                 onPress={() => setTab(t.id)}
               >
-                <Text style={[s.sideTabText, { color: active ? colors.primary : colors.foreground, fontWeight: active ? "600" : "400" }]}>
+                <Text style={[s.sideTabText, { color: active ? md.onSecondaryContainer : md.onSurface, fontFamily: active ? "Inter_600SemiBold" : "Inter_400Regular" }]}>
                   {t.label}
                 </Text>
               </TouchableOpacity>
@@ -100,7 +101,7 @@ export default function AdminWebScreen() {
         {/* Content */}
         <View style={s.content}>
           {loading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 64 }} />
+            <ActivityIndicator color={md.primary} style={{ marginTop: 64 }} />
           ) : tab === "users" ? (
             <UsersPanel
               profiles={profiles}
@@ -140,7 +141,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     borderBottomWidth: 1,
   },
-  brand: { fontSize: 11, fontWeight: "700", letterSpacing: 1.5, textTransform: "uppercase" },
+  brand: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 1.5, textTransform: "uppercase" },
   body: { flex: 1, flexDirection: "row" },
   sidebar: {
     width: 224,

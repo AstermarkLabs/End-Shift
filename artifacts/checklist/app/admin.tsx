@@ -35,7 +35,8 @@ import { OrgUnitSelector } from "@/components/admin/OrgUnitSelector";
 import { OrgUnitTree } from "@/components/admin/OrgUnitTree";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 import { validatePassword } from "@/utils/passwordValidation";
 
 const RIGHT_VALUES = Object.values(Right);
@@ -58,7 +59,7 @@ function generateTempPassword(): string {
 
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const md = useMd();
   const router = useRouter();
   const { profile } = useAuth();
 
@@ -94,38 +95,38 @@ export default function AdminScreen() {
   const canManageOrgUnits = profile.role.isSystem || profile.role.rights.includes("manage_org_units");
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 16 }}>
+    <View style={{ flex: 1, backgroundColor: md.surface, paddingTop: insets.top + 16 }}>
       <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Admin</Text>
+        <Text style={[styles.title, { color: md.onSurface }]}>Admin</Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: colors.primary, fontWeight: "600" }}>Done</Text>
+          <Text style={{ color: md.primary, fontFamily: "Inter_600SemiBold" }}>Done</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+        <ActivityIndicator color={md.primary} style={{ marginTop: 32 }} />
       ) : (
         <ScrollView
           scrollEnabled={scrollEnabled}
           contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 12 }}
         >
           <View style={styles.sectionHeader}>
-            <Text style={[styles.section, { color: colors.foreground }]}>Users</Text>
+            <Text style={[styles.section, { color: md.onSurface }]}>Users</Text>
             {canManageProfiles && (
               <TouchableOpacity onPress={() => setProfileModal({ open: true, editing: null })}>
-                <Text style={{ color: colors.primary, fontWeight: "600" }}>+ New</Text>
+                <Text style={{ color: md.primary, fontFamily: "Inter_600SemiBold" }}>+ New</Text>
               </TouchableOpacity>
             )}
           </View>
           {profiles.map((p) => (
             <TouchableOpacity
               key={p.id}
-              style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[styles.row, { borderRadius: shape.md, backgroundColor: md.surface, borderColor: md.outlineVariant }]}
               onPress={() => setProfileModal({ open: true, editing: p })}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontWeight: "600" }}>{p.displayName}</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                <Text style={{ color: md.onSurface, fontFamily: "Inter_600SemiBold" }}>{p.displayName}</Text>
+                <Text style={{ color: md.onSurfaceVariant, fontSize: 13 }}>
                   @{p.username} · {p.role.name}{p.orgUnit ? ` · ${p.orgUnit.name}` : ""}{p.isActive ? "" : " · disabled"}
                 </Text>
               </View>
@@ -133,25 +134,25 @@ export default function AdminScreen() {
           ))}
 
           <View style={[styles.sectionHeader, { marginTop: 16 }]}>
-            <Text style={[styles.section, { color: colors.foreground }]}>Roles</Text>
+            <Text style={[styles.section, { color: md.onSurface }]}>Roles</Text>
             {canManageRoles && (
               <TouchableOpacity onPress={() => setRoleModal({ open: true, editing: null })}>
-                <Text style={{ color: colors.primary, fontWeight: "600" }}>+ New</Text>
+                <Text style={{ color: md.primary, fontFamily: "Inter_600SemiBold" }}>+ New</Text>
               </TouchableOpacity>
             )}
           </View>
           {roles.map((r) => (
             <TouchableOpacity
               key={r.id}
-              style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[styles.row, { borderRadius: shape.md, backgroundColor: md.surface, borderColor: md.outlineVariant }]}
               onPress={() => !r.isSystem && setRoleModal({ open: true, editing: r })}
               disabled={r.isSystem}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                <Text style={{ color: md.onSurface, fontFamily: "Inter_600SemiBold" }}>
                   {r.name} {r.isSystem ? "· system" : ""}
                 </Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                <Text style={{ color: md.onSurfaceVariant, fontSize: 13 }}>
                   level {r.level} · {r.rights.length === 0 ? "no rights" : r.rights.join(", ")}
                 </Text>
               </View>
@@ -159,7 +160,7 @@ export default function AdminScreen() {
           ))}
 
           <View style={[styles.sectionHeader, { marginTop: 16 }]}>
-            <Text style={[styles.section, { color: colors.foreground }]}>Org Units</Text>
+            <Text style={[styles.section, { color: md.onSurface }]}>Org Units</Text>
           </View>
           <OrgUnitTree
             orgUnits={orgUnits}
@@ -209,7 +210,7 @@ function ProfileEditModal({
   isSystem: boolean;
   onSaved: () => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -311,10 +312,10 @@ function ProfileEditModal({
 
   return (
     <Modal visible={state.open} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: md.surface }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.foreground }]}>{state.editing ? "Edit user" : "New user"}</Text>
-          <TouchableOpacity onPress={onClose}><Text style={{ color: colors.primary }}>Cancel</Text></TouchableOpacity>
+          <Text style={[styles.title, { color: md.onSurface }]}>{state.editing ? "Edit user" : "New user"}</Text>
+          <TouchableOpacity onPress={onClose}><Text style={{ color: md.primary }}>Cancel</Text></TouchableOpacity>
         </View>
 
         <Field label="Username" value={username} onChangeText={setUsername} editable={!busy} />
@@ -322,7 +323,7 @@ function ProfileEditModal({
 
         {/* ── Password: create vs reset ─────────────────────────────── */}
         {state.editing ? (
-          <View style={[styles.resetCard, { borderColor: resetSection ? colors.primary : colors.border, backgroundColor: colors.card }]}>
+          <View style={[styles.resetCard, { borderRadius: shape.md, borderColor: resetSection ? md.primary : md.outlineVariant, backgroundColor: md.surfaceContainerLow }]}>
             <TouchableOpacity
               style={styles.resetCardHeader}
               onPress={() => {
@@ -338,20 +339,20 @@ function ProfileEditModal({
               }}
               activeOpacity={0.7}
             >
-              <Text style={[styles.resetCardTitle, { color: resetSection ? colors.primary : colors.foreground }]}>
+              <Text style={[styles.resetCardTitle, { color: resetSection ? md.primary : md.onSurface }]}>
                 🔑 Reset password
               </Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+              <Text style={{ color: md.onSurfaceVariant, fontSize: 13 }}>
                 {resetSection ? "Cancel" : "Tap to set a new password"}
               </Text>
             </TouchableOpacity>
 
             {resetSection && (
               <View style={styles.resetCardBody}>
-                <View style={[styles.tempPwRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={[styles.tempPwRow, { borderRadius: shape.sm, backgroundColor: md.surfaceContainerHighest, borderColor: md.outlineVariant }]}>
                   <Text
                     selectable
-                    style={[styles.tempPwText, { color: showResetPassword ? colors.foreground : colors.muted, letterSpacing: showResetPassword ? 2 : 0 }]}
+                    style={[styles.tempPwText, { color: showResetPassword ? md.onSurface : md.onSurfaceVariant, letterSpacing: showResetPassword ? 2 : 0 }]}
                   >
                     {showResetPassword ? resetPassword : "••••••••••"}
                   </Text>
@@ -365,21 +366,21 @@ function ProfileEditModal({
                       setShowResetPassword(true);
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     }}
-                    style={[styles.generateBtn, { backgroundColor: colors.secondary }]}
+                    style={[styles.generateBtn, { borderRadius: shape.sm, backgroundColor: md.secondaryContainer }]}
                   >
-                    <Text style={[styles.generateBtnText, { color: colors.primary }]}>Generate</Text>
+                    <Text style={[styles.generateBtnText, { color: md.onSecondaryContainer }]}>Generate</Text>
                   </TouchableOpacity>
                 </View>
                 <TextInput
                   value={resetPassword}
                   onChangeText={setResetPassword}
                   placeholder="Or type a custom password"
-                  placeholderTextColor={colors.mutedForeground}
+                  placeholderTextColor={md.onSurfaceVariant}
                   secureTextEntry={!showResetPassword}
                   editable={!busy}
-                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                  style={[styles.input, { borderRadius: shape.sm, color: md.onSurface, borderColor: md.outlineVariant, backgroundColor: md.surface }]}
                 />
-                <Text style={[styles.resetHint, { color: colors.mutedForeground }]}>
+                <Text style={[styles.resetHint, { color: md.onSurfaceVariant }]}>
                   Staff will be required to change this on next sign-in. Custom passwords must be 12+ characters with uppercase, lowercase, number, and special character.
                 </Text>
               </View>
@@ -389,15 +390,22 @@ function ProfileEditModal({
           <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry editable={!busy} />
         )}
 
-        <Text style={[styles.label, { color: colors.foreground }]}>Role</Text>
+        <Text style={[styles.label, { color: md.onSurface }]}>Role</Text>
         <View style={{ gap: 6 }}>
           {assignableRoles.map((r) => (
             <TouchableOpacity
               key={r.id}
-              style={[styles.row, { backgroundColor: roleId === r.id ? colors.secondary : colors.card, borderColor: colors.border }]}
+              style={[
+                styles.row,
+                {
+                  borderRadius: shape.md,
+                  backgroundColor: roleId === r.id ? md.secondaryContainer : md.surface,
+                  borderColor: md.outlineVariant,
+                },
+              ]}
               onPress={() => setRoleId(r.id)}
             >
-              <Text style={{ color: colors.foreground }}>{r.name} · level {r.level}</Text>
+              <Text style={{ color: roleId === r.id ? md.onSecondaryContainer : md.onSurface }}>{r.name} · level {r.level}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -412,24 +420,24 @@ function ProfileEditModal({
 
         {state.editing && (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-            <Text style={{ color: colors.foreground }}>Active</Text>
+            <Text style={{ color: md.onSurface }}>Active</Text>
             <Switch value={active} onValueChange={setActive} />
           </View>
         )}
 
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
+          style={[styles.primaryBtn, { borderRadius: shape.md, backgroundColor: md.primary, opacity: busy ? 0.6 : 1 }]}
           onPress={onSubmit}
           disabled={busy}
         >
-          {busy ? <ActivityIndicator color={colors.primaryForeground} /> : (
-            <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>Save</Text>
+          {busy ? <ActivityIndicator color={md.onPrimary} /> : (
+            <Text style={{ color: md.onPrimary, fontFamily: "Inter_600SemiBold" }}>Save</Text>
           )}
         </TouchableOpacity>
 
         {state.editing && (
-          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: colors.destructive }]} onPress={onDelete}>
-            <Text style={{ color: colors.destructiveForeground, fontWeight: "600" }}>Delete user</Text>
+          <TouchableOpacity style={[styles.dangerBtn, { borderRadius: shape.md, backgroundColor: md.error }]} onPress={onDelete}>
+            <Text style={{ color: md.onError, fontFamily: "Inter_600SemiBold" }}>Delete user</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -450,7 +458,7 @@ function RoleEditModal({
   isSystem: boolean;
   onSaved: () => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [level, setLevel] = useState("0");
@@ -512,32 +520,32 @@ function RoleEditModal({
 
   return (
     <Modal visible={state.open} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: md.surface }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.foreground }]}>{state.editing ? "Edit role" : "New role"}</Text>
-          <TouchableOpacity onPress={onClose}><Text style={{ color: colors.primary }}>Cancel</Text></TouchableOpacity>
+          <Text style={[styles.title, { color: md.onSurface }]}>{state.editing ? "Edit role" : "New role"}</Text>
+          <TouchableOpacity onPress={onClose}><Text style={{ color: md.primary }}>Cancel</Text></TouchableOpacity>
         </View>
         <Field label="Name" value={name} onChangeText={setName} editable={!busy} />
         <Field label="Level (lower = less power)" value={level} onChangeText={setLevel} keyboardType="numeric" editable={!busy} />
-        <Text style={[styles.label, { color: colors.foreground }]}>Rights</Text>
+        <Text style={[styles.label, { color: md.onSurface }]}>Rights</Text>
         {RIGHT_VALUES.map((r) => (
-          <View key={r} style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
-            <Text style={{ color: colors.foreground }}>{r}</Text>
+          <View key={r} style={[styles.row, { borderRadius: shape.md, backgroundColor: md.surface, borderColor: md.outlineVariant, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+            <Text style={{ color: md.onSurface }}>{r}</Text>
             <Switch value={rights.includes(r)} onValueChange={() => toggleRight(r)} />
           </View>
         ))}
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
+          style={[styles.primaryBtn, { borderRadius: shape.md, backgroundColor: md.primary, opacity: busy ? 0.6 : 1 }]}
           onPress={onSubmit}
           disabled={busy}
         >
-          {busy ? <ActivityIndicator color={colors.primaryForeground} /> : (
-            <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>Save</Text>
+          {busy ? <ActivityIndicator color={md.onPrimary} /> : (
+            <Text style={{ color: md.onPrimary, fontFamily: "Inter_600SemiBold" }}>Save</Text>
           )}
         </TouchableOpacity>
         {state.editing && (
-          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: colors.destructive }]} onPress={onDelete}>
-            <Text style={{ color: colors.destructiveForeground, fontWeight: "600" }}>Delete role</Text>
+          <TouchableOpacity style={[styles.dangerBtn, { borderRadius: shape.md, backgroundColor: md.error }]} onPress={onDelete}>
+            <Text style={{ color: md.onError, fontFamily: "Inter_600SemiBold" }}>Delete role</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -546,16 +554,16 @@ function RoleEditModal({
 }
 
 function Field(props: React.ComponentProps<typeof TextInput> & { label: string }) {
-  const colors = useColors();
+  const md = useMd();
   const { label, ...rest } = props;
   return (
     <View>
-      <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
+      <Text style={[styles.label, { color: md.onSurface }]}>{label}</Text>
       <TextInput
         {...rest}
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={md.onSurfaceVariant}
         autoCapitalize="none"
-        style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+        style={[styles.input, { borderRadius: shape.sm, borderColor: md.outlineVariant, color: md.onSurface, backgroundColor: md.surfaceContainerLow }]}
       />
     </View>
   );
@@ -563,26 +571,27 @@ function Field(props: React.ComponentProps<typeof TextInput> & { label: string }
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: "700" },
+  title: { fontSize: 24, fontFamily: "Inter_700Bold" },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
-  section: { fontSize: 18, fontWeight: "600" },
-  row: { borderWidth: 1, borderRadius: 10, padding: 12 },
-  label: { fontSize: 13, fontWeight: "500", marginTop: 8, marginBottom: 4 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
-  primaryBtn: { height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 12 },
-  dangerBtn: { height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 12 },
+  section: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
+  row: { borderWidth: 1, padding: 12 },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 8, marginBottom: 4 },
+  input: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
+  primaryBtn: { height: 46, alignItems: "center", justifyContent: "center", marginTop: 12 },
+  dangerBtn: { height: 46, alignItems: "center", justifyContent: "center", marginTop: 12 },
 
   // Reset password card
-  resetCard: { borderWidth: 1.5, borderRadius: 12, overflow: "hidden", marginTop: 8 },
+  resetCard: { borderWidth: 1.5, overflow: "hidden", marginTop: 8 },
   resetCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 },
-  resetCardTitle: { fontSize: 15, fontWeight: "600" },
+  resetCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   resetCardBody: { paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
 
-  tempPwRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  tempPwText: { flex: 1, fontSize: 16, fontWeight: "600", fontFamily: "monospace" },
+  tempPwRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  // Monospace on purpose — this renders a generated temporary password.
+  tempPwText: { flex: 1, fontSize: 16, fontFamily: "monospace" },
   tempPwEye: { padding: 2 },
-  generateBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  generateBtnText: { fontSize: 13, fontWeight: "600" },
+  generateBtn: { paddingHorizontal: 12, paddingVertical: 6 },
+  generateBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   resetHint: { fontSize: 12, fontStyle: "italic" },
 });

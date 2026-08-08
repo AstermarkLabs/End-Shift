@@ -1,13 +1,8 @@
 import React from 'react';
 import { Circle, G, Line, Path, Svg, Text as SvgText } from 'react-native-svg';
-import { Bucket } from './types';
 
-const STATUS = [
-  { id: 'completed' as const, label: 'Completed', color: '#16A34A' },
-  { id: 'late'      as const, label: 'Late',       color: '#2196F3' },
-  { id: 'incomplete'as const, label: 'Incomplete', color: '#FF9800' },
-  { id: 'missed'    as const, label: 'Missed',     color: '#EF4444' },
-];
+import { useMd } from '@/theme/useMd';
+import { Bucket, RunOutcome } from './types';
 
 const W = 800, H = 200;
 const PAD_L = 32, PAD_R = 12, PAD_T = 12, PAD_B = 28;
@@ -45,6 +40,14 @@ interface TrendChartProps {
 }
 
 export function TrendChart({ buckets, prevBuckets, compare }: TrendChartProps) {
+  const md = useMd();
+  const STATUS: { id: RunOutcome; label: string; color: string }[] = [
+    { id: 'completed', label: 'Completed', color: md.primary },
+    { id: 'late', label: 'Late', color: md.tertiary },
+    { id: 'incomplete', label: 'Incomplete', color: md.secondary },
+    { id: 'missed', label: 'Missed', color: md.error },
+  ];
+
   const n = buckets.length;
 
   let maxVal = 1;
@@ -64,12 +67,12 @@ export function TrendChart({ buckets, prevBuckets, compare }: TrendChartProps) {
         <G key={i}>
           <Line
             x1={PAD_L} x2={W - PAD_R} y1={yFor(v)} y2={yFor(v)}
-            stroke={v === 0 ? '#DDDDDD' : '#F0F0F0'}
+            stroke={v === 0 ? md.outlineVariant : md.surfaceContainerHighest}
             strokeWidth={v === 0 ? 1.5 : 1}
           />
           <SvgText x={PAD_L - 5} y={yFor(v) + 3.5}
             textAnchor="end"
-            fontFamily="Inter_500Medium" fontSize="10" fill="#AAA">
+            fontFamily="Inter_500Medium" fontSize="10" fill={md.onSurfaceVariant}>
             {v}
           </SvgText>
         </G>
@@ -109,7 +112,7 @@ export function TrendChart({ buckets, prevBuckets, compare }: TrendChartProps) {
         return (
           <SvgText key={i} x={xFor(i)} y={H - 6}
             textAnchor="middle"
-            fontFamily="Inter_500Medium" fontSize="10" fill="#AAA">
+            fontFamily="Inter_500Medium" fontSize="10" fill={md.onSurfaceVariant}>
             {b.label}
           </SvgText>
         );

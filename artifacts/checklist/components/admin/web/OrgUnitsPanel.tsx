@@ -22,7 +22,8 @@ import {
 } from "@workspace/api-client-react";
 
 import { describeApiError } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ function TypeBadge({ type }: { type: OrgUnitType }) {
   const { bg, text } = colors[type];
   return (
     <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: bg }}>
-      <Text style={{ fontSize: 12, fontWeight: "600", color: text, textTransform: "capitalize" }}>
+      <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: text, textTransform: "capitalize" }}>
         {icon[type]} {type}
       </Text>
     </View>
@@ -111,20 +112,20 @@ function StatCard({
   icon: string;
   value: number;
   label: string;
-  colors: ReturnType<typeof useColors>;
+  colors: ReturnType<typeof useMd>;
 }) {
   return (
     <View
       style={[
         o.statCard,
-        { borderColor: c.border, backgroundColor: c.card },
+        { borderColor: c.outlineVariant, backgroundColor: c.surfaceContainerLow },
       ]}
     >
       <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text style={{ fontSize: 26, fontWeight: "700", color: c.foreground, lineHeight: 30 }}>
+      <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color: c.onSurface, lineHeight: 30 }}>
         {value}
       </Text>
-      <Text style={{ fontSize: 12, color: c.mutedForeground }}>{label}</Text>
+      <Text style={{ fontSize: 12, color: c.onSurfaceVariant }}>{label}</Text>
     </View>
   );
 }
@@ -142,7 +143,7 @@ function UnitEditModal({
   onSaved: (updated: OrgUnit) => void;
   onDeleted: (id: number) => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [name, setName] = useState(unit.name);
   const [busy, setBusy] = useState(false);
 
@@ -187,42 +188,42 @@ function UnitEditModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={md.overlay}>
-        <View style={[md.dialog, { backgroundColor: colors.card }]}>
+        <View style={[md.dialog, { backgroundColor: colors.surfaceContainerLow }]}>
           <View style={md.header}>
-            <Text style={[md.title, { color: colors.foreground }]}>
+            <Text style={[md.title, { color: colors.onSurface }]}>
               Edit {unit.type}
             </Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 20 }}>×</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 20 }}>×</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={[md.label, { color: colors.foreground }]}>Name</Text>
+          <Text style={[md.label, { color: colors.onSurface }]}>Name</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             editable={!busy}
             autoCapitalize="words"
-            style={[md.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.background, outlineWidth: 0 } as object]}
+            style={[md.input, { borderColor: colors.outlineVariant, color: colors.onSurface, backgroundColor: colors.surface, outlineWidth: 0 } as object]}
           />
 
           <View style={md.footer}>
             <TouchableOpacity
-              style={[md.dangerBtn, { backgroundColor: colors.destructive, opacity: busy ? 0.6 : 1 }]}
+              style={[md.dangerBtn, { backgroundColor: colors.error, opacity: busy ? 0.6 : 1 }]}
               onPress={onDelete}
               disabled={busy}
             >
-              <Text style={{ color: colors.destructiveForeground, fontWeight: "600", fontSize: 14 }}>
+              <Text style={{ color: colors.onError, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
                 Delete
               </Text>
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
             <TouchableOpacity
-              style={[md.cancelBtn, { borderColor: colors.border }]}
+              style={[md.cancelBtn, { borderColor: colors.outlineVariant }]}
               onPress={onClose}
               disabled={busy}
             >
-              <Text style={{ color: colors.foreground, fontWeight: "500", fontSize: 14 }}>Cancel</Text>
+              <Text style={{ color: colors.onSurface, fontFamily: "Inter_500Medium", fontSize: 14 }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[md.saveBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
@@ -230,9 +231,9 @@ function UnitEditModal({
               disabled={busy}
             >
               {busy ? (
-                <ActivityIndicator color={colors.primaryForeground} size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
-                <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>Save</Text>
+                <Text style={{ color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Save</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -255,7 +256,7 @@ function AssignUserModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -289,24 +290,24 @@ function AssignUserModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={md.overlay}>
-        <View style={[md.dialog, { backgroundColor: colors.card, width: 440 }]}>
+        <View style={[md.dialog, { backgroundColor: colors.surfaceContainerLow, width: 440 }]}>
           <View style={md.header}>
-            <Text style={[md.title, { color: colors.foreground }]}>
+            <Text style={[md.title, { color: colors.onSurface }]}>
               Assign User to {unit.name}
             </Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 20 }}>×</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 20 }}>×</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={[au.searchBox, { borderColor: colors.border, backgroundColor: colors.background }]}>
-            <Text style={{ color: colors.mutedForeground }}>🔍</Text>
+          <View style={[au.searchBox, { borderColor: colors.outlineVariant, backgroundColor: colors.surface }]}>
+            <Text style={{ color: colors.onSurfaceVariant }}>🔍</Text>
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Search users..."
-              placeholderTextColor={colors.mutedForeground}
-              style={{ flex: 1, color: colors.foreground, fontSize: 14, outlineWidth: 0 } as object}
+              placeholderTextColor={colors.onSurfaceVariant}
+              style={{ flex: 1, color: colors.onSurface, fontSize: 14, outlineWidth: 0 } as object}
             />
           </View>
 
@@ -314,24 +315,24 @@ function AssignUserModal({
             {filtered.map((profile) => (
               <TouchableOpacity
                 key={profile.id}
-                style={[au.userRow, { borderBottomColor: colors.border, opacity: busy ? 0.6 : 1 }]}
+                style={[au.userRow, { borderBottomColor: colors.outlineVariant, opacity: busy ? 0.6 : 1 }]}
                 onPress={() => assign(profile)}
                 disabled={busy}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: "600", color: colors.foreground, fontSize: 14 }}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.onSurface, fontSize: 14 }}>
                     {profile.displayName}
                   </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                  <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
                     {profile.email ?? profile.username} · {profile.role.name}
                   </Text>
                 </View>
-                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>Assign →</Text>
+                <Text style={{ color: colors.primary, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Assign →</Text>
               </TouchableOpacity>
             ))}
             {filtered.length === 0 && (
               <View style={{ padding: 24, alignItems: "center" }}>
-                <Text style={{ color: colors.mutedForeground }}>No users available.</Text>
+                <Text style={{ color: colors.onSurfaceVariant }}>No users available.</Text>
               </View>
             )}
           </ScrollView>
@@ -354,7 +355,7 @@ function AddChildModal({
   onClose: () => void;
   onCreated: (unit: OrgUnit) => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -377,36 +378,36 @@ function AddChildModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={md.overlay}>
-        <View style={[md.dialog, { backgroundColor: colors.card }]}>
+        <View style={[md.dialog, { backgroundColor: colors.surfaceContainerLow }]}>
           <View style={md.header}>
-            <Text style={[md.title, { color: colors.foreground }]}>
+            <Text style={[md.title, { color: colors.onSurface }]}>
               Add {label} to {parent.name}
             </Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 20 }}>×</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 20 }}>×</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={[md.label, { color: colors.foreground }]}>{label} name</Text>
+          <Text style={[md.label, { color: colors.onSurface }]}>{label} name</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder={`e.g. ${label === "District" ? "Downtown" : "The Crow Bar"}`}
-            placeholderTextColor={colors.mutedForeground}
+            placeholderTextColor={colors.onSurfaceVariant}
             editable={!busy}
             autoCapitalize="words"
-            style={[md.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.background, outlineWidth: 0 } as object]}
+            style={[md.input, { borderColor: colors.outlineVariant, color: colors.onSurface, backgroundColor: colors.surface, outlineWidth: 0 } as object]}
             onSubmitEditing={onSave}
           />
 
           <View style={md.footer}>
             <View style={{ flex: 1 }} />
             <TouchableOpacity
-              style={[md.cancelBtn, { borderColor: colors.border }]}
+              style={[md.cancelBtn, { borderColor: colors.outlineVariant }]}
               onPress={onClose}
               disabled={busy}
             >
-              <Text style={{ color: colors.foreground, fontWeight: "500", fontSize: 14 }}>Cancel</Text>
+              <Text style={{ color: colors.onSurface, fontFamily: "Inter_500Medium", fontSize: 14 }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[md.saveBtn, { backgroundColor: colors.primary, opacity: busy || !name.trim() ? 0.6 : 1 }]}
@@ -414,9 +415,9 @@ function AddChildModal({
               disabled={busy || !name.trim()}
             >
               {busy ? (
-                <ActivityIndicator color={colors.primaryForeground} size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
-                <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>
+                <Text style={{ color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
                   Add {label}
                 </Text>
               )}
@@ -437,7 +438,7 @@ function AddRegionModal({
   onClose: () => void;
   onCreated: (unit: OrgUnit) => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -458,34 +459,34 @@ function AddRegionModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={md.overlay}>
-        <View style={[md.dialog, { backgroundColor: colors.card }]}>
+        <View style={[md.dialog, { backgroundColor: colors.surfaceContainerLow }]}>
           <View style={md.header}>
-            <Text style={[md.title, { color: colors.foreground }]}>Add Region</Text>
+            <Text style={[md.title, { color: colors.onSurface }]}>Add Region</Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 20 }}>×</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 20 }}>×</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={[md.label, { color: colors.foreground }]}>Region name</Text>
+          <Text style={[md.label, { color: colors.onSurface }]}>Region name</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. North Bay"
-            placeholderTextColor={colors.mutedForeground}
+            placeholderTextColor={colors.onSurfaceVariant}
             editable={!busy}
             autoCapitalize="words"
-            style={[md.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.background, outlineWidth: 0 } as object]}
+            style={[md.input, { borderColor: colors.outlineVariant, color: colors.onSurface, backgroundColor: colors.surface, outlineWidth: 0 } as object]}
             onSubmitEditing={onSave}
           />
 
           <View style={md.footer}>
             <View style={{ flex: 1 }} />
             <TouchableOpacity
-              style={[md.cancelBtn, { borderColor: colors.border }]}
+              style={[md.cancelBtn, { borderColor: colors.outlineVariant }]}
               onPress={onClose}
               disabled={busy}
             >
-              <Text style={{ color: colors.foreground, fontWeight: "500", fontSize: 14 }}>Cancel</Text>
+              <Text style={{ color: colors.onSurface, fontFamily: "Inter_500Medium", fontSize: 14 }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[md.saveBtn, { backgroundColor: colors.primary, opacity: busy || !name.trim() ? 0.6 : 1 }]}
@@ -493,9 +494,9 @@ function AddRegionModal({
               disabled={busy || !name.trim()}
             >
               {busy ? (
-                <ActivityIndicator color={colors.primaryForeground} size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
-                <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>Add Region</Text>
+                <Text style={{ color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Add Region</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -520,7 +521,7 @@ export function OrgUnitsPanel({
   currentUser: Profile;
   onReload: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [units, setUnits] = useState<OrgUnit[]>(initialUnits);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [expandedRegions, setExpandedRegions] = useState<Set<number>>(new Set());
@@ -565,9 +566,9 @@ export function OrgUnitsPanel({
   return (
     <View style={{ flex: 1, flexDirection: "row" }}>
       {/* Left tree panel */}
-      <View style={[o.tree, { borderRightColor: colors.border, backgroundColor: colors.card }]}>
-        <View style={[o.treeHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[o.treeTitle, { color: colors.mutedForeground }]}>STRUCTURE</Text>
+      <View style={[o.tree, { borderRightColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
+        <View style={[o.treeHeader, { borderBottomColor: colors.outlineVariant }]}>
+          <Text style={[o.treeTitle, { color: colors.onSurfaceVariant }]}>STRUCTURE</Text>
         </View>
         <ScrollView>
           {tree.map(({ region, districts }) => {
@@ -580,7 +581,7 @@ export function OrgUnitsPanel({
                 <TouchableOpacity
                   style={[
                     o.treeRow,
-                    isSelected && { backgroundColor: colors.secondary },
+                    isSelected && { backgroundColor: colors.secondaryContainer },
                   ]}
                   onPress={() => { setSelectedId(region.id); toggleRegion(region.id); }}
                 >
@@ -588,20 +589,20 @@ export function OrgUnitsPanel({
                     style={o.treeArrow}
                     onPress={(e) => { e.stopPropagation?.(); toggleRegion(region.id); }}
                   >
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, fontWeight: "700" }}>
+                    <Text style={{ color: colors.onSurfaceVariant, fontSize: 10, fontFamily: "Inter_700Bold" }}>
                       {expanded ? "▼" : "▶"}
                     </Text>
                   </TouchableOpacity>
                   <Text style={{ fontSize: 14, marginRight: 4 }}>🌐</Text>
                   <Text
-                    style={[o.treeNodeName, { color: isSelected ? colors.primary : colors.foreground, fontWeight: isSelected ? "600" : "400" }]}
+                    style={[o.treeNodeName, { color: isSelected ? colors.primary : colors.onSurface, fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular" }]}
                     numberOfLines={1}
                   >
                     {region.name}
                   </Text>
                   {count > 0 && (
-                    <View style={[o.countBadge, { backgroundColor: colors.secondary }]}>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontWeight: "600" }}>{count}</Text>
+                    <View style={[o.countBadge, { backgroundColor: colors.secondaryContainer }]}>
+                      <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, fontFamily: "Inter_600SemiBold" }}>{count}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -617,7 +618,7 @@ export function OrgUnitsPanel({
                         style={[
                           o.treeRow,
                           o.treeRowIndent1,
-                          dSelected && { backgroundColor: colors.secondary },
+                          dSelected && { backgroundColor: colors.secondaryContainer },
                         ]}
                         onPress={() => { setSelectedId(district.id); toggleDistrict(district.id); }}
                       >
@@ -625,20 +626,20 @@ export function OrgUnitsPanel({
                           style={o.treeArrow}
                           onPress={(e) => { e.stopPropagation?.(); toggleDistrict(district.id); }}
                         >
-                          <Text style={{ color: colors.mutedForeground, fontSize: 10, fontWeight: "700" }}>
+                          <Text style={{ color: colors.onSurfaceVariant, fontSize: 10, fontFamily: "Inter_700Bold" }}>
                             {locations.length > 0 ? (dExpanded ? "▼" : "▶") : " "}
                           </Text>
                         </TouchableOpacity>
                         <Text style={{ fontSize: 14, marginRight: 4 }}>🏙</Text>
                         <Text
-                          style={[o.treeNodeName, { color: dSelected ? colors.primary : colors.foreground, fontWeight: dSelected ? "600" : "400" }]}
+                          style={[o.treeNodeName, { color: dSelected ? colors.primary : colors.onSurface, fontFamily: dSelected ? "Inter_600SemiBold" : "Inter_400Regular" }]}
                           numberOfLines={1}
                         >
                           {district.name}
                         </Text>
                         {dCount > 0 && (
-                          <View style={[o.countBadge, { backgroundColor: colors.secondary }]}>
-                            <Text style={{ fontSize: 11, color: colors.mutedForeground, fontWeight: "600" }}>{dCount}</Text>
+                          <View style={[o.countBadge, { backgroundColor: colors.secondaryContainer }]}>
+                            <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, fontFamily: "Inter_600SemiBold" }}>{dCount}</Text>
                           </View>
                         )}
                       </TouchableOpacity>
@@ -653,21 +654,21 @@ export function OrgUnitsPanel({
                             style={[
                               o.treeRow,
                               o.treeRowIndent2,
-                              lSelected && { backgroundColor: colors.secondary },
+                              lSelected && { backgroundColor: colors.secondaryContainer },
                             ]}
                             onPress={() => setSelectedId(loc.id)}
                           >
                             <View style={o.treeArrow} />
                             <Text style={{ fontSize: 14, marginRight: 4 }}>📍</Text>
                             <Text
-                              style={[o.treeNodeName, { color: lSelected ? colors.primary : colors.foreground, fontWeight: lSelected ? "600" : "400" }]}
+                              style={[o.treeNodeName, { color: lSelected ? colors.primary : colors.onSurface, fontFamily: lSelected ? "Inter_600SemiBold" : "Inter_400Regular" }]}
                               numberOfLines={1}
                             >
                               {loc.name}
                             </Text>
                             {lCount > 0 && (
-                              <View style={[o.countBadge, { backgroundColor: colors.secondary }]}>
-                                <Text style={{ fontSize: 11, color: colors.mutedForeground, fontWeight: "600" }}>{lCount}</Text>
+                              <View style={[o.countBadge, { backgroundColor: colors.secondaryContainer }]}>
+                                <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, fontFamily: "Inter_600SemiBold" }}>{lCount}</Text>
                               </View>
                             )}
                           </TouchableOpacity>
@@ -682,7 +683,7 @@ export function OrgUnitsPanel({
 
           {tree.length === 0 && (
             <View style={{ padding: 24 }}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>No org units yet.</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 13 }}>No org units yet.</Text>
             </View>
           )}
         </ScrollView>
@@ -691,9 +692,9 @@ export function OrgUnitsPanel({
       {/* Right detail panel */}
       <View style={o.detail}>
         {/* Header row */}
-        <View style={[o.detailHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[o.panelTitle, { color: colors.foreground }]}>Org Units</Text>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 2, flex: 1 }}>
+        <View style={[o.detailHeader, { borderBottomColor: colors.outlineVariant }]}>
+          <Text style={[o.panelTitle, { color: colors.onSurface }]}>Org Units</Text>
+          <Text style={{ color: colors.onSurfaceVariant, fontSize: 14, marginTop: 2, flex: 1 }}>
             Manage your regions, districts, and unit locations.
           </Text>
           {canManage && (
@@ -701,7 +702,7 @@ export function OrgUnitsPanel({
               style={[o.primaryBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowAddRegion(true)}
             >
-              <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>
+              <Text style={{ color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
                 + Add Region
               </Text>
             </TouchableOpacity>
@@ -713,25 +714,25 @@ export function OrgUnitsPanel({
             // Empty state
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 }}>
               <Text style={{ fontSize: 48, marginBottom: 16 }}>👈</Text>
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>
+              <Text style={{ fontSize: 18, fontFamily: "Inter_600SemiBold", color: colors.onSurface, marginBottom: 8 }}>
                 Select an org unit
               </Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign: "center" }}>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 14, textAlign: "center" }}>
                 Click any region, district, or unit in the tree{"\n"}to view and manage it.
               </Text>
             </View>
           ) : (
             <View style={{ gap: 20 }}>
               {/* Unit header card */}
-              <View style={[o.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <View style={[o.card, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                  <View style={[o.unitIconBg, { backgroundColor: colors.secondary }]}>
+                  <View style={[o.unitIconBg, { backgroundColor: colors.secondaryContainer }]}>
                     <Text style={{ fontSize: 22 }}>
                       {selected.type === "region" ? "🌐" : selected.type === "district" ? "🏙" : "📍"}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>
+                    <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.onSurface }}>
                       {selected.name}
                     </Text>
                     <TypeBadge type={selected.type} />
@@ -739,13 +740,13 @@ export function OrgUnitsPanel({
                   {canManage && (
                     <View style={{ flexDirection: "row", gap: 8 }}>
                       <TouchableOpacity
-                        style={[o.actionBtn, { borderColor: colors.border }]}
+                        style={[o.actionBtn, { borderColor: colors.outlineVariant }]}
                         onPress={() => setEditUnit(selected)}
                       >
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>✏️ Edit</Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.onSurface }}>✏️ Edit</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[o.actionBtn, { borderColor: "#FCA5A5" }]}
+                        style={[o.actionBtn, { borderColor: colors.error }]}
                         onPress={() => {
                           Alert.alert(
                             `Delete ${selected.type}`,
@@ -768,7 +769,7 @@ export function OrgUnitsPanel({
                           );
                         }}
                       >
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: "#DC2626" }}>🗑 Delete</Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.error }}>🗑 Delete</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -808,17 +809,17 @@ export function OrgUnitsPanel({
               </View>
 
               {/* Assigned users */}
-              <View style={[o.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <View style={[o.card, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <Text style={{ fontWeight: "700", color: colors.foreground, fontSize: 16 }}>
+                  <Text style={{ fontFamily: "Inter_700Bold", color: colors.onSurface, fontSize: 16 }}>
                     Assigned Users
                   </Text>
                   {canManage && (
                     <TouchableOpacity
-                      style={[o.assignBtn, { borderColor: colors.border }]}
+                      style={[o.assignBtn, { borderColor: colors.outlineVariant }]}
                       onPress={() => setAssignUnit(selected)}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.onSurface }}>
                         + Assign User
                       </Text>
                     </TouchableOpacity>
@@ -830,7 +831,7 @@ export function OrgUnitsPanel({
                     key={profile.id}
                     style={[
                       o.userRow,
-                      i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                      i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.outlineVariant },
                     ]}
                   >
                     <View
@@ -838,29 +839,29 @@ export function OrgUnitsPanel({
                         width: 36,
                         height: 36,
                         borderRadius: 18,
-                        backgroundColor: "#3B82F6",
+                        backgroundColor: colors.tertiary,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                      <Text style={{ color: colors.onTertiary, fontFamily: "Inter_700Bold", fontSize: 13 }}>
                         {[...profile.displayName.trim().split(/\s+/)].map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: "600", color: colors.foreground, fontSize: 14 }}>
+                      <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.onSurface, fontSize: 14 }}>
                         {profile.displayName}
                       </Text>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                      <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
                         {profile.email ?? profile.username}
                       </Text>
                     </View>
                     <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF" }}>
-                        <Text style={{ fontSize: 12, color: "#2563EB", fontWeight: "500" }}>{profile.role.name}</Text>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: colors.tertiary, backgroundColor: colors.tertiaryContainer }}>
+                        <Text style={{ fontSize: 12, color: colors.tertiary, fontFamily: "Inter_500Medium" }}>{profile.role.name}</Text>
                       </View>
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: profile.isActive ? "#86EFAC" : "#CBD5E1", backgroundColor: profile.isActive ? "#F0FDF4" : "#F8FAFC" }}>
-                        <Text style={{ fontSize: 12, color: profile.isActive ? "#15803D" : "#64748B", fontWeight: "500" }}>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: profile.isActive ? colors.success : colors.outlineVariant, backgroundColor: profile.isActive ? colors.successContainer : colors.surfaceContainerHighest }}>
+                        <Text style={{ fontSize: 12, color: profile.isActive ? colors.success : colors.onSurfaceVariant, fontFamily: "Inter_500Medium" }}>
                           {profile.isActive ? "Active" : "Inactive"}
                         </Text>
                       </View>
@@ -869,7 +870,7 @@ export function OrgUnitsPanel({
                 ))}
 
                 {profiles.filter((p) => p.orgUnitId === selected.id).length === 0 && (
-                  <Text style={{ color: colors.mutedForeground, fontSize: 13, paddingVertical: 8 }}>
+                  <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, paddingVertical: 8 }}>
                     No users directly assigned.
                   </Text>
                 )}
@@ -878,7 +879,7 @@ export function OrgUnitsPanel({
               {/* Add child CTA */}
               {canManage && selected.type !== "location" && (
                 <TouchableOpacity
-                  style={[o.addChildBtn, { borderColor: colors.border }]}
+                  style={[o.addChildBtn, { borderColor: colors.outlineVariant }]}
                   onPress={() =>
                     setAddChildUnit({
                       parent: selected,
@@ -886,7 +887,7 @@ export function OrgUnitsPanel({
                     })
                   }
                 >
-                  <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
+                  <Text style={{ color: colors.onSurfaceVariant, fontSize: 14 }}>
                     + Add {selected.type === "region" ? "District" : "Location"} to {selected.name}
                   </Text>
                 </TouchableOpacity>
@@ -945,7 +946,7 @@ const o = StyleSheet.create({
   },
   treeTitle: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -981,7 +982,7 @@ const o = StyleSheet.create({
     borderBottomWidth: 1,
     flexWrap: "wrap",
   },
-  panelTitle: { fontSize: 28, fontWeight: "700" },
+  panelTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
   primaryBtn: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1058,8 +1059,8 @@ const md = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  title: { fontSize: 18, fontWeight: "700" },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 4 },
   input: {
     borderWidth: 1,
     borderRadius: 8,

@@ -1,23 +1,25 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, IconButton, TextInput } from "react-native-paper";
+
+import { Ionicons } from "@expo/vector-icons";
 
 import { register as apiRegister } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
 import { useChecklist } from "@/context/ChecklistContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 import { saveStorageMode } from "@/utils/localChecklistStore";
 import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
 
@@ -29,7 +31,7 @@ function toAppTitle(name: string): string {
 
 export default function CreateAccountScreen() {
   const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const md = useMd();
   const router = useRouter();
   const { signIn, setNoAuthMode } = useAuth();
   const { updateAppConfig } = useChecklist();
@@ -76,13 +78,15 @@ export default function CreateAccountScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: isWeb ? 67 : insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Account</Text>
-        <View style={styles.backBtn} />
+    <View style={[styles.container, { backgroundColor: md.surface }]}>
+      <View style={[styles.header, { backgroundColor: md.primary, paddingTop: isWeb ? 67 : insets.top }]}>
+        <IconButton
+          icon={() => <Ionicons name="chevron-back" size={22} color={md.onPrimary} />}
+          onPress={() => router.back()}
+          style={styles.backBtn}
+        />
+        <Text style={[styles.headerTitle, typeStyle("titleLarge"), { color: md.onPrimary }]}>Create account</Text>
+        <View style={styles.backBtnSpacer} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -91,87 +95,87 @@ export default function CreateAccountScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          <Text style={[styles.subtitle, typeStyle("bodyMedium"), { color: md.onSurfaceVariant }]}>
             Your local checklists will remain intact. Sign in with this account to access them.
           </Text>
 
           {error ? (
-            <View style={[styles.errorBox, { backgroundColor: "#fef2f2", borderColor: "#fca5a5" }]}>
-              <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+            <View style={[styles.errorBox, { backgroundColor: md.errorContainer, borderRadius: shape.sm }]}>
+              <Text style={[styles.errorText, { color: md.onErrorContainer }]}>{error}</Text>
             </View>
           ) : null}
 
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>YOUR NAME</Text>
-          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+          <Text style={[styles.fieldHint, { color: md.onSurfaceVariant }]}>
             {displayName.trim()
               ? `Your app will be called "${toAppTitle(displayName)}"`
               : "Used as your app title — e.g. Alice's Day"}
           </Text>
           <TextInput
+            mode="outlined"
+            label="Your name"
             value={displayName}
             onChangeText={(v) => { setDisplayName(v); setError(null); }}
             autoCapitalize="words"
             autoCorrect={false}
             editable={!busy}
-            style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
             placeholder="Alice"
-            placeholderTextColor={colors.mutedForeground}
+            style={styles.input}
           />
 
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>USERNAME</Text>
-          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+          <Text style={[styles.fieldHint, { color: md.onSurfaceVariant }]}>
             This is how you'll sign in. Keep it short and memorable.
           </Text>
           <TextInput
+            mode="outlined"
+            label="Username"
             value={username}
             onChangeText={(v) => { setUsername(v); setError(null); }}
             autoCapitalize="none"
             autoCorrect={false}
             editable={!busy}
-            style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
             placeholder="yourname"
-            placeholderTextColor={colors.mutedForeground}
+            style={styles.input}
           />
 
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>EMAIL</Text>
-          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+          <Text style={[styles.fieldHint, { color: md.onSurfaceVariant }]}>
             Used for account recovery only.
           </Text>
           <TextInput
+            mode="outlined"
+            label="Email"
             value={email}
             onChangeText={(v) => { setEmail(v); setError(null); }}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
             editable={!busy}
-            style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
             placeholder="you@example.com"
-            placeholderTextColor={colors.mutedForeground}
+            style={styles.input}
           />
 
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>PASSWORD</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              value={password}
-              onChangeText={(v) => { setPassword(v); setError(null); }}
-              secureTextEntry={!showPassword}
-              editable={!busy}
-              style={[styles.input, styles.passwordInput, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
-              placeholder="••••••••••••"
-              placeholderTextColor={colors.mutedForeground}
-            />
-            <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.showToggle}>
-              <Text style={[styles.showToggleText, { color: colors.primary }]}>
-                {showPassword ? "Hide" : "Show"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TextInput
+            mode="outlined"
+            label="Password"
+            value={password}
+            onChangeText={(v) => { setPassword(v); setError(null); }}
+            secureTextEntry={!showPassword}
+            editable={!busy}
+            placeholder="••••••••••••"
+            style={styles.input}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? "eye-off" : "eye"}
+                onPress={() => setShowPassword((s) => !s)}
+                forceTextInputFocus={false}
+              />
+            }
+          />
           {password.length > 0 && (
             <View style={styles.rulesBox}>
               {PASSWORD_RULES.map((rule) => {
                 const met = rule.test(password);
                 return (
-                  <Text key={rule.label} style={[styles.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}>
+                  <Text key={rule.label} style={[styles.ruleText, { color: met ? md.primary : md.onSurfaceVariant }]}>
                     {met ? "✓" : "○"} {rule.label}
                   </Text>
                 );
@@ -179,38 +183,30 @@ export default function CreateAccountScreen() {
             </View>
           )}
 
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>CONFIRM PASSWORD</Text>
           <TextInput
+            mode="outlined"
+            label="Confirm password"
             value={confirmPassword}
             onChangeText={(v) => { setConfirmPassword(v); setError(null); }}
             secureTextEntry={!showPassword}
             editable={!busy}
-            style={[
-              styles.input,
-              {
-                borderColor: confirmPassword && confirmPassword !== password ? colors.destructive : colors.input,
-                color: colors.foreground,
-                backgroundColor: colors.card,
-              },
-            ]}
             placeholder="••••••••••••"
-            placeholderTextColor={colors.mutedForeground}
+            style={styles.input}
+            error={Boolean(confirmPassword) && confirmPassword !== password}
           />
 
-          <TouchableOpacity
+          <Button
+            mode="contained"
             onPress={onContinue}
             disabled={busy}
-            style={[styles.primaryBtn, { backgroundColor: busy ? colors.muted : colors.primary }]}
-            activeOpacity={0.85}
+            loading={busy}
+            style={[styles.primaryBtn, { borderRadius: shape.full }]}
+            contentStyle={styles.btnContent}
           >
-            {busy ? (
-              <ActivityIndicator color={colors.primaryForeground} />
-            ) : (
-              <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Create Account</Text>
-            )}
-          </TouchableOpacity>
+            Create account
+          </Button>
 
-          <Text style={[styles.legalText, { color: colors.mutedForeground }]}>
+          <Text style={[styles.legalText, typeStyle("bodySmall"), { color: md.onSurfaceVariant }]}>
             By continuing you agree to the Terms and Privacy Policy.
           </Text>
         </ScrollView>
@@ -224,7 +220,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     paddingBottom: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -232,15 +228,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  backBtn: { width: 70 },
-  backBtnText: { color: "#fff", fontSize: 17, fontWeight: "500" },
+  backBtn: { margin: 0 },
+  backBtnSpacer: { width: 40 },
   headerTitle: {
+    ...typeStyle("titleLarge"),
     flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
     fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    marginRight: 40,
   },
   scrollContent: {
     padding: 24,
@@ -248,55 +243,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   subtitle: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
     lineHeight: 20,
     marginBottom: 8,
   },
   errorBox: {
-    borderWidth: 1,
-    borderRadius: 8,
     padding: 12,
     marginBottom: 4,
   },
-  errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginTop: 8,
-  },
+  errorText: typeStyle("bodyMedium"),
   fieldHint: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
+    marginTop: 8,
     marginBottom: 4,
   },
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  passwordRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  passwordInput: { flex: 1 },
-  showToggle: { paddingHorizontal: 8, paddingVertical: 10 },
-  showToggleText: { fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  input: {},
   rulesBox: { gap: 4, paddingVertical: 4 },
-  ruleText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  ruleText: typeStyle("bodySmall"),
   primaryBtn: {
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: "center",
     marginTop: 16,
   },
-  primaryBtnText: { fontSize: 16, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  btnContent: { height: 48 },
   legalText: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 8,
   },

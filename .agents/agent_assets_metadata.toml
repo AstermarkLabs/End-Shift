@@ -1,8 +1,0 @@
-uploads = []
-outputs = []
-
-[[generated]]
-id = "9KHeK8LBDB8qQRkPZim0s"
-uri = "file://artifacts/checklist/assets/images/icon.png"
-type = "image"
-title = "clock app icon"

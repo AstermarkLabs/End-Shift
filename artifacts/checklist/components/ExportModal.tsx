@@ -14,7 +14,8 @@ import {
 } from "react-native";
 
 import { useChecklist } from "@/context/ChecklistContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 import {
   DOCX_NATIVE_UNSUPPORTED,
   exportChecklist,
@@ -33,7 +34,7 @@ function FormatPill({
   selected: boolean;
   onPress: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -41,15 +42,15 @@ function FormatPill({
       style={[
         styles.formatPill,
         {
-          backgroundColor: selected ? colors.primary : colors.muted,
-          borderColor: selected ? colors.primary : colors.border,
+          backgroundColor: selected ? colors.primary : colors.surfaceContainerHighest,
+          borderColor: selected ? colors.primary : colors.outlineVariant,
         },
       ]}
     >
       <Text
         style={[
           styles.formatPillText,
-          { color: selected ? "#fff" : colors.foreground },
+          { color: selected ? colors.onPrimary : colors.onSurface },
         ]}
       >
         {label}
@@ -67,7 +68,7 @@ interface Props {
 }
 
 export function ExportModal({ visible, onClose, data }: Props) {
-  const colors = useColors();
+  const colors = useMd();
   const { appConfig } = useChecklist();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
@@ -110,23 +111,23 @@ export function ExportModal({ visible, onClose, data }: Props) {
       <View
         style={[
           styles.sheet,
-          { backgroundColor: colors.card, borderColor: colors.border },
+          { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant },
         ]}
       >
         {/* Handle */}
         <View
-          style={[styles.handle, { backgroundColor: colors.border }]}
+          style={[styles.handle, { backgroundColor: colors.outlineVariant }]}
         />
 
-        <Text style={[styles.title, { color: colors.foreground }]}>
+        <Text style={[styles.title, { color: colors.onSurface }]}>
           Export Checklist
         </Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+        <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
           {data.checklistName}
         </Text>
 
         {/* Format selector */}
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>
+        <Text style={[styles.label, { color: colors.onSurfaceVariant }]}>
           FORMAT
         </Text>
         <View style={styles.formatRow}>
@@ -147,21 +148,21 @@ export function ExportModal({ visible, onClose, data }: Props) {
           })}
         </View>
         {DOCX_NATIVE_UNSUPPORTED && (
-          <Text style={[styles.docxNote, { color: colors.mutedForeground }]}>
+          <Text style={[styles.docxNote, { color: colors.onSurfaceVariant }]}>
             ✦ DOCX download is available on web
           </Text>
         )}
 
         {/* Completion status toggle */}
         <View
-          style={[styles.toggleRow, { borderColor: colors.border }]}
+          style={[styles.toggleRow, { borderColor: colors.outlineVariant }]}
         >
           <View style={styles.toggleBody}>
-            <Text style={[styles.toggleLabel, { color: colors.foreground }]}>
+            <Text style={[styles.toggleLabel, { color: colors.onSurface }]}>
               Include completion status
             </Text>
             <Text
-              style={[styles.toggleHint, { color: colors.mutedForeground }]}
+              style={[styles.toggleHint, { color: colors.onSurfaceVariant }]}
             >
               {includeStatus
                 ? "Shows which tasks were checked off"
@@ -175,10 +176,10 @@ export function ExportModal({ visible, onClose, data }: Props) {
               Haptics.selectionAsync();
             }}
             trackColor={{
-              false: colors.muted,
+              false: colors.surfaceContainerHighest,
               true: colors.primary + "80",
             }}
-            thumbColor={includeStatus ? colors.primary : colors.mutedForeground}
+            thumbColor={includeStatus ? colors.primary : colors.onSurfaceVariant}
           />
         </View>
 
@@ -186,16 +187,16 @@ export function ExportModal({ visible, onClose, data }: Props) {
         <TouchableOpacity
           style={[
             styles.exportBtn,
-            { backgroundColor: loading ? colors.muted : colors.primary },
+            { backgroundColor: loading ? colors.surfaceContainerHighest : colors.primary },
           ]}
           onPress={handleExport}
           disabled={loading}
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.exportBtnText}>
+            <Text style={[styles.exportBtnText, { color: colors.onPrimary }]}>
               Export as {format.toUpperCase()}
             </Text>
           )}
@@ -203,7 +204,7 @@ export function ExportModal({ visible, onClose, data }: Props) {
 
         {Platform.OS !== "web" && (
           <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-            <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>
+            <Text style={[styles.cancelBtnText, { color: colors.onSurfaceVariant }]}>
               Cancel
             </Text>
           </TouchableOpacity>
@@ -237,7 +238,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: "700",
     fontFamily: "Inter_700Bold",
     marginBottom: 2,
   },
@@ -248,7 +248,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10.5,
-    fontWeight: "600",
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.7,
     textTransform: "uppercase",
@@ -268,7 +267,6 @@ const styles = StyleSheet.create({
   },
   formatPillText: {
     fontSize: 14,
-    fontWeight: "600",
     fontFamily: "Inter_600SemiBold",
   },
   toggleRow: {
@@ -283,7 +281,6 @@ const styles = StyleSheet.create({
   toggleBody: { flex: 1, gap: 2 },
   toggleLabel: {
     fontSize: 15,
-    fontWeight: "500",
     fontFamily: "Inter_500Medium",
   },
   toggleHint: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -293,9 +290,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   exportBtnText: {
-    color: "#fff",
     fontSize: 15,
-    fontWeight: "700",
     fontFamily: "Inter_700Bold",
   },
   cancelBtn: { paddingVertical: 14, alignItems: "center" },

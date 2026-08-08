@@ -192,7 +192,7 @@ function serveAppleAppSiteAssociation(res) {
 }
 
 function serveAssetLinks(res) {
-  const pkg = process.env["WEBAUTHN_ANDROID_PACKAGE"] ?? "com.theappfoundry.endshift";
+  const pkg = process.env["WEBAUTHN_ANDROID_PACKAGE"] ?? "com.astermark.endshift";
   const sha256 =
     process.env["WEBAUTHN_ANDROID_SHA256"] ??
     (process.env["NODE_ENV"] === "production" ? undefined : DEBUG_ANDROID_SHA256);

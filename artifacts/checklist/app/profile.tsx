@@ -24,7 +24,8 @@ import {
 } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 import { PASSWORD_RULES, validatePassword } from "@/utils/passwordValidation";
 
 type EditField = "displayName" | "username" | "email" | null;
@@ -38,7 +39,7 @@ function getInitials(name: string): string {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const md = useMd();
   const router = useRouter();
   const { profile, setProfile, signOut, signInWithPasskey } = useAuth();
   const { width } = useWindowDimensions();
@@ -206,14 +207,14 @@ export default function ProfileScreen() {
     return (
       <View key={field} style={styles.fieldRow}>
         <View style={styles.fieldHeader}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
+          <Text style={[styles.fieldLabel, { color: md.onSurfaceVariant }]}>{label}</Text>
           {!isEditing && (
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => onStartEdit(field, value)}
               disabled={busy}
             >
-              <Text style={[styles.editButtonText, { color: colors.mutedForeground }]}>✏ Edit</Text>
+              <Text style={[styles.editButtonText, { color: md.primary }]}>✏ Edit</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -227,40 +228,35 @@ export default function ProfileScreen() {
               autoCorrect={false}
               autoFocus
               editable={!busy}
-              placeholderTextColor={colors.mutedForeground}
+              placeholderTextColor={md.onSurfaceVariant}
               style={[
                 styles.fieldInput,
-                { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.background },
+                { borderRadius: shape.sm, borderColor: md.outline, color: md.onSurface, backgroundColor: md.surface },
               ]}
             />
             <View style={styles.fieldEditActions}>
               <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
+                style={[styles.saveBtn, { borderRadius: shape.sm, backgroundColor: md.primary, opacity: busy ? 0.6 : 1 }]}
                 onPress={onSaveField}
                 disabled={busy}
               >
                 {busy ? (
-                  <ActivityIndicator color={colors.primaryForeground} size="small" />
+                  <ActivityIndicator color={md.onPrimary} size="small" />
                 ) : (
-                  <Text style={[styles.actionBtnText, { color: colors.primaryForeground }]}>Save</Text>
+                  <Text style={[styles.actionBtnText, { color: md.onPrimary }]}>Save</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.cancelBtn, { borderColor: colors.border }]}
+                style={[styles.cancelBtn, { borderRadius: shape.sm, borderColor: md.outlineVariant }]}
                 onPress={onCancelEdit}
                 disabled={busy}
               >
-                <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>
+                <Text style={[styles.actionBtnText, { color: md.onSurface }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
-          <Text
-            style={[
-              styles.fieldValue,
-              { color: value ? colors.foreground : colors.mutedForeground },
-            ]}
-          >
+          <Text style={[styles.fieldValue, { color: value ? md.onSurface : md.onSurfaceVariant }]}>
             {value || (field === "email" ? "No email set" : "—")}
           </Text>
         )}
@@ -269,17 +265,17 @@ export default function ProfileScreen() {
   };
 
   const renderPasswordForm = () => (
-    <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
+    <View style={[styles.expandedContent, { borderTopColor: md.outlineVariant }]}>
       <TextInput
         placeholder="Current password"
         secureTextEntry
         value={currentPassword}
         onChangeText={setCurrentPassword}
         editable={!busy}
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={md.onSurfaceVariant}
         style={[
           styles.fieldInput,
-          { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.background },
+          { borderRadius: shape.sm, borderColor: md.outline, color: md.onSurface, backgroundColor: md.surface },
         ]}
       />
       <TextInput
@@ -288,10 +284,10 @@ export default function ProfileScreen() {
         value={newPassword}
         onChangeText={setNewPassword}
         editable={!busy}
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={md.onSurfaceVariant}
         style={[
           styles.fieldInput,
-          { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.background, marginTop: 8 },
+          { borderRadius: shape.sm, borderColor: md.outline, color: md.onSurface, backgroundColor: md.surface, marginTop: 8 },
         ]}
       />
       {newPassword.length > 0 && (
@@ -299,7 +295,7 @@ export default function ProfileScreen() {
           {PASSWORD_RULES.map((rule) => {
             const met = rule.test(newPassword);
             return (
-              <Text key={rule.label} style={[styles.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}>
+              <Text key={rule.label} style={[styles.ruleText, { color: met ? md.primary : md.onSurfaceVariant }]}>
                 {met ? "✓" : "○"} {rule.label}
               </Text>
             );
@@ -312,62 +308,59 @@ export default function ProfileScreen() {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         editable={!busy}
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={md.onSurfaceVariant}
         style={[
           styles.fieldInput,
           {
-            borderColor:
-              confirmPassword && confirmPassword !== newPassword ? colors.destructive : colors.input,
-            color: colors.foreground,
-            backgroundColor: colors.background,
+            borderRadius: shape.sm,
+            borderColor: confirmPassword && confirmPassword !== newPassword ? md.error : md.outline,
+            color: md.onSurface,
+            backgroundColor: md.surface,
             marginTop: 8,
           },
         ]}
       />
       <TouchableOpacity
-        style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1, marginTop: 12 }]}
+        style={[styles.saveBtn, { borderRadius: shape.sm, backgroundColor: md.primary, opacity: busy ? 0.6 : 1, marginTop: 12 }]}
         onPress={onChangePassword}
         disabled={busy}
       >
         {busy ? (
-          <ActivityIndicator color={colors.primaryForeground} size="small" />
+          <ActivityIndicator color={md.onPrimary} size="small" />
         ) : (
-          <Text style={[styles.actionBtnText, { color: colors.primaryForeground }]}>Update password</Text>
+          <Text style={[styles.actionBtnText, { color: md.onPrimary }]}>Update password</Text>
         )}
       </TouchableOpacity>
     </View>
   );
 
   const renderPasskeySection = () => (
-    <View style={[styles.expandedContent, { borderTopColor: colors.border }]}>
+    <View style={[styles.expandedContent, { borderTopColor: md.outlineVariant }]}>
       {passkeys.length === 0 && (
-        <Text style={{ color: colors.mutedForeground, marginBottom: 8 }}>No passkeys registered.</Text>
+        <Text style={{ color: md.onSurfaceVariant, marginBottom: 8 }}>No passkeys registered.</Text>
       )}
       {passkeys.map((p) => (
-        <View
-          key={p.id}
-          style={[styles.passkeyRow, { borderBottomColor: colors.border }]}
-        >
+        <View key={p.id} style={[styles.passkeyRow, { borderBottomColor: md.outlineVariant }]}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.foreground, fontWeight: "500" }} numberOfLines={1}>
+            <Text style={{ color: md.onSurface, fontFamily: "Inter_500Medium" }} numberOfLines={1}>
               {p.label || "Passkey"}
             </Text>
-            <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+            <Text style={{ color: md.onSurfaceVariant, fontSize: 12 }}>
               Added {new Date(p.createdAt).toLocaleDateString()}
             </Text>
           </View>
           <TouchableOpacity onPress={() => onDeletePasskey(p)} disabled={busy}>
-            <Text style={{ color: colors.destructive, fontWeight: "600" }}>Delete</Text>
+            <Text style={{ color: md.error, fontFamily: "Inter_600SemiBold" }}>Delete</Text>
           </TouchableOpacity>
         </View>
       ))}
       {passkeys.length === 0 && (
         <TouchableOpacity
-          style={[styles.cancelBtn, { borderColor: colors.border, marginTop: 8 }]}
+          style={[styles.cancelBtn, { borderRadius: shape.sm, borderColor: md.outlineVariant, marginTop: 8 }]}
           onPress={onRegisterPasskey}
           disabled={busy}
         >
-          <Text style={[styles.actionBtnText, { color: colors.foreground }]}>
+          <Text style={[styles.actionBtnText, { color: md.onSurface }]}>
             {busy ? "Registering…" : "Register this device"}
           </Text>
         </TouchableOpacity>
@@ -390,44 +383,36 @@ export default function ProfileScreen() {
       }}
       disabled={busy}
     >
-      <View style={[styles.securityIconWrap, { backgroundColor: colors.muted }]}>
+      <View style={[styles.securityIconWrap, { borderRadius: shape.sm, backgroundColor: md.surfaceContainerHighest }]}>
         <Text style={styles.securityIconText}>{icon}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.securityTitle, { color: colors.foreground }]}>{title}</Text>
-        <Text style={[styles.securitySubtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+        <Text style={[styles.securityTitle, { color: md.onSurface }]}>{title}</Text>
+        <Text style={[styles.securitySubtitle, { color: md.onSurfaceVariant }]}>{subtitle}</Text>
       </View>
       {badge !== null && (
-        <View style={[styles.badge, { backgroundColor: colors.muted }]}>
-          <Text style={[styles.badgeText, { color: colors.foreground }]}>{badge}</Text>
+        <View style={[styles.badge, { backgroundColor: md.secondaryContainer }]}>
+          <Text style={[styles.badgeText, { color: md.onSecondaryContainer }]}>{badge}</Text>
         </View>
       )}
-      <Text style={[styles.chevron, { color: colors.mutedForeground }]}>
-        {expandSection === key ? "∧" : "›"}
-      </Text>
+      <Text style={[styles.chevron, { color: md.onSurfaceVariant }]}>{expandSection === key ? "∧" : "›"}</Text>
     </TouchableOpacity>
   );
 
   const avatarNode = (large?: boolean) => (
-    <View
-      style={[
-        styles.avatarCircle,
-        { backgroundColor: colors.primary },
-        large && styles.avatarCircleLarge,
-      ]}
-    >
-      <Text style={[styles.avatarText, large && styles.avatarTextLarge]}>
+    <View style={[styles.avatarCircle, { backgroundColor: md.primary }, large && styles.avatarCircleLarge]}>
+      <Text style={[styles.avatarText, { color: md.onPrimary }, large && styles.avatarTextLarge]}>
         {getInitials(profile.displayName)}
       </Text>
     </View>
   );
 
   const accountSection = (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.card, { borderRadius: shape.md, borderColor: md.outlineVariant, backgroundColor: md.surface }]}>
       {renderFieldRow("DISPLAY NAME", "displayName", profile.displayName)}
-      <View style={[styles.fieldDivider, { backgroundColor: colors.border }]} />
+      <View style={[styles.fieldDivider, { backgroundColor: md.outlineVariant }]} />
       {renderFieldRow("USERNAME", "username", profile.username)}
-      <View style={[styles.fieldDivider, { backgroundColor: colors.border }]} />
+      <View style={[styles.fieldDivider, { backgroundColor: md.outlineVariant }]} />
       {renderFieldRow("EMAIL", "email", profile.email ?? "", "email-address")}
     </View>
   );
@@ -435,16 +420,16 @@ export default function ProfileScreen() {
   const securitySection = (
     <>
       {profile.mustChangePassword && (
-        <View style={[styles.mustChangeBanner, { backgroundColor: colors.secondary }]}>
-          <Text style={{ color: colors.primary, fontWeight: "600" }}>
+        <View style={[styles.mustChangeBanner, { borderRadius: shape.sm, backgroundColor: md.primaryContainer }]}>
+          <Text style={{ color: md.onPrimaryContainer, fontFamily: "Inter_600SemiBold" }}>
             You must change your password before continuing.
           </Text>
         </View>
       )}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { borderRadius: shape.md, borderColor: md.outlineVariant, backgroundColor: md.surface }]}>
         {renderSecurityRow("password", "🔒", "Change Password", "Update your sign-in password", null)}
         {expandSection === "password" && renderPasswordForm()}
-        <View style={[styles.fieldDivider, { backgroundColor: colors.border }]} />
+        <View style={[styles.fieldDivider, { backgroundColor: md.outlineVariant }]} />
         {renderSecurityRow(
           "passkeys",
           "🔑",
@@ -462,77 +447,64 @@ export default function ProfileScreen() {
     const sidebarNavItems = [
       { icon: "👤", label: "Profile", onPress: () => setExpandSection(null) },
       { icon: "🔒", label: "Security", onPress: () => setExpandSection("password" as const) },
-      { icon: "🕐", label: "History", onPress: () => router.push("/history") },
-      { icon: "⚙️", label: "Settings", onPress: () => router.push("/settings") },
+      { icon: "🕐", label: "History", onPress: () => router.navigate("/history") },
+      { icon: "⚙️", label: "Settings", onPress: () => router.navigate("/settings") },
     ];
 
     return (
-      <View style={[styles.webRoot, { backgroundColor: colors.background }]}>
+      <View style={[styles.webRoot, { backgroundColor: md.surface }]}>
         {/* Sidebar */}
-        <View style={[styles.sidebar, { backgroundColor: colors.card, borderRightColor: colors.border }]}>
+        <View style={[styles.sidebar, { backgroundColor: md.surfaceContainerLow, borderRightColor: md.outlineVariant }]}>
           <ScrollView contentContainerStyle={styles.sidebarInner}>
             <View style={styles.sidebarIdentity}>
               {avatarNode(true)}
-              <Text style={[styles.heroName, { color: colors.foreground }]}>{profile.displayName}</Text>
-              <Text style={[styles.heroUsername, { color: colors.mutedForeground }]}>
-                @{profile.username}
-              </Text>
-              <View style={[styles.pill, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.pillText, { color: colors.foreground }]}>{profile.role.name}</Text>
+              <Text style={[styles.heroName, { color: md.onSurface }]}>{profile.displayName}</Text>
+              <Text style={[styles.heroUsername, { color: md.onSurfaceVariant }]}>@{profile.username}</Text>
+              <View style={[styles.pill, { borderRadius: shape.full, backgroundColor: md.surfaceContainerHighest }]}>
+                <Text style={[styles.pillText, { color: md.onSurface }]}>{profile.role.name}</Text>
               </View>
               {profile.orgUnit && (
-                <View style={[styles.pill, { backgroundColor: colors.muted }]}>
-                  <Text style={[styles.pillText, { color: colors.foreground }]}>
-                    {profile.orgUnit.name}
-                  </Text>
+                <View style={[styles.pill, { borderRadius: shape.full, backgroundColor: md.surfaceContainerHighest }]}>
+                  <Text style={[styles.pillText, { color: md.onSurface }]}>{profile.orgUnit.name}</Text>
                 </View>
               )}
             </View>
             <View style={styles.sidebarNav}>
               {sidebarNavItems.map(({ icon, label, onPress }) => (
-                <TouchableOpacity
-                  key={label}
-                  style={[styles.navLink, { borderRadius: colors.radius }]}
-                  onPress={onPress}
-                >
+                <TouchableOpacity key={label} style={[styles.navLink, { borderRadius: shape.md }]} onPress={onPress}>
                   <Text style={styles.navLinkIcon}>{icon}</Text>
-                  <Text style={[styles.navLinkLabel, { color: colors.foreground }]}>{label}</Text>
+                  <Text style={[styles.navLinkLabel, { color: md.onSurface }]}>{label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
-          <TouchableOpacity
-            style={[styles.sidebarSignOut, { borderTopColor: colors.border }]}
-            onPress={onSignOut}
-          >
+          <TouchableOpacity style={[styles.sidebarSignOut, { borderTopColor: md.outlineVariant }]} onPress={onSignOut}>
             <Text style={styles.navLinkIcon}>🚪</Text>
-            <Text style={[styles.navLinkLabel, { color: colors.destructive }]}>Sign Out</Text>
+            <Text style={[styles.navLinkLabel, { color: md.error }]}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* Main Panel */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.webContent}>
           <View style={styles.webContentHeader}>
-            <Text style={[styles.webTitle, { color: colors.foreground }]}>Profile</Text>
+            <Text style={[styles.webTitle, { color: md.onSurface }]}>Profile</Text>
             {editField && (
               <TouchableOpacity
-                style={[styles.saveChangesBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
+                style={[styles.saveChangesBtn, { borderRadius: shape.sm, backgroundColor: md.primary, opacity: busy ? 0.6 : 1 }]}
                 onPress={onSaveField}
                 disabled={busy}
               >
                 {busy ? (
-                  <ActivityIndicator color={colors.primaryForeground} size="small" />
+                  <ActivityIndicator color={md.onPrimary} size="small" />
                 ) : (
-                  <Text style={[styles.actionBtnText, { color: colors.primaryForeground }]}>
-                    Save changes
-                  </Text>
+                  <Text style={[styles.actionBtnText, { color: md.onPrimary }]}>Save changes</Text>
                 )}
               </TouchableOpacity>
             )}
           </View>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ACCOUNT</Text>
+          <Text style={[styles.sectionLabel, { color: md.primary }]}>ACCOUNT</Text>
           {accountSection}
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>SECURITY</Text>
+          <Text style={[styles.sectionLabel, { color: md.primary }]}>SECURITY</Text>
           {securitySection}
         </ScrollView>
       </View>
@@ -541,20 +513,20 @@ export default function ProfileScreen() {
 
   // ── Mobile Layout ─────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <View style={[styles.root, { backgroundColor: md.surface }]}>
       {/* Header bar */}
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
+      <View style={[styles.header, { backgroundColor: md.surfaceContainerLow, paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerSide}>
-          <Text style={styles.headerBackText}>‹ Back</Text>
+          <Text style={[styles.headerBackText, { color: md.onSurface }]}>‹ Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={[styles.headerTitle, { color: md.onSurface }]}>Profile</Text>
         <View style={[styles.headerSide, styles.headerSideRight]}>
           {editField ? (
             <TouchableOpacity onPress={onSaveField} disabled={busy}>
               {busy ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={md.onSurface} size="small" />
               ) : (
-                <Text style={styles.headerActionText}>Save</Text>
+                <Text style={[styles.headerActionText, { color: md.primary }]}>Save</Text>
               )}
             </TouchableOpacity>
           ) : null}
@@ -565,36 +537,28 @@ export default function ProfileScreen() {
         {/* Identity Hero */}
         <View style={styles.hero}>
           {avatarNode()}
-          <Text style={[styles.heroName, { color: colors.foreground }]}>{profile.displayName}</Text>
-          <Text style={[styles.heroUsername, { color: colors.mutedForeground }]}>
-            @{profile.username}
-          </Text>
-          <Text style={[styles.heroRole, { color: colors.mutedForeground }]}>
-            {profile.role.name}
-          </Text>
-          {profile.orgUnit && (
-            <Text style={[styles.heroLocation, { color: colors.mutedForeground }]}>
-              {profile.orgUnit.name}
-            </Text>
-          )}
+          <Text style={[styles.heroName, { color: md.onSurface }]}>{profile.displayName}</Text>
+          <Text style={[styles.heroUsername, { color: md.onSurfaceVariant }]}>@{profile.username}</Text>
+          <Text style={[styles.heroRole, { color: md.onSurfaceVariant }]}>{profile.role.name}</Text>
+          {profile.orgUnit && <Text style={[styles.heroLocation, { color: md.onSurfaceVariant }]}>{profile.orgUnit.name}</Text>}
         </View>
 
         {/* ACCOUNT */}
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ACCOUNT</Text>
+        <Text style={[styles.sectionLabel, { color: md.primary }]}>ACCOUNT</Text>
         {accountSection}
 
         {/* SECURITY */}
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>SECURITY</Text>
+        <Text style={[styles.sectionLabel, { color: md.primary }]}>SECURITY</Text>
         {securitySection}
 
         {/* SESSION */}
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>SESSION</Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.sectionLabel, { color: md.primary }]}>SESSION</Text>
+        <View style={[styles.card, { borderRadius: shape.md, borderColor: md.outlineVariant, backgroundColor: md.surface }]}>
           <TouchableOpacity style={styles.securityRow} onPress={onSignOut}>
-            <View style={[styles.securityIconWrap, { backgroundColor: colors.muted }]}>
+            <View style={[styles.securityIconWrap, { borderRadius: shape.sm, backgroundColor: md.surfaceContainerHighest }]}>
               <Text style={styles.securityIconText}>🚪</Text>
             </View>
-            <Text style={[styles.securityTitle, { color: colors.destructive }]}>Sign Out</Text>
+            <Text style={[styles.securityTitle, { color: md.error }]}>Sign Out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -615,9 +579,9 @@ const styles = StyleSheet.create({
   },
   headerSide: { width: 70 },
   headerSideRight: { alignItems: "flex-end" },
-  headerBackText: { color: "#fff", fontSize: 16 },
-  headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 17, fontWeight: "600" },
-  headerActionText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  headerBackText: { fontSize: 16 },
+  headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  headerActionText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 24 },
 
@@ -632,48 +596,49 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   avatarCircleLarge: { width: 80, height: 80, borderRadius: 40 },
-  avatarText: { color: "#fff", fontSize: 26, fontWeight: "700" },
+  avatarText: { fontSize: 26, fontFamily: "Inter_700Bold" },
   avatarTextLarge: { fontSize: 30 },
-  heroName: { fontSize: 22, fontWeight: "700" },
+  heroName: { fontSize: 22, fontFamily: "Inter_700Bold" },
   heroUsername: { fontSize: 15 },
   heroRole: { fontSize: 14, marginTop: 2 },
   heroLocation: { fontSize: 14 },
 
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
+    textTransform: "uppercase",
     marginTop: 20,
     marginBottom: 6,
     marginLeft: 4,
   },
 
   // Cards
-  card: { borderWidth: 1, borderRadius: 12, overflow: "hidden" },
+  card: { borderWidth: 1, overflow: "hidden" },
 
   // Field rows (inside card)
   fieldRow: { paddingHorizontal: 16, paddingVertical: 12 },
   fieldDivider: { height: StyleSheet.hairlineWidth },
   fieldHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  fieldLabel: { fontSize: 11, fontWeight: "600", letterSpacing: 0.5 },
-  fieldValue: { fontSize: 16, fontWeight: "500", marginTop: 3 },
+  fieldLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  fieldValue: { fontSize: 16, fontFamily: "Inter_500Medium", marginTop: 3 },
   editButton: { paddingVertical: 2, paddingLeft: 8 },
   editButtonText: { fontSize: 13 },
   fieldEditArea: { marginTop: 8, gap: 8 },
-  fieldInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15 },
+  fieldInput: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15 },
   fieldEditActions: { flexDirection: "row", gap: 8 },
-  saveBtn: { flex: 1, height: 38, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  cancelBtn: { flex: 1, height: 38, borderRadius: 8, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  actionBtnText: { fontSize: 14, fontWeight: "600" },
+  saveBtn: { flex: 1, height: 38, alignItems: "center", justifyContent: "center" },
+  cancelBtn: { flex: 1, height: 38, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   // Security rows (inside card)
   securityRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
-  securityIconWrap: { width: 36, height: 36, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  securityIconWrap: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   securityIconText: { fontSize: 18 },
-  securityTitle: { fontSize: 15, fontWeight: "500" },
+  securityTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
   securitySubtitle: { fontSize: 13, marginTop: 1 },
   badge: { minWidth: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
-  badgeText: { fontSize: 12, fontWeight: "600" },
+  badgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   chevron: { fontSize: 18 },
 
   // Expanded security content
@@ -688,18 +653,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
 
-  mustChangeBanner: { borderRadius: 10, padding: 12, marginBottom: 8 },
+  mustChangeBanner: { padding: 12, marginBottom: 8 },
 
   // Web sidebar
   sidebar: { width: 280, borderRightWidth: 1 },
   sidebarInner: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 16 },
   sidebarIdentity: { alignItems: "center", gap: 4, paddingBottom: 28 },
-  pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginTop: 2 },
+  pill: { paddingHorizontal: 10, paddingVertical: 4, marginTop: 2 },
   pillText: { fontSize: 13 },
   sidebarNav: { gap: 2 },
   navLink: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10 },
   navLinkIcon: { fontSize: 16 },
-  navLinkLabel: { fontSize: 15, fontWeight: "500" },
+  navLinkLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
   sidebarSignOut: {
     flexDirection: "row",
     alignItems: "center",
@@ -717,6 +682,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  webTitle: { fontSize: 26, fontWeight: "700" },
-  saveChangesBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  webTitle: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  saveChangesBtn: { paddingHorizontal: 20, paddingVertical: 10 },
 });

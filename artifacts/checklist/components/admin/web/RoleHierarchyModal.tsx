@@ -19,7 +19,8 @@ import {
 } from "@workspace/api-client-react";
 
 import { describeApiError } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 
 type DraftRole = {
   tempId: string;
@@ -43,7 +44,7 @@ export function RoleHierarchyModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [draft, setDraft] = useState<DraftRole[]>([]);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -158,17 +159,17 @@ export function RoleHierarchyModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={m.overlay}>
-        <View style={[m.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[m.sheet, { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant }]}>
           {/* Header */}
           <View style={m.sheetHeader}>
             <View>
-              <Text style={[m.sheetTitle, { color: colors.foreground }]}>Role Hierarchy</Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 13, marginTop: 2 }}>
+              <Text style={[m.sheetTitle, { color: colors.onSurface }]}>Role Hierarchy</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, marginTop: 2 }}>
                 Order defines authority. Higher position = more access.
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={m.closeBtn}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 18, lineHeight: 22 }}>✕</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 18, lineHeight: 22 }}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -180,18 +181,18 @@ export function RoleHierarchyModal({
                   style={[
                     m.node,
                     {
-                      borderColor: role.isOwner ? "#FCA5A5" : colors.border,
-                      backgroundColor: role.isOwner ? "#FEF2F2" : colors.background,
+                      borderColor: role.isOwner ? colors.error : colors.outlineVariant,
+                      backgroundColor: role.isOwner ? colors.errorContainer : colors.surface,
                     },
                   ]}
                 >
                   <Text
-                    style={[m.nodeLabel, { color: role.isOwner ? "#DC2626" : colors.foreground }]}
+                    style={[m.nodeLabel, { color: role.isOwner ? colors.error : colors.onSurface }]}
                     numberOfLines={1}
                   >
                     {role.name}
                   </Text>
-                  <Text style={[m.levelBadge, { color: colors.mutedForeground }]}>
+                  <Text style={[m.levelBadge, { color: colors.onSurfaceVariant }]}>
                     L{draft.length - index}
                   </Text>
                   {role.isOwner ? (
@@ -203,20 +204,20 @@ export function RoleHierarchyModal({
                         disabled={index <= 1}
                         style={[m.iconBtn, { opacity: index <= 1 ? 0.3 : 1 }]}
                       >
-                        <Text style={{ color: colors.foreground, fontSize: 15 }}>↑</Text>
+                        <Text style={{ color: colors.onSurface, fontSize: 15 }}>↑</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => moveDown(index)}
                         disabled={index >= draft.length - 1}
                         style={[m.iconBtn, { opacity: index >= draft.length - 1 ? 0.3 : 1 }]}
                       >
-                        <Text style={{ color: colors.foreground, fontSize: 15 }}>↓</Text>
+                        <Text style={{ color: colors.onSurface, fontSize: 15 }}>↓</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => removeRole(role.tempId, role.name)}
                         style={m.iconBtn}
                       >
-                        <Text style={{ color: "#DC2626", fontSize: 15 }}>✕</Text>
+                        <Text style={{ color: colors.error, fontSize: 15 }}>✕</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -224,8 +225,8 @@ export function RoleHierarchyModal({
 
                 {index < draft.length - 1 && (
                   <View style={m.connector}>
-                    <View style={[m.connectorLine, { backgroundColor: colors.border }]} />
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, lineHeight: 12 }}>▼</Text>
+                    <View style={[m.connectorLine, { backgroundColor: colors.outlineVariant }]} />
+                    <Text style={{ color: colors.onSurfaceVariant, fontSize: 10, lineHeight: 12 }}>▼</Text>
                   </View>
                 )}
               </View>
@@ -233,14 +234,14 @@ export function RoleHierarchyModal({
           </ScrollView>
 
           {/* Add role */}
-          <View style={[m.addRow, { borderTopColor: colors.border }]}>
+          <View style={[m.addRow, { borderTopColor: colors.outlineVariant }]}>
             <TextInput
               style={[
                 m.input,
-                { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.background },
+                { borderColor: colors.outlineVariant, color: colors.onSurface, backgroundColor: colors.surface },
               ]}
               placeholder="New role name…"
-              placeholderTextColor={colors.mutedForeground}
+              placeholderTextColor={colors.onSurfaceVariant}
               value={newName}
               onChangeText={setNewName}
               onSubmitEditing={addRole}
@@ -249,22 +250,22 @@ export function RoleHierarchyModal({
             <TouchableOpacity
               onPress={addRole}
               disabled={!newName.trim()}
-              style={[m.addBtn, { backgroundColor: "#DC2626", opacity: newName.trim() ? 1 : 0.4 }]}
+              style={[m.addBtn, { backgroundColor: colors.error, opacity: newName.trim() ? 1 : 0.4 }]}
             >
-              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>+ Add</Text>
+              <Text style={{ color: colors.onError, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>+ Add</Text>
             </TouchableOpacity>
           </View>
 
           {/* Save */}
           <TouchableOpacity
-            style={[m.saveBtn, { backgroundColor: "#DC2626", opacity: saving ? 0.6 : 1 }]}
+            style={[m.saveBtn, { backgroundColor: colors.error, opacity: saving ? 0.6 : 1 }]}
             onPress={save}
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onError} />
             ) : (
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Save Hierarchy</Text>
+              <Text style={{ color: colors.onError, fontFamily: "Inter_700Bold", fontSize: 15 }}>Save Hierarchy</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -295,7 +296,7 @@ const m = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
   },
   closeBtn: {
     padding: 4,
@@ -312,11 +313,11 @@ const m = StyleSheet.create({
   nodeLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
   levelBadge: {
     fontSize: 12,
-    fontWeight: "500",
+    fontFamily: "Inter_500Medium",
     minWidth: 24,
     textAlign: "right",
   },

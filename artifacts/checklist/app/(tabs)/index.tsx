@@ -6,28 +6,40 @@ import {
   Animated,
   FlatList,
   Image,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Button,
+  Checkbox,
+  Chip,
+  Dialog,
+  FAB,
+  IconButton,
+  Portal,
+  ProgressBar,
+  TextInput as PaperTextInput,
+} from "react-native-paper";
 
 import { Ionicons } from "@expo/vector-icons";
 
 import { ExportModal } from "@/components/ExportModal";
 import { SortableList } from "@/components/SortableList";
+import { M3BottomSheet, SheetRow } from "@/components/ui/M3BottomSheet";
 import { useAuth } from "@/context/AuthContext";
 import { ChecklistMeta, Task, useChecklist } from "@/context/ChecklistContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 
-// ─── Name Modal (for creating / renaming checklists) ─────────────────────────
+// ─── Name dialog (for creating / renaming checklists) ────────────────────────
+// The design's NameDialog (m3/App.jsx): M3 basic dialog on
+// surface-container-high, xl corners, text field, text + filled actions.
 
 function NameModal({
   visible,
@@ -42,7 +54,7 @@ function NameModal({
   onSave: (name: string) => void;
   onClose: () => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const [value, setValue] = useState(initial);
 
   useEffect(() => {
@@ -57,63 +69,41 @@ function NameModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.nameModalOverlay}
+    <Portal>
+      <Dialog
+        visible={visible}
+        onDismiss={onClose}
+        style={{ backgroundColor: md.surfaceContainerHigh, borderRadius: shape.xl }}
       >
-        <Pressable style={styles.nameModalBackdrop} onPress={onClose} />
-        <View style={[styles.nameModalBox, { backgroundColor: colors.card }]}>
-          <Text style={[styles.nameModalTitle, { color: colors.foreground }]}>
-            {title}
-          </Text>
-          <TextInput
+        <Dialog.Title style={[typeStyle("headlineSmall"), { color: md.onSurface }]}>
+          {title}
+        </Dialog.Title>
+        <Dialog.Content>
+          <PaperTextInput
+            mode="outlined"
+            label="Checklist name"
             value={value}
             onChangeText={setValue}
-            placeholder="Checklist name"
-            placeholderTextColor={colors.mutedForeground}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={handleSave}
-            style={[
-              styles.nameModalInput,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-              },
-            ]}
+            outlineStyle={{ borderRadius: shape.xs }}
           />
-          <View style={styles.nameModalActions}>
-            <TouchableOpacity
-              style={[styles.nameModalBtn, { backgroundColor: colors.muted }]}
-              onPress={onClose}
-            >
-              <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.nameModalBtn,
-                {
-                  backgroundColor: value.trim() ? colors.primary : colors.border,
-                  flex: 1.4,
-                },
-              ]}
-              onPress={handleSave}
-              disabled={!value.trim()}
-            >
-              <Text style={[styles.nameModalBtnText, { color: "#fff" }]}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button mode="text" onPress={onClose}>
+            Cancel
+          </Button>
+          <Button mode="contained" onPress={handleSave} disabled={!value.trim()}>
+            Save
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+    </Portal>
   );
 }
 
-// ─── Hamburger Menu ───────────────────────────────────────────────────────────
+// ─── Overflow menu (modal bottom sheet) ──────────────────────────────────────
 
 function HamburgerMenu({
   visible,
@@ -138,99 +128,18 @@ function HamburgerMenu({
   isNoAuthMode: boolean;
   isSignedIn: boolean;
 }) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const isWeb = Platform.OS === "web";
-
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <Pressable style={styles.ctxBackdrop} onPress={onClose}>
-        <Pressable
-          style={[
-            styles.ctxSheet,
-            {
-              backgroundColor: colors.card,
-              paddingBottom: (isWeb ? 16 : insets.bottom) + 12,
-            },
-          ]}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <View style={[styles.ctxHandle, { backgroundColor: colors.border }]} />
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
-            onPress={onSettings}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>⚙️</Text>
-            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Settings</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
-            onPress={onHistory}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>🕐</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-              <Text style={[styles.ctxRowText, { color: colors.foreground }]}>History</Text>
-              {historyCount > 0 && (
-                <View style={[styles.menuBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.menuBadgeText}>
-                    {historyCount > 9 ? "9+" : historyCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: isNoAuthMode || isSignedIn ? colors.border : "transparent" }]}
-            onPress={onReset}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>🔄</Text>
-            <Text style={[styles.ctxRowText, { color: colors.destructive }]}>Reset Shift</Text>
-          </TouchableOpacity>
-
-          {isNoAuthMode && (
-            <TouchableOpacity
-              style={[styles.ctxRow, { borderBottomColor: "transparent" }]}
-              onPress={onSwitchAccount}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.ctxRowIcon}>🔄</Text>
-              <Text style={[styles.ctxRowText, { color: colors.foreground }]}>Switch Account</Text>
-            </TouchableOpacity>
-          )}
-
-          {isSignedIn && (
-            <TouchableOpacity
-              style={[styles.ctxRow, { borderBottomColor: "transparent" }]}
-              onPress={onSignOut}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.ctxRowIcon}>🚪</Text>
-              <Text style={[styles.ctxRowText, { color: colors.destructive }]}>Sign Out</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[styles.ctxCancelBtn, { backgroundColor: colors.muted }]}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.ctxCancelText, { color: colors.foreground }]}>Cancel</Text>
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <M3BottomSheet visible={visible} onDismiss={onClose}>
+      <SheetRow icon="settings-outline" label="Settings" onPress={onSettings} />
+      <SheetRow icon="time-outline" label="History" onPress={onHistory} badge={historyCount} />
+      <SheetRow icon="refresh-outline" label="Reset Shift" destructive onPress={onReset} />
+      {isNoAuthMode && (
+        <SheetRow icon="swap-horizontal-outline" label="Switch Account" onPress={onSwitchAccount} />
+      )}
+      {isSignedIn && (
+        <SheetRow icon="log-out-outline" label="Sign Out" destructive onPress={onSignOut} />
+      )}
+    </M3BottomSheet>
   );
 }
 
@@ -249,87 +158,21 @@ function TabContextMenu({
   onRename: () => void;
   onDelete: () => void;
 }) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const isWeb = Platform.OS === "web";
-  if (!target) return null;
-
+  // The design's checklist menu sheet (m3/App.jsx): titled with the checklist
+  // name, then edit / rename / delete rows.
   return (
-    <Modal
-      visible
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <Pressable style={styles.ctxBackdrop} onPress={onClose}>
-        <Pressable
-          style={[
-            styles.ctxSheet,
-            {
-              backgroundColor: colors.card,
-              paddingBottom: (isWeb ? 16 : insets.bottom) + 12,
-            },
-          ]}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <View style={[styles.ctxHandle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.ctxTitle, { color: colors.mutedForeground }]}>
-            {target.name}
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
-            onPress={onEdit}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>✏️</Text>
-            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>
-              Edit Tasks & Sections
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: colors.border }]}
-            onPress={onRename}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>🔤</Text>
-            <Text style={[styles.ctxRowText, { color: colors.foreground }]}>
-              Rename
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ctxRow, { borderBottomColor: "transparent" }]}
-            onPress={onDelete}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctxRowIcon}>🗑️</Text>
-            <Text style={[styles.ctxRowText, { color: colors.destructive }]}>
-              Delete
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ctxCancelBtn, { backgroundColor: colors.muted }]}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.ctxCancelText, { color: colors.foreground }]}>
-              Cancel
-            </Text>
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <M3BottomSheet visible={target !== null} onDismiss={onClose} title={target?.name}>
+      <SheetRow icon="create-outline" label="Edit Tasks & Sections" onPress={onEdit} />
+      <SheetRow icon="text-outline" label="Rename" onPress={onRename} />
+      <SheetRow icon="trash-outline" label="Delete" destructive onPress={onDelete} />
+    </M3BottomSheet>
   );
 }
 
 // ─── Tab Bar ──────────────────────────────────────────────────────────────────
 
 function ChecklistTabBar() {
-  const colors = useColors();
+  const md = useMd();
   const router = useRouter();
   const {
     checklists,
@@ -404,40 +247,39 @@ function ChecklistTabBar() {
   }) => {
     const active = cl.id === activeChecklistId;
     return (
-      <View
-        {...dragHandleProps}
-        style={[
-          styles.tab,
-          active ? { backgroundColor: "#fff" } : { backgroundColor: "transparent" },
-          isDragging && styles.tabDragging,
-        ]}
-      >
-        <TouchableOpacity
+      <View {...dragHandleProps} style={[styles.tab, isDragging && styles.tabDragging]}>
+        <Chip
+          selected={active}
+          showSelectedCheck={active}
           onPress={() => handleTabPress(cl.id)}
           onLongPress={() => handleTabLongPress(cl.id, cl.name)}
           delayLongPress={450}
-          style={styles.tabTouchable}
+          mode="flat"
+          style={[
+            styles.tabChip,
+            {
+              borderRadius: shape.sm,
+              backgroundColor: active ? md.secondaryContainer : "transparent",
+              borderColor: md.outlineVariant,
+              borderWidth: active ? 0 : 1,
+            },
+          ]}
+          textStyle={[
+            typeStyle("labelLarge"),
+            {
+              color: active ? md.onSecondaryContainer : md.onSurfaceVariant,
+              fontFamily: active ? "Inter_700Bold" : "Inter_500Medium",
+            },
+          ]}
         >
-          <Text
-            style={[
-              styles.tabText,
-              {
-                color: active ? colors.primary : "rgba(255,255,255,0.75)",
-                fontFamily: active ? "Inter_700Bold" : "Inter_400Regular",
-                fontWeight: active ? "700" : "400",
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {cl.name}
-          </Text>
-        </TouchableOpacity>
+          {cl.name}
+        </Chip>
       </View>
     );
   };
 
   return (
-    <View style={[styles.tabBarContainer, { backgroundColor: colors.primary + "cc" }]}>
+    <View style={[styles.tabBarContainer, { backgroundColor: md.surface, borderBottomColor: md.outlineVariant }]}>
       <ScrollView
         horizontal
         scrollEnabled={scrollEnabled}
@@ -456,10 +298,14 @@ function ChecklistTabBar() {
           renderItem={renderTab}
         />
 
-        {/* Add button */}
-        <TouchableOpacity onPress={() => setModal({ kind: "new" })} style={styles.addTabBtn}>
-          <Text style={styles.addTabText}>＋</Text>
-        </TouchableOpacity>
+        <IconButton
+          icon="plus"
+          mode="outlined"
+          size={18}
+          iconColor={md.primary}
+          onPress={() => setModal({ kind: "new" })}
+          style={[styles.addTabBtn, { borderRadius: shape.sm, borderColor: md.outlineVariant }]}
+        />
       </ScrollView>
 
       <NameModal
@@ -494,7 +340,7 @@ function TaskRow({
   task: Task;
   onToggle: (id: number) => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
@@ -515,54 +361,43 @@ function TaskRow({
         style={[
           styles.taskRow,
           {
-            backgroundColor: colors.card,
-            borderBottomColor: colors.border,
-            opacity: isOptional && !task.completed ? 0.7 : 1,
+            backgroundColor: md.surface,
+            opacity: isOptional && !task.completed ? 0.78 : 1,
           },
         ]}
       >
-        <View
-          style={[
-            styles.checkbox,
-            {
-              borderColor: task.completed
-                ? colors.primary
-                : isOptional
-                ? colors.border
-                : colors.primary + "80",
-              backgroundColor: task.completed ? colors.primary : "transparent",
-            },
-          ]}
-        >
-          {task.completed && <Text style={styles.checkmark}>✓</Text>}
-        </View>
+        <Checkbox
+          status={task.completed ? "checked" : "unchecked"}
+          onPress={handlePress}
+          color={md.primary}
+          uncheckedColor={md.onSurfaceVariant}
+        />
         <View style={styles.taskTextContainer}>
           <Text
             style={[
-              styles.taskText,
+              typeStyle("bodyLarge"),
               {
-                color: task.completed
-                  ? colors.mutedForeground
-                  : isOptional
-                  ? colors.mutedForeground
-                  : colors.foreground,
+                color: task.completed ? md.onSurfaceVariant : md.onSurface,
                 textDecorationLine: task.completed ? "line-through" : "none",
-                fontWeight: task.required ? "600" : "400",
-                fontFamily: task.required ? "Inter_600SemiBold" : "Inter_400Regular",
+                // Required tasks read heavier. Weight rides on the family — never
+                // set fontWeight alongside it.
+                fontFamily: task.required ? "Inter_500Medium" : "Inter_400Regular",
               },
             ]}
           >
             {task.text}
           </Text>
           {isOptional && !task.completed && (
-            <Text
+            <View
               style={[
                 styles.optionalBadge,
-                { color: colors.mutedForeground, borderColor: colors.border },
+                { backgroundColor: md.surfaceContainerHighest, borderRadius: shape.xs },
               ]}
             >
-              optional
-            </Text>
+              <Text style={[typeStyle("labelSmall"), { color: md.onSurfaceVariant, fontStyle: "italic" }]}>
+                optional
+              </Text>
+            </View>
           )}
         </View>
       </Pressable>
@@ -581,23 +416,18 @@ function CategoryHeader({
   completed: number;
   total: number;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const allDone = completed === total;
 
+  // Design (m3/checklist.jsx): no filled banner — an uppercase titleSmall label,
+  // a count pill that flips to `primary` when the section is done, and a check.
   return (
-    <View
-      style={[
-        styles.categoryHeader,
-        {
-          backgroundColor: allDone ? colors.secondary : colors.muted,
-          borderLeftColor: colors.primary,
-        },
-      ]}
-    >
+    <View style={styles.categoryHeader}>
       <Text
         style={[
+          typeStyle("titleSmall"),
           styles.categoryTitle,
-          { color: allDone ? colors.primary : colors.foreground },
+          { color: allDone ? md.primary : md.onSurfaceVariant },
         ]}
       >
         {category}
@@ -605,18 +435,17 @@ function CategoryHeader({
       <View
         style={[
           styles.categoryBadge,
-          { backgroundColor: allDone ? colors.primary : colors.border },
+          {
+            borderRadius: shape.sm,
+            backgroundColor: allDone ? md.primary : md.surfaceContainerHighest,
+          },
         ]}
       >
-        <Text
-          style={[
-            styles.categoryBadgeText,
-            { color: allDone ? "#fff" : colors.mutedForeground },
-          ]}
-        >
+        <Text style={[typeStyle("labelSmall"), { color: allDone ? md.onPrimary : md.onSurfaceVariant }]}>
           {completed}/{total}
         </Text>
       </View>
+      {allDone && <Ionicons name="checkmark" size={14} color={md.primary} />}
     </View>
   );
 }
@@ -624,15 +453,10 @@ function CategoryHeader({
 // ─── Subsection Header ────────────────────────────────────────────────────────
 
 function SubsectionHeader({ subsection }: { subsection: string }) {
-  const colors = useColors();
+  const md = useMd();
   return (
-    <View
-      style={[
-        styles.subsectionHeader,
-        { borderLeftColor: colors.primary + "50" },
-      ]}
-    >
-      <Text style={[styles.subsectionTitle, { color: colors.mutedForeground }]}>
+    <View style={[styles.subsectionHeader, { borderLeftColor: md.outlineVariant }]}>
+      <Text style={[typeStyle("labelMedium"), styles.subsectionTitle, { color: md.onSurfaceVariant }]}>
         {subsection}
       </Text>
     </View>
@@ -656,7 +480,7 @@ export default function ChecklistScreen() {
 }
 
 function ChecklistScreenNative() {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const { profile, signOut, noAuthMode } = useAuth();
   const router = useRouter();
@@ -747,92 +571,87 @@ function ChecklistScreenNative() {
   const topPadding = isWeb ? 67 : insets.top;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
+    <View style={[styles.container, { backgroundColor: md.surface }]}>
+      {/* Top app bar */}
+      <View style={[styles.header, { backgroundColor: md.surface, paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <View style={styles.headerIconWrap}>
+            <View style={[styles.headerIconWrap, { borderRadius: shape.sm, backgroundColor: md.primaryContainer }]}>
               {appConfig.customIconUri ? (
                 <Image
                   source={{ uri: appConfig.customIconUri }}
-                  style={styles.headerCustomIcon}
+                  style={[styles.headerCustomIcon, { borderRadius: shape.sm }]}
                   resizeMode="cover"
                 />
               ) : (
                 <Text style={styles.headerIconText}>{appConfig.icon}</Text>
               )}
             </View>
-            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+            <Text
+              style={[typeStyle("titleLarge"), styles.headerTitle, { color: md.onSurface }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {appConfig.name}
             </Text>
           </View>
+          {/* Reports moved to the tab bar — no icon button for it here. */}
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => router.push("/reports")}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="Shift Reports"
-            >
-              <Text style={styles.iconActionText}>📊</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            <IconButton
+              icon={() => <Ionicons name="download-outline" size={20} color={md.onSurfaceVariant} />}
               onPress={() => router.push("/import-checklist")}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
               accessibilityLabel="Import Checklist"
-            >
-              <Ionicons name="download-outline" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
+            />
+            <IconButton
+              icon={() => <Ionicons name="share-outline" size={20} color={md.onSurfaceVariant} />}
               onPress={() => setExportVisible(true)}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
               accessibilityLabel="Export Checklist"
-            >
-              <Ionicons name="share-outline" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
+            />
+            <IconButton
+              icon={() => <Ionicons name="ellipsis-vertical" size={20} color={md.onSurfaceVariant} />}
               onPress={() => setHamburgerOpen(true)}
-              style={styles.iconAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
               accessibilityLabel="More options"
-            >
-              <Text style={styles.hamburgerIcon}>☰</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Progress */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressLabelRow}>
-            <Text style={styles.progressLabel}>Progress</Text>
-            <Text style={styles.progressLabel}>
-              {completedTasks}/{totalTasks} — {Math.round(progress * 100)}%
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%` as any }]} />
+            />
           </View>
         </View>
       </View>
 
-      {/* Tab bar */}
+      {/* Checklist selector chips */}
       <ChecklistTabBar />
+
+      {/* Progress card */}
+      <View style={[styles.progressCardWrap, { backgroundColor: md.surface }]}>
+        <View style={[styles.progressCard, { borderRadius: shape.lg, backgroundColor: md.surfaceContainerHigh }]}>
+          <View style={styles.progressLabelRow}>
+            <Text style={[typeStyle("titleMedium"), { color: md.onSurface }]}>Progress</Text>
+            <Text style={[typeStyle("titleMedium"), { color: md.primary }]}>
+              {completedTasks}/{totalTasks} · {Math.round(progress * 100)}%
+            </Text>
+          </View>
+          <ProgressBar
+            progress={progress}
+            color={md.primary}
+            style={{ backgroundColor: md.surfaceContainerHighest, borderRadius: shape.full, height: 6 }}
+          />
+        </View>
+      </View>
 
       {/* Empty state */}
       {listData.length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>
-            No tasks yet
+          <Ionicons name="clipboard-outline" size={40} color={md.onSurfaceVariant} />
+          <Text style={[typeStyle("titleMedium"), { color: md.onSurface }]}>No tasks yet</Text>
+          <Text style={[typeStyle("bodyMedium"), styles.emptyHint, { color: md.onSurfaceVariant }]}>
+            Add sections and tasks to this checklist, then start your first shift.
           </Text>
-          <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-            Tap ☰ → Settings to add sections and tasks to this checklist.
-          </Text>
+          <Button
+            mode="contained-tonal"
+            icon={() => <Ionicons name="create-outline" size={18} color={md.onSecondaryContainer} />}
+            onPress={() => router.push("/checklist-settings")}
+            style={{ marginTop: 8 }}
+          >
+            Edit tasks &amp; sections
+          </Button>
         </View>
       )}
 
@@ -846,13 +665,7 @@ function ChecklistScreenNative() {
         }}
         renderItem={({ item }) => {
           if (item.type === "header") {
-            return (
-              <CategoryHeader
-                category={item.category}
-                completed={item.completed}
-                total={item.total}
-              />
-            );
+            return <CategoryHeader category={item.category} completed={item.completed} total={item.total} />;
           }
           if (item.type === "subheader") {
             return <SubsectionHeader subsection={item.subsection} />;
@@ -868,8 +681,8 @@ function ChecklistScreenNative() {
       <HamburgerMenu
         visible={hamburgerOpen}
         onClose={() => setHamburgerOpen(false)}
-        onSettings={() => { setHamburgerOpen(false); router.push("/settings"); }}
-        onHistory={() => { setHamburgerOpen(false); router.push("/history"); }}
+        onSettings={() => { setHamburgerOpen(false); router.navigate("/settings"); }}
+        onHistory={() => { setHamburgerOpen(false); router.navigate("/history"); }}
         onReset={() => { setHamburgerOpen(false); handleShiftMenu(); }}
         onSwitchAccount={() => { setHamburgerOpen(false); router.replace("/login"); }}
         onSignOut={() => {
@@ -894,37 +707,26 @@ function ChecklistScreenNative() {
         }}
       />
 
-      {/* Completion Footer */}
-      {allDone && (
-        <Animated.View
-          style={[
-            styles.completionFooter,
-            {
-              paddingBottom: (isWeb ? 16 : insets.bottom) + 8,
-              opacity: completeBannerAnim,
-              transform: [
-                {
-                  translateY: completeBannerAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [80, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <Text style={[styles.footerMessage, { color: colors.primary }]}>
-            All required tasks complete!
-          </Text>
-          <TouchableOpacity
-            onPress={handleCompleteFromBanner}
-            style={[styles.footerCompleteBtn, { backgroundColor: colors.primary }]}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.footerCompleteBtnText}>Complete</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+      {/* Completion FAB */}
+      <Animated.View
+        pointerEvents={allDone ? "auto" : "none"}
+        style={[
+          styles.completionFabWrap,
+          {
+            bottom: (isWeb ? 16 : insets.bottom) + 16,
+            opacity: completeBannerAnim,
+            transform: [{ scale: completeBannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
+          },
+        ]}
+      >
+        <FAB
+          icon="check"
+          label="Complete shift"
+          onPress={handleCompleteFromBanner}
+          color={md.onPrimary}
+          style={{ backgroundColor: md.primary }}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -934,21 +736,17 @@ function ChecklistScreenNative() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingHorizontal: 8,
+    paddingBottom: 4,
     zIndex: 10,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 4,
+    marginTop: 4,
+    paddingHorizontal: 8,
   },
   headerLeft: {
     flexDirection: "row",
@@ -960,81 +758,30 @@ const styles = StyleSheet.create({
   headerIconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 10,
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   headerIconText: { fontSize: 20 },
-  headerCustomIcon: { width: 36, height: 36, borderRadius: 10 },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    flexShrink: 1,
-  },
+  headerCustomIcon: { width: 36, height: 36 },
+  headerTitle: { flexShrink: 1 },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
     flexShrink: 0,
   },
-  iconAction: {
-    width: 36,
-    height: 36,
-    backgroundColor: "transparent",
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconActionText: { fontSize: 18 },
-  hamburgerIcon: {
-    fontSize: 22,
-    color: "#FFFFFF",
-    lineHeight: 26,
-  },
-  menuBadge: {
-    borderRadius: 8,
-    minWidth: 18,
-    height: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  menuBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#fff",
-    lineHeight: 14,
-  },
-  progressSection: { gap: 6 },
+  progressCardWrap: { paddingHorizontal: 12, paddingBottom: 12 },
+  progressCard: { padding: 16, gap: 10 },
   progressLabelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  progressLabel: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 3,
+    alignItems: "baseline",
   },
 
   // Tab bar
   tabBarContainer: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255,255,255,0.2)",
   },
   tabBarScroll: {
     paddingHorizontal: 12,
@@ -1043,44 +790,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tab: {
-    borderRadius: 20,
     maxWidth: 180,
-    overflow: "hidden",
   },
-  tabTouchable: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+  tabChip: {
+    borderWidth: 1,
   },
   tabDragging: {
     opacity: 0.85,
     transform: [{ scale: 1.05 }],
   },
-  tabText: {
-    fontSize: 13,
-  },
   addTabBtn: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addTabText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 20,
-    lineHeight: 24,
+    margin: 0,
   },
 
   // Category
   categoryHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginTop: 12,
-    marginHorizontal: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   subsectionHeader: {
     marginHorizontal: 16,
@@ -1090,121 +820,32 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderLeftWidth: 2,
   },
-  subsectionTitle: {
-    fontSize: 11,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  categoryTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    flex: 1,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
+  subsectionTitle: { textTransform: "uppercase", letterSpacing: 0.4 },
+  categoryTitle: { textTransform: "uppercase", letterSpacing: 0.8 },
   categoryBadge: {
+    height: 20,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Task
   taskRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    marginHorizontal: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    marginTop: 1,
-    flexShrink: 0,
-  },
-  checkmark: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 16,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    gap: 8,
   },
   taskTextContainer: { flex: 1, gap: 3 },
-  taskText: { fontSize: 15, lineHeight: 22 },
   optionalBadge: {
-    fontSize: 10,
-    fontStyle: "italic",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 4,
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     paddingVertical: 1,
     alignSelf: "flex-start",
   },
 
   // Tab context menu
-  ctxBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
-  },
-  ctxSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 10,
-    paddingBottom: 28,
-    paddingHorizontal: 12,
-    gap: 4,
-  },
-  ctxHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 8,
-  },
-  ctxTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    paddingHorizontal: 10,
-    paddingBottom: 6,
-  },
-  ctxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 15,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  ctxRowIcon: { fontSize: 18, width: 24, textAlign: "center" },
-  ctxRowText: { fontSize: 16, fontFamily: "Inter_400Regular" },
-  ctxCancelBtn: {
-    marginTop: 8,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  ctxCancelText: {
-    fontSize: 16,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
 
   // Empty state
   emptyState: {
@@ -1214,99 +855,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     gap: 10,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptyHint: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    fontFamily: "Inter_400Regular",
+  emptyHint: { textAlign: "center" },
+
+  // Completion FAB
+  completionFabWrap: {
+    position: "absolute",
+    right: 16,
+    zIndex: 30,
   },
 
-  // Completion footer
-  completionFooter: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    alignItems: "center",
-    gap: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.08)",
-    backgroundColor: "#fff",
-  },
-  footerMessage: {
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-  },
-  footerCompleteBtn: {
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  footerCompleteBtnText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.3,
-  },
-
-  // Name modal
-  nameModalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 28,
-  },
-  nameModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  nameModalBox: {
-    borderRadius: 16,
-    padding: 22,
-    gap: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  nameModalTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  nameModalInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-  },
-  nameModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  nameModalBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  nameModalBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-  },
 });

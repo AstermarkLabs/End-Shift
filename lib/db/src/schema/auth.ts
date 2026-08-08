@@ -91,7 +91,13 @@ export const usersTable = pgTable(
       onDelete: "set null",
     }),
     username: text("username").notNull(),
+    // email/displayName are encrypted-at-rest (see fieldCrypto.ts) — the
+    // column holds a ciphertext blob, not plaintext. emailHash is a
+    // deterministic HMAC blind index used for equality/duplicate-detection
+    // lookups, since the ciphertext itself is non-deterministic (random IV
+    // per encryption) and can't be compared with `=`.
     email: text("email"),
+    emailHash: text("email_hash"),
     displayName: text("display_name").notNull(),
     passwordHash: text("password_hash"),
     roleId: integer("role_id")
@@ -111,6 +117,10 @@ export const usersTable = pgTable(
   },
   (table) => ({
     usernameIdx: uniqueIndex("users_username_idx").on(table.username),
+    // Partial-in-effect: Postgres unique indexes treat NULL as distinct from
+    // NULL, so rows with no email (emailHash null) never collide — matches
+    // the existing nullable `email` column semantics.
+    emailHashIdx: uniqueIndex("users_email_hash_idx").on(table.emailHash),
   }),
 );
 
