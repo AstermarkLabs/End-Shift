@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import helmet from "helmet";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -7,6 +8,7 @@ import { errorHandler } from "./middlewares/error";
 
 const app: Express = express();
 
+app.use(helmet());
 app.use(
   pinoHttp({
     logger,
