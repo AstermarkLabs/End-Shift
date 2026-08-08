@@ -1,22 +1,24 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, Divider, TextInput } from "react-native-paper";
+
+import { Ionicons } from "@expo/vector-icons";
 
 import { getMe, listProfilePasskeys } from "@workspace/api-client-react";
 
 import { describeApiError, useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 
 function showAlert(title: string, message: string) {
   if (Platform.OS !== "web") {
@@ -26,11 +28,12 @@ function showAlert(title: string, message: string) {
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const md = useMd();
   const router = useRouter();
   const { signIn, signInWithPasskey, noAuthMode } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,88 +92,112 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 32, paddingBottom: insets.bottom + 16 }]}
+      style={[
+        styles.container,
+        { backgroundColor: md.surface, paddingTop: insets.top + 32, paddingBottom: insets.bottom + 16 },
+      ]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.inner}>
-        <Text style={[styles.title, { color: colors.foreground }]}>End Shift</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Sign in to continue</Text>
+        <View style={[styles.brandMark, { backgroundColor: md.primary, borderRadius: shape.lg }]}>
+          <Ionicons name="shield-checkmark-outline" size={32} color={md.onPrimary} />
+        </View>
+
+        <Text style={[styles.title, typeStyle("headlineMedium"), { color: md.onSurface }]}>Welcome back</Text>
+        <Text style={[styles.subtitle, typeStyle("bodyLarge"), { color: md.onSurfaceVariant }]}>
+          Sign in to continue
+        </Text>
 
         {error ? (
-          <View style={[styles.errorBox, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive }]}>
-            <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+          <View
+            style={[
+              styles.errorBox,
+              { backgroundColor: md.errorContainer, borderRadius: shape.sm },
+            ]}
+          >
+            <Text style={[styles.errorText, { color: md.onErrorContainer }]}>{error}</Text>
           </View>
         ) : null}
 
-        <Text style={[styles.label, { color: colors.foreground }]}>Username</Text>
         <TextInput
+          mode="outlined"
+          label="Username"
           value={username}
           onChangeText={(v) => { setUsername(v); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!busy}
-          style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="admin"
-          placeholderTextColor={colors.mutedForeground}
+          style={styles.input}
         />
 
-        <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
         <TextInput
+          mode="outlined"
+          label="Password"
           value={password}
           onChangeText={(v) => { setPassword(v); setError(null); }}
-          secureTextEntry
+          secureTextEntry={!showPassword}
           editable={!busy}
-          style={[styles.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="••••••••"
-          placeholderTextColor={colors.mutedForeground}
+          style={styles.input}
+          right={
+            <TextInput.Icon
+              icon={showPassword ? "eye-off" : "eye"}
+              onPress={() => setShowPassword((s) => !s)}
+              forceTextInputFocus={false}
+            />
+          }
         />
 
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
+        <Button
+          mode="contained"
           onPress={onSubmit}
           disabled={busy}
+          loading={busy}
+          style={[styles.primaryBtn, { borderRadius: shape.full }]}
+          contentStyle={styles.btnContent}
         >
-          {busy ? (
-            <ActivityIndicator color={colors.primaryForeground} />
-          ) : (
-            <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Sign in</Text>
-          )}
-        </TouchableOpacity>
+          Sign in
+        </Button>
 
-        <TouchableOpacity
-          style={[styles.secondaryBtn, { borderColor: colors.border }]}
+        <Button
+          mode="contained-tonal"
           onPress={onPasskey}
           disabled={busy}
+          style={[styles.secondaryBtn, { borderRadius: shape.full }]}
+          contentStyle={styles.btnContent}
         >
-          <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Use a passkey</Text>
-        </TouchableOpacity>
+          Use a passkey
+        </Button>
 
         <View style={styles.divider}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>OR</Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          <Divider style={[styles.dividerLine, { backgroundColor: md.outlineVariant }]} />
+          <Text style={[styles.dividerText, { color: md.onSurfaceVariant }]}>OR</Text>
+          <Divider style={[styles.dividerLine, { backgroundColor: md.outlineVariant }]} />
         </View>
 
-        <TouchableOpacity
-          style={[styles.createBtn, { borderColor: colors.primary }]}
+        <Button
+          mode="outlined"
           onPress={() => router.push("/onboarding")}
           disabled={busy}
+          style={[styles.createBtn, { borderRadius: shape.full }]}
+          contentStyle={styles.btnContent}
         >
-          <Text style={[styles.createBtnText, { color: colors.primary }]}>Create an account</Text>
-        </TouchableOpacity>
+          Create an account
+        </Button>
 
         {noAuthMode && (
-          <TouchableOpacity
+          <Button
+            mode="text"
             onPress={() => router.replace("/")}
             disabled={busy}
+            style={styles.backToPersonalBtn}
           >
-            <Text style={[styles.legalText, { color: colors.primary, textDecorationLine: "underline" }]}>
-              Back to personal account
-            </Text>
-          </TouchableOpacity>
+            Back to personal account
+          </Button>
         )}
 
-        <Text style={[styles.legalText, { color: colors.mutedForeground }]}>
+        <Text style={[styles.legalText, typeStyle("bodySmall"), { color: md.onSurfaceVariant }]}>
           By continuing you agree to the Terms and Privacy Policy.
         </Text>
       </View>
@@ -181,20 +208,26 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { paddingHorizontal: 24, gap: 8, maxWidth: 480, width: "100%", alignSelf: "center" },
-  title: { fontSize: 32, fontWeight: "700", marginBottom: 4 },
-  subtitle: { fontSize: 16, marginBottom: 24 },
-  errorBox: { borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 4 },
-  errorText: { fontSize: 14, fontWeight: "500" },
-  label: { fontSize: 14, fontWeight: "500", marginTop: 12, marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  primaryBtn: { marginTop: 24, height: 50, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  primaryBtnText: { fontSize: 16, fontWeight: "600" },
-  secondaryBtn: { marginTop: 12, height: 50, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  secondaryBtnText: { fontSize: 16, fontWeight: "500" },
-  divider: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 24, marginBottom: 4 },
+  brandMark: {
+    width: 72,
+    height: 72,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  title: { textAlign: "center", marginBottom: 4 },
+  subtitle: { textAlign: "center", marginBottom: 24 },
+  errorBox: { padding: 12, marginBottom: 4 },
+  errorText: { ...typeStyle("bodyMedium"), fontFamily: "Inter_500Medium" },
+  input: { marginTop: 12 },
+  primaryBtn: { marginTop: 24 },
+  secondaryBtn: { marginTop: 12 },
+  btnContent: { height: 48 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 24, marginBottom: 8 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
-  dividerText: { fontSize: 12, fontWeight: "600", letterSpacing: 0.5 },
-  createBtn: { height: 50, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1.5, marginTop: 8 },
-  createBtnText: { fontSize: 16, fontWeight: "600" },
-  legalText: { fontSize: 12, textAlign: "center", marginTop: 16 },
+  dividerText: { ...typeStyle("labelMedium"), letterSpacing: 0.5 },
+  createBtn: { marginTop: 0 },
+  backToPersonalBtn: { marginTop: 4 },
+  legalText: { textAlign: "center", marginTop: 16 },
 });

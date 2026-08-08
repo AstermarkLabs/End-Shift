@@ -23,7 +23,8 @@ import {
 
 import { OrgUnitSelector } from "@/components/admin/OrgUnitSelector";
 import { describeApiError } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 import { validatePassword } from "@/utils/passwordValidation";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -49,11 +50,14 @@ function avatarColor(name: string): string {
   return AVATAR_PALETTE[idx]!;
 }
 
-function roleBadgeColors(level: number): { bg: string; text: string; border: string } {
-  if (level >= 950) return { bg: "#FEF2F2", text: "#DC2626", border: "#FCA5A5" };
-  if (level >= 700) return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
-  if (level >= 400) return { bg: "#F0FDF4", text: "#15803D", border: "#86EFAC" };
-  return { bg: "#F8FAFC", text: "#64748B", border: "#CBD5E1" };
+function roleBadgeColors(
+  level: number,
+  colors: ReturnType<typeof useMd>,
+): { bg: string; text: string; border: string } {
+  if (level >= 950) return { bg: colors.errorContainer, text: colors.error, border: colors.error };
+  if (level >= 700) return { bg: colors.tertiaryContainer, text: colors.tertiary, border: colors.tertiary };
+  if (level >= 400) return { bg: colors.successContainer, text: colors.success, border: colors.success };
+  return { bg: colors.surfaceContainerHighest, text: colors.onSurfaceVariant, border: colors.outlineVariant };
 }
 
 function generateTempPassword(): string {
@@ -78,6 +82,7 @@ function isOwnerUser(p: Profile): boolean {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Avatar({ name }: { name: string }) {
+  const colors = useMd();
   return (
     <View
       style={{
@@ -90,7 +95,9 @@ function Avatar({ name }: { name: string }) {
         flexShrink: 0,
       }}
     >
-      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+      {/* Literal white: the background is an arbitrary AVATAR_PALETTE hex, not a
+          theme role, so no `on*` role is guaranteed to contrast with it. */}
+      <Text style={{ color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>
         {getInitials(name)}
       </Text>
     </View>
@@ -98,7 +105,8 @@ function Avatar({ name }: { name: string }) {
 }
 
 function RoleBadge({ role }: { role: Role }) {
-  const { bg, text, border } = roleBadgeColors(role.level);
+  const colors = useMd();
+  const { bg, text, border } = roleBadgeColors(role.level, colors);
   return (
     <View
       style={{
@@ -111,7 +119,7 @@ function RoleBadge({ role }: { role: Role }) {
         alignSelf: "flex-start",
       }}
     >
-      <Text style={{ fontSize: 12, fontWeight: "500", color: text }} numberOfLines={1}>
+      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: text }} numberOfLines={1}>
         {role.name}
       </Text>
     </View>
@@ -119,6 +127,7 @@ function RoleBadge({ role }: { role: Role }) {
 }
 
 function StatusBadge({ active }: { active: boolean }) {
+  const colors = useMd();
   return (
     <View
       style={{
@@ -126,12 +135,12 @@ function StatusBadge({ active }: { active: boolean }) {
         paddingVertical: 3,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: active ? "#86EFAC" : "#CBD5E1",
-        backgroundColor: active ? "#F0FDF4" : "#F8FAFC",
+        borderColor: active ? colors.success : colors.outlineVariant,
+        backgroundColor: active ? colors.successContainer : colors.surfaceContainerHighest,
         alignSelf: "flex-start",
       }}
     >
-      <Text style={{ fontSize: 12, fontWeight: "500", color: active ? "#15803D" : "#64748B" }}>
+      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: active ? colors.success : colors.onSurfaceVariant }}>
         {active ? "Active" : "Inactive"}
       </Text>
     </View>
@@ -155,7 +164,7 @@ function UserEditModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const isSystem = currentUser.role.isSystem;
   const callerOrgUnitId = currentUser.orgUnitId ?? null;
 
@@ -256,14 +265,14 @@ function UserEditModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={m.overlay}>
-        <View style={[m.dialog, { backgroundColor: colors.card, shadowColor: "#000" }]}>
+        <View style={[m.dialog, { backgroundColor: colors.surfaceContainerLow, shadowColor: "#000" }]}>
           {/* Header */}
           <View style={m.dialogHeader}>
-            <Text style={[m.dialogTitle, { color: colors.foreground }]}>
+            <Text style={[m.dialogTitle, { color: colors.onSurface }]}>
               {user ? "Edit user" : "New user"}
             </Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 20, lineHeight: 24 }}>×</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 20, lineHeight: 24 }}>×</Text>
             </TouchableOpacity>
           </View>
 
@@ -274,7 +283,7 @@ function UserEditModal({
 
             {/* Password */}
             {user ? (
-              <View style={[m.resetCard, { borderColor: resetSection ? colors.primary : colors.border, backgroundColor: colors.background }]}>
+              <View style={[m.resetCard, { borderColor: resetSection ? colors.primary : colors.outlineVariant, backgroundColor: colors.surface }]}>
                 <TouchableOpacity
                   style={m.resetCardHeader}
                   onPress={() => {
@@ -288,17 +297,17 @@ function UserEditModal({
                     }
                   }}
                 >
-                  <Text style={[m.resetCardTitle, { color: resetSection ? colors.primary : colors.foreground }]}>
+                  <Text style={[m.resetCardTitle, { color: resetSection ? colors.primary : colors.onSurface }]}>
                     🔑 Reset password
                   </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                  <Text style={{ color: colors.onSurfaceVariant, fontSize: 13 }}>
                     {resetSection ? "Cancel" : "Tap to set a new password"}
                   </Text>
                 </TouchableOpacity>
                 {resetSection && (
                   <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 8 }}>
-                    <View style={[m.tempPwRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                      <Text selectable style={[m.tempPwText, { color: showResetPassword ? colors.foreground : colors.mutedForeground }]}>
+                    <View style={[m.tempPwRow, { backgroundColor: colors.surfaceContainerHighest, borderColor: colors.outlineVariant }]}>
+                      <Text selectable style={[m.tempPwText, { color: showResetPassword ? colors.onSurface : colors.onSurfaceVariant }]}>
                         {showResetPassword ? resetPassword : "••••••••••••"}
                       </Text>
                       <TouchableOpacity onPress={() => setShowResetPassword((v) => !v)}>
@@ -306,21 +315,21 @@ function UserEditModal({
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => { setResetPassword(generateTempPassword()); setShowResetPassword(true); }}
-                        style={[m.generateBtn, { backgroundColor: colors.secondary }]}
+                        style={[m.generateBtn, { backgroundColor: colors.secondaryContainer }]}
                       >
-                        <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "600" }}>Generate</Text>
+                        <Text style={{ color: colors.primary, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Generate</Text>
                       </TouchableOpacity>
                     </View>
                     <TextInput
                       value={resetPassword}
                       onChangeText={setResetPassword}
                       placeholder="Or type a custom password"
-                      placeholderTextColor={colors.mutedForeground}
+                      placeholderTextColor={colors.onSurfaceVariant}
                       secureTextEntry={!showResetPassword}
                       editable={!busy}
-                      style={[m.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card, outlineWidth: 0 } as object]}
+                      style={[m.input, { borderColor: colors.outlineVariant, color: colors.onSurface, backgroundColor: colors.surfaceContainerLow, outlineWidth: 0 } as object]}
                     />
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" }}>
+                    <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, fontStyle: "italic" }}>
                       Staff must change on next sign-in. 12+ chars, upper, lower, number, special.
                     </Text>
                   </View>
@@ -332,7 +341,7 @@ function UserEditModal({
 
             {/* Role picker */}
             <View>
-              <Text style={[m.label, { color: colors.foreground }]}>Role</Text>
+              <Text style={[m.label, { color: colors.onSurface }]}>Role</Text>
               <View style={{ gap: 4 }}>
                 {assignableRoles.map((r) => (
                   <TouchableOpacity
@@ -340,16 +349,16 @@ function UserEditModal({
                     style={[
                       m.roleRow,
                       {
-                        borderColor: roleId === r.id ? colors.primary : colors.border,
-                        backgroundColor: roleId === r.id ? colors.secondary : colors.card,
+                        borderColor: roleId === r.id ? colors.primary : colors.outlineVariant,
+                        backgroundColor: roleId === r.id ? colors.secondaryContainer : colors.surfaceContainerLow,
                       },
                     ]}
                     onPress={() => setRoleId(r.id)}
                   >
                     <RoleBadge role={r} />
-                    <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>level {r.level}</Text>
+                    <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>level {r.level}</Text>
                     {roleId === r.id && (
-                      <Text style={{ color: colors.primary, fontWeight: "700", marginLeft: "auto" }}>✓</Text>
+                      <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", marginLeft: "auto" }}>✓</Text>
                     )}
                   </TouchableOpacity>
                 ))}
@@ -367,7 +376,7 @@ function UserEditModal({
             {/* Active toggle (edit only) */}
             {user && (
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-                <Text style={{ color: colors.foreground }}>Active</Text>
+                <Text style={{ color: colors.onSurface }}>Active</Text>
                 <Switch value={active} onValueChange={setActive} />
               </View>
             )}
@@ -377,20 +386,20 @@ function UserEditModal({
           <View style={m.dialogFooter}>
             {user && (
               <TouchableOpacity
-                style={[m.dangerBtn, { backgroundColor: colors.destructive, opacity: busy ? 0.6 : 1 }]}
+                style={[m.dangerBtn, { backgroundColor: colors.error, opacity: busy ? 0.6 : 1 }]}
                 onPress={onDelete}
                 disabled={busy}
               >
-                <Text style={{ color: colors.destructiveForeground, fontWeight: "600", fontSize: 14 }}>Delete</Text>
+                <Text style={{ color: colors.onError, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Delete</Text>
               </TouchableOpacity>
             )}
             <View style={{ flex: 1 }} />
             <TouchableOpacity
-              style={[m.cancelBtn, { borderColor: colors.border }]}
+              style={[m.cancelBtn, { borderColor: colors.outlineVariant }]}
               onPress={onClose}
               disabled={busy}
             >
-              <Text style={{ color: colors.foreground, fontWeight: "500", fontSize: 14 }}>Cancel</Text>
+              <Text style={{ color: colors.onSurface, fontFamily: "Inter_500Medium", fontSize: 14 }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[m.saveBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
@@ -398,9 +407,9 @@ function UserEditModal({
               disabled={busy}
             >
               {busy ? (
-                <ActivityIndicator color={colors.primaryForeground} size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
-                <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>Save</Text>
+                <Text style={{ color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Save</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -414,15 +423,15 @@ function FormField({
   label,
   ...rest
 }: React.ComponentProps<typeof TextInput> & { label: string }) {
-  const colors = useColors();
+  const colors = useMd();
   return (
     <View>
-      <Text style={[m.label, { color: colors.foreground }]}>{label}</Text>
+      <Text style={[m.label, { color: colors.onSurface }]}>{label}</Text>
       <TextInput
         {...rest}
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={colors.onSurfaceVariant}
         autoCapitalize="none"
-        style={[m.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card, outlineWidth: 0 } as object]}
+        style={[m.input, { borderColor: colors.outlineVariant, color: colors.onSurface, backgroundColor: colors.surfaceContainerLow, outlineWidth: 0 } as object]}
       />
     </View>
   );
@@ -443,7 +452,7 @@ export function UsersPanel({
   currentUser: Profile;
   onReload: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [editingUser, setEditingUser] = useState<Profile | null | "new">(null);
@@ -501,8 +510,8 @@ export function UsersPanel({
       {/* Header */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <View>
-          <Text style={[p.title, { color: colors.foreground }]}>Users</Text>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 2 }}>
+          <Text style={[p.title, { color: colors.onSurface }]}>Users</Text>
+          <Text style={{ color: colors.onSurfaceVariant, fontSize: 14, marginTop: 2 }}>
             {activeCount} active · {profiles.length} total
           </Text>
         </View>
@@ -511,7 +520,7 @@ export function UsersPanel({
             style={[p.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={() => setEditingUser("new")}
           >
-            <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>
+            <Text style={{ color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
               + Invite User
             </Text>
           </TouchableOpacity>
@@ -520,31 +529,31 @@ export function UsersPanel({
 
       {/* Filters */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <View style={[p.searchBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
-          <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>🔍</Text>
+        <View style={[p.searchBox, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
+          <Text style={{ color: colors.onSurfaceVariant, fontSize: 15 }}>🔍</Text>
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search users..."
-            placeholderTextColor={colors.mutedForeground}
-            style={{ flex: 1, color: colors.foreground, fontSize: 14, outlineWidth: 0 } as object}
+            placeholderTextColor={colors.onSurfaceVariant}
+            style={{ flex: 1, color: colors.onSurface, fontSize: 14, outlineWidth: 0 } as object}
           />
         </View>
-        <View style={[p.filterGroup, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[p.filterGroup, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
           {(["all", "active", "inactive"] as const).map((f) => (
             <TouchableOpacity
               key={f}
               style={[
                 p.filterBtn,
-                statusFilter === f && { backgroundColor: colors.secondary },
+                statusFilter === f && { backgroundColor: colors.secondaryContainer },
               ]}
               onPress={() => setStatusFilter(f)}
             >
               <Text
                 style={{
                   fontSize: 13,
-                  fontWeight: statusFilter === f ? "600" : "400",
-                  color: statusFilter === f ? colors.primary : colors.foreground,
+                  fontFamily: statusFilter === f ? "Inter_600SemiBold" : "Inter_400Regular",
+                  color: statusFilter === f ? colors.primary : colors.onSurface,
                   textTransform: "capitalize",
                 }}
               >
@@ -553,15 +562,15 @@ export function UsersPanel({
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={{ color: colors.mutedForeground, fontSize: 13, marginLeft: "auto" as any }}>
+        <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, marginLeft: "auto" as any }}>
           {filtered.length} results
         </Text>
       </View>
 
       {/* Table */}
-      <View style={[p.table, { borderColor: colors.border, backgroundColor: colors.card }]}>
+      <View style={[p.table, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
         {/* Header row */}
-        <View style={[p.tableHeaderRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+        <View style={[p.tableHeaderRow, { borderBottomColor: colors.outlineVariant, backgroundColor: colors.surface }]}>
           <Text style={[p.th, { width: W.name }]}>NAME</Text>
           <Text style={[p.th, { width: W.email }]}>EMAIL</Text>
           <Text style={[p.th, { width: W.role }]}>ROLE</Text>
@@ -578,24 +587,24 @@ export function UsersPanel({
               key={user.id}
               style={[
                 p.tableRow,
-                i < filtered.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                i < filtered.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.outlineVariant },
               ]}
             >
               {/* Name */}
               <View style={{ width: W.name, flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Avatar name={user.displayName} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontWeight: "600", color: colors.foreground, fontSize: 14 }} numberOfLines={1}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.onSurface, fontSize: 14 }} numberOfLines={1}>
                     {user.displayName}
                   </Text>
                   {owner && (
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Account owner</Text>
+                    <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>Account owner</Text>
                   )}
                 </View>
               </View>
 
               {/* Email */}
-              <Text style={{ width: W.email, color: colors.mutedForeground, fontSize: 14 }} numberOfLines={1}>
+              <Text style={{ width: W.email, color: colors.onSurfaceVariant, fontSize: 14 }} numberOfLines={1}>
                 {user.email ?? user.username}
               </Text>
 
@@ -605,7 +614,7 @@ export function UsersPanel({
               </View>
 
               {/* Org unit */}
-              <Text style={{ width: W.org, color: colors.foreground, fontSize: 14 }} numberOfLines={1}>
+              <Text style={{ width: W.org, color: colors.onSurface, fontSize: 14 }} numberOfLines={1}>
                 {user.orgUnit?.name ?? "—"}
               </Text>
 
@@ -639,7 +648,7 @@ export function UsersPanel({
 
         {filtered.length === 0 && (
           <View style={{ padding: 48, alignItems: "center" }}>
-            <Text style={{ color: colors.mutedForeground }}>No users found.</Text>
+            <Text style={{ color: colors.onSurfaceVariant }}>No users found.</Text>
           </View>
         )}
       </View>
@@ -662,7 +671,7 @@ export function UsersPanel({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const p = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: "700" },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold" },
   primaryBtn: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -705,7 +714,7 @@ const p = StyleSheet.create({
   },
   th: {
     fontSize: 11,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
     color: "#9CA3AF",
     letterSpacing: 0.5,
     textTransform: "uppercase",
@@ -748,7 +757,7 @@ const m = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  dialogTitle: { fontSize: 20, fontWeight: "700" },
+  dialogTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   dialogFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -757,7 +766,7 @@ const m = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
   },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 4 },
   input: {
     borderWidth: 1,
     borderRadius: 8,
@@ -780,7 +789,7 @@ const m = StyleSheet.create({
     alignItems: "center",
     padding: 14,
   },
-  resetCardTitle: { fontSize: 15, fontWeight: "600" },
+  resetCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   tempPwRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -790,7 +799,7 @@ const m = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  tempPwText: { flex: 1, fontSize: 15, fontWeight: "600", letterSpacing: 2 },
+  tempPwText: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", letterSpacing: 2 },
   generateBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
   cancelBtn: {
     paddingHorizontal: 16,

@@ -3,7 +3,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -11,11 +10,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Button, Chip, Divider, IconButton, SegmentedButtons, Switch } from 'react-native-paper';
+
+import { Ionicons } from '@expo/vector-icons';
 
 import { useChecklist } from '@/context/ChecklistContext';
-import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
 import { generateMockHistory } from '@/utils/mockData';
+import shape from '@/constants/shape';
+import { useMd } from '@/theme/useMd';
 
 import { BreakdownCard } from '@/components/dashboard/BreakdownCard';
 import { MissedStepsCard } from '@/components/dashboard/MissedStepsCard';
@@ -55,7 +58,7 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function ReportsScreen() {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -133,126 +136,114 @@ export default function ReportsScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: '#F5F5F5' }]}>
-      <StatusBar barStyle="light-content" />
-
+    <View style={[styles.root, { backgroundColor: md.surface }]}>
       {/* ── Top Bar ──────────────────────────────────────────────────────── */}
       <View
         style={[
           styles.topbar,
-          { backgroundColor: colors.primary, paddingTop: insets.top + 8 },
+          { backgroundColor: md.surface, borderBottomColor: md.outlineVariant, paddingTop: insets.top + 8 },
         ]}
         accessibilityRole="header"
       >
         <View style={styles.topbarInner}>
-          <View style={styles.brand}>
+          <View style={[styles.brandIconWrap, { borderRadius: shape.sm, backgroundColor: md.primaryContainer }]}>
             <Text style={styles.brandIcon}>🕐</Text>
-            <Text style={styles.brandName}>End Shift</Text>
           </View>
-          <View style={styles.brandSep} />
-          <Text style={styles.crumb}>Shift Reports</Text>
+          <View style={styles.brand}>
+            <Text style={[styles.brandName, { color: md.onSurface }]}>End Shift</Text>
+            <Text style={[styles.crumb, { color: md.onSurfaceVariant }]}>Shift Reports</Text>
+          </View>
           <View style={styles.topbarSpacer} />
           {showAdminLink && (
-            <Pressable
+            <Button
+              mode="contained-tonal"
+              compact
               onPress={() => router.push('/admin')}
-              style={styles.topbarBtn}
-              accessibilityRole="button"
               accessibilityLabel="Admin panel"
             >
-              <Text style={styles.topbarBtnText}>Admin</Text>
-            </Pressable>
+              Admin
+            </Button>
           )}
           {!isWeb && (
-            <Pressable
+            <IconButton
+              icon={() => <Ionicons name="arrow-back" size={20} color={md.onSurfaceVariant} />}
               onPress={() => router.back()}
-              style={styles.topbarBtn}
-              accessibilityRole="button"
               accessibilityLabel="Back to checklist"
-            >
-              <Text style={styles.topbarBtnText}>← Back</Text>
-            </Pressable>
+            />
           )}
         </View>
       </View>
 
       {/* ── Sub-nav ───────────────────────────────────────────────────────── */}
-      <View style={styles.subnav} accessibilityRole="none" accessibilityLabel="Report controls">
+      <View
+        style={[styles.subnav, { backgroundColor: md.surfaceContainerLow, borderBottomColor: md.outlineVariant }]}
+        accessibilityRole="none"
+        accessibilityLabel="Report controls"
+      >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.subnavInner}
         >
-          {/* Period segmented control */}
+          {/* Period selector */}
           <View style={styles.segmented} accessibilityRole="tablist" accessibilityLabel="Reporting period">
-            {(['day', 'week', 'period', 'month'] as Period[]).map(p => (
-              <Pressable
-                key={p}
-                onPress={() => { setPeriod(p); setAnchor(new Date()); }}
-                style={[styles.segBtn, p === period && styles.segBtnActive]}
-                accessibilityRole="tab"
-                accessibilityLabel={PERIOD_META[p].btn}
-                accessibilityState={{ selected: p === period }}
-              >
-                <Text style={[styles.segBtnText, p === period && styles.segBtnTextActive]}>
-                  {PERIOD_META[p].btn}
-                </Text>
-              </Pressable>
-            ))}
+            <SegmentedButtons
+              value={period}
+              onValueChange={(v) => { setPeriod(v as Period); setAnchor(new Date()); }}
+              density="small"
+              buttons={(['day', 'week', 'period', 'month'] as Period[]).map(p => ({
+                value: p,
+                label: PERIOD_META[p].btn,
+                accessibilityLabel: PERIOD_META[p].btn,
+              }))}
+            />
           </View>
 
           {/* Range nav */}
           <View style={styles.rangeNav} accessibilityLabel="Date range navigation">
-            <Pressable
+            <IconButton
+              icon={() => <Ionicons name="chevron-back" size={18} color={md.onSurface} />}
+              mode="outlined"
+              size={18}
               onPress={goBack}
-              style={styles.rangeBtn}
-              accessibilityRole="button"
               accessibilityLabel="Previous period"
-            >
-              <Text style={styles.rangeBtnText}>‹</Text>
-            </Pressable>
+            />
             <View style={styles.rangeWrap}>
-              <Text style={styles.rangeLabel} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={[styles.rangeLabel, { color: md.onSurface }]} numberOfLines={1} adjustsFontSizeToFit>
                 {rangeLabel}
               </Text>
             </View>
-            <Pressable
+            <IconButton
+              icon={() => <Ionicons name="chevron-forward" size={18} color={canGoNext ? md.onSurface : md.onSurfaceVariant} />}
+              mode="outlined"
+              size={18}
+              disabled={!canGoNext}
               onPress={goNext}
-              style={[styles.rangeBtn, !canGoNext && styles.rangeBtnDisabled]}
-              accessibilityRole="button"
               accessibilityLabel="Next period"
               accessibilityState={{ disabled: !canGoNext }}
-            >
-              <Text style={[styles.rangeBtnText, !canGoNext && styles.rangeBtnTextDisabled]}>›</Text>
-            </Pressable>
+            />
           </View>
 
           {/* Today button */}
-          <Pressable
-            onPress={goToday}
-            style={styles.todayBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Go to today"
-          >
-            <Text style={styles.todayBtnText}>Today</Text>
-          </Pressable>
+          <Button mode="text" compact onPress={goToday} accessibilityLabel="Go to today">
+            Today
+          </Button>
 
           <View style={styles.subnavSpacer} />
 
           {/* Checklist filter */}
           {checklists.length > 1 && (
-            <Pressable
+            <Chip
+              icon={() => <Ionicons name="chevron-down" size={14} color={md.onSurfaceVariant} />}
               onPress={() => setChecklistPickerOpen(v => !v)}
-              style={styles.filterBtn}
-              accessibilityRole="button"
+              selected={checklistPickerOpen}
+              mode="outlined"
               accessibilityLabel="Filter by checklist"
             >
-              <Text style={styles.filterBtnText}>
-                {checklistId === 'all'
-                  ? 'All checklists'
-                  : checklists.find(c => c.id === checklistId)?.name ?? 'All'}
-              </Text>
-              <Text style={styles.filterChevron}>▾</Text>
-            </Pressable>
+              {checklistId === 'all'
+                ? 'All checklists'
+                : checklists.find(c => c.id === checklistId)?.name ?? 'All'}
+            </Chip>
           )}
 
           {/* Compare toggle */}
@@ -263,29 +254,32 @@ export default function ReportsScreen() {
             accessibilityLabel="Compare to previous period"
             accessibilityState={{ checked: compare }}
           >
-            <View style={[styles.toggle, compare && { backgroundColor: colors.primary }]}>
-              <View style={[styles.toggleThumb, compare && styles.toggleThumbOn]} />
-            </View>
-            <Text style={styles.compareBtnText}>Compare</Text>
+            <Switch value={compare} onValueChange={setCompare} color={md.primary} />
+            <Text style={[styles.compareBtnText, { color: md.onSurface }]}>Compare</Text>
           </Pressable>
         </ScrollView>
 
         {/* Checklist dropdown */}
         {checklistPickerOpen && checklists.length > 1 && (
-          <View style={styles.dropdown}>
-            {[{ id: 'all', name: 'All checklists' }, ...checklists].map(cl => (
-              <Pressable
-                key={cl.id}
-                onPress={() => { setChecklistId(cl.id); setChecklistPickerOpen(false); }}
-                style={[styles.dropdownItem, cl.id === checklistId && styles.dropdownItemActive]}
-                accessibilityRole="menuitem"
-                accessibilityLabel={cl.name}
-              >
-                <Text style={[styles.dropdownItemText, cl.id === checklistId && styles.dropdownItemTextActive]}>
-                  {cl.name}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={[styles.dropdown, { backgroundColor: md.surfaceContainerHigh, borderRadius: shape.md }]}>
+            {[{ id: 'all', name: 'All checklists' }, ...checklists].map((cl, i, arr) => {
+              const active = cl.id === checklistId;
+              return (
+                <React.Fragment key={cl.id}>
+                  <Pressable
+                    onPress={() => { setChecklistId(cl.id); setChecklistPickerOpen(false); }}
+                    style={[styles.dropdownItem, active && { backgroundColor: md.secondaryContainer }]}
+                    accessibilityRole="menuitem"
+                    accessibilityLabel={cl.name}
+                  >
+                    <Text style={[styles.dropdownItemText, { color: active ? md.onSecondaryContainer : md.onSurface }]}>
+                      {cl.name}
+                    </Text>
+                  </Pressable>
+                  {i < arr.length - 1 && <Divider />}
+                </React.Fragment>
+              );
+            })}
           </View>
         )}
       </View>
@@ -302,34 +296,34 @@ export default function ReportsScreen() {
       >
         {/* Sample data banner — shown when history is empty */}
         {completionHistory.length === 0 && (
-          <View style={styles.sampleBanner}>
+          <View style={[styles.sampleBanner, { backgroundColor: md.primaryContainer, borderRadius: shape.lg }]}>
             <View style={styles.sampleBannerLeft}>
-              <Text style={styles.sampleBannerTitle}>No shift history yet</Text>
-              <Text style={styles.sampleBannerSub}>Load sample data to preview the dashboard.</Text>
+              <Text style={[styles.sampleBannerTitle, { color: md.onPrimaryContainer }]}>No shift history yet</Text>
+              <Text style={[styles.sampleBannerSub, { color: md.onPrimaryContainer }]}>Load sample data to preview the dashboard.</Text>
             </View>
-            <Pressable
+            <Button
+              mode="contained"
+              compact
               onPress={() => seedHistory(generateMockHistory())}
-              style={styles.sampleBtn}
-              accessibilityRole="button"
               accessibilityLabel="Load sample data"
             >
-              <Text style={styles.sampleBtnText}>Load sample data</Text>
-            </Pressable>
+              Load sample data
+            </Button>
           </View>
         )}
 
         {/* Clear sample data — shown when seeded mock data is present */}
         {completionHistory.length > 0 && completionHistory.some(e => e.id.startsWith('mock-')) && (
-          <View style={[styles.sampleBanner, styles.sampleBannerFilled]}>
-            <Text style={styles.sampleBannerSub}>Showing sample data</Text>
-            <Pressable
+          <View style={[styles.sampleBanner, { backgroundColor: md.surfaceContainerHigh, borderRadius: shape.lg }]}>
+            <Text style={[styles.sampleBannerSub, { color: md.onSurfaceVariant }]}>Showing sample data</Text>
+            <Button
+              mode="contained-tonal"
+              compact
               onPress={clearMockHistory}
-              style={styles.clearBtn}
-              accessibilityRole="button"
               accessibilityLabel="Clear sample data"
             >
-              <Text style={styles.clearBtnText}>Clear</Text>
-            </Pressable>
+              Clear
+            </Button>
           </View>
         )}
 
@@ -385,40 +379,50 @@ function HistorySection({
   onFilterChange: (f: HistoryFilter) => void;
   period: string;
 }) {
+  const md = useMd();
   return (
-    <View style={styles.historyCard} accessibilityRole="none" accessibilityLabel="Shift History">
+    <View
+      style={[styles.historyCard, { backgroundColor: md.surfaceContainerHigh, borderRadius: shape.lg }]}
+      accessibilityRole="none"
+      accessibilityLabel="Shift History"
+    >
       <View style={styles.historyHead}>
         <View>
-          <Text style={styles.cardTitle}>Shift History</Text>
-          <Text style={styles.cardSub}>{items.length} shifts this {period}</Text>
+          <Text style={[styles.cardTitle, { color: md.onSurface }]}>Shift History</Text>
+          <Text style={[styles.cardSub, { color: md.onSurfaceVariant }]}>{items.length} shifts this {period}</Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.historyFilters}
         >
-          {HISTORY_FILTERS.map(f => (
-            <Pressable
-              key={f.id}
-              onPress={() => onFilterChange(f.id)}
-              style={[styles.filterSegBtn, f.id === filter && styles.filterSegBtnActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter: ${f.label}`}
-              accessibilityState={{ selected: f.id === filter }}
-            >
-              <Text style={[styles.filterSegBtnText, f.id === filter && styles.filterSegBtnTextActive]}>
+          {HISTORY_FILTERS.map(f => {
+            const active = f.id === filter;
+            return (
+              <Chip
+                key={f.id}
+                selected={active}
+                showSelectedCheck={false}
+                onPress={() => onFilterChange(f.id)}
+                mode={active ? 'flat' : 'outlined'}
+                compact
+                style={active ? { backgroundColor: md.secondaryContainer } : undefined}
+                textStyle={{ color: active ? md.onSecondaryContainer : md.onSurfaceVariant, fontSize: 12 }}
+                accessibilityLabel={`Filter: ${f.label}`}
+                accessibilityState={{ selected: active }}
+              >
                 {f.label}
-              </Text>
-            </Pressable>
-          ))}
+              </Chip>
+            );
+          })}
         </ScrollView>
       </View>
 
       {items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIco}>📋</Text>
-          <Text style={styles.emptyTitle}>No history in this {period}</Text>
-          <Text style={styles.emptyBody}>Try a different filter or step back through the range.</Text>
+          <Text style={[styles.emptyTitle, { color: md.onSurface }]}>No history in this {period}</Text>
+          <Text style={[styles.emptyBody, { color: md.onSurfaceVariant }]}>Try a different filter or step back through the range.</Text>
         </View>
       ) : (
         <ScrollView
@@ -441,11 +445,7 @@ const styles = StyleSheet.create({
 
   // Top bar
   topbar: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     zIndex: 20,
   },
   topbarInner: {
@@ -455,25 +455,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandIcon: { fontSize: 22 },
+  brand: { flexShrink: 1, gap: 1 },
   brandName: {
-    fontSize: 18, fontFamily: 'Inter_700Bold', color: '#FFFFFF', letterSpacing: -0.2,
+    fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.2,
   },
-  brandSep: { width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.25)' },
-  crumb: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: 'rgba(255,255,255,0.85)' },
+  crumb: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   topbarSpacer: { flex: 1 },
-  topbarBtn: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999,
+  brandIconWrap: {
+    width: 34, height: 34,
+    alignItems: 'center', justifyContent: 'center',
   },
-  topbarBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#FFFFFF' },
+  brandIcon: { fontSize: 18 },
 
   // Sub-nav
   subnav: {
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
     zIndex: 19,
   },
   subnavInner: {
@@ -485,77 +481,27 @@ const styles = StyleSheet.create({
   },
   subnavSpacer: { flex: 1, minWidth: 8 },
 
-  // Segmented
+  // Period selector
   segmented: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 10,
-    padding: 3,
+    minWidth: 300,
   },
-  segBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 7 },
-  segBtnActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  segBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#888888' },
-  segBtnTextActive: { color: '#C8102E' },
 
   // Range nav
-  rangeNav: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  rangeBtn: {
-    width: 30, height: 30, borderRadius: 8,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  rangeBtnDisabled: { opacity: 0.35 },
-  rangeBtnText: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#1A1A1A' },
-  rangeBtnTextDisabled: { color: '#888888' },
-  rangeWrap: { alignItems: 'center', minWidth: 160 },
+  rangeNav: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  rangeWrap: { alignItems: 'center', minWidth: 150 },
   rangeLabel: {
-    fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A', textAlign: 'center',
+    fontSize: 13, fontFamily: 'Inter_600SemiBold', textAlign: 'center',
   },
-
-  // Today button
-  todayBtn: {
-    backgroundColor: '#F0F0F0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999,
-  },
-  todayBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
-
-  // Checklist filter
-  filterBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E5E5',
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
-  },
-  filterBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
-  filterChevron: { fontSize: 10, color: '#888888' },
 
   // Compare toggle
-  compareBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  toggle: {
-    width: 30, height: 18, borderRadius: 9, backgroundColor: '#C8C8C8', position: 'relative',
-  },
-  toggleThumb: {
-    position: 'absolute', top: 2, left: 2,
-    width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFFFFF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2,
-  },
-  toggleThumbOn: { left: 14 },
-  compareBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
+  compareBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  compareBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
   // Dropdown
   dropdown: {
     position: 'absolute',
     top: '100%',
     right: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -565,10 +511,8 @@ const styles = StyleSheet.create({
     minWidth: 160,
     overflow: 'hidden',
   },
-  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E5E5' },
-  dropdownItemActive: { backgroundColor: '#FFF0F2' },
-  dropdownItemText: { fontSize: 14, fontFamily: 'Inter_500Medium', color: '#1A1A1A' },
-  dropdownItemTextActive: { color: '#C8102E', fontFamily: 'Inter_600SemiBold' },
+  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12 },
+  dropdownItemText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
 
   // Content
   scroll: { flex: 1 },
@@ -588,31 +532,15 @@ const styles = StyleSheet.create({
   // Sample data banner
   sampleBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    gap: 12, padding: 14, borderRadius: 10,
-    backgroundColor: '#FFF0F2', borderWidth: 1, borderColor: '#FDD5DB',
-  },
-  sampleBannerFilled: {
-    backgroundColor: '#F5F5F5', borderColor: '#E5E5E5',
+    gap: 12, padding: 14,
   },
   sampleBannerLeft: { flex: 1 },
-  sampleBannerTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
-  sampleBannerSub: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888', marginTop: 2 },
-  sampleBtn: {
-    backgroundColor: '#C8102E', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
-  },
-  sampleBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#FFFFFF' },
-  clearBtn: {
-    backgroundColor: '#E5E5E5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-  },
-  clearBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#888888' },
+  sampleBannerTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  sampleBannerSub: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 2 },
 
   // History card
   historyCard: {
     height: 480,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 12,
     padding: 16,
     gap: 12,
   },
@@ -623,19 +551,15 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
-  cardTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#1A1A1A' },
-  cardSub: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888', marginTop: 2 },
-  historyFilters: { flexDirection: 'row', gap: 4 },
-  filterSegBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, backgroundColor: '#F0F0F0' },
-  filterSegBtnActive: { backgroundColor: '#FFF0F2' },
-  filterSegBtnText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: '#888888' },
-  filterSegBtnTextActive: { color: '#C8102E' },
+  cardTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  cardSub: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 2 },
+  historyFilters: { flexDirection: 'row', gap: 6 },
   historyScroll: { flex: 1, minHeight: 0 },
   historyList: { gap: 10, paddingRight: 4 },
 
   // Empty
   empty: { alignItems: 'center', paddingVertical: 32, gap: 6 },
   emptyIco: { fontSize: 28 },
-  emptyTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A' },
-  emptyBody: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888', textAlign: 'center' },
+  emptyTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  emptyBody: { fontSize: 12, fontFamily: 'Inter_500Medium', textAlign: 'center' },
 });

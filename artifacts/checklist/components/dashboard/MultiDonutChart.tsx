@@ -1,6 +1,8 @@
 import React from 'react';
 import { Circle, G, Svg, Text as SvgText } from 'react-native-svg';
 
+import { useMd } from '@/theme/useMd';
+
 interface Segment {
   value: number;
   color: string;
@@ -13,6 +15,7 @@ interface MultiDonutChartProps {
 }
 
 export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonutChartProps) {
+  const md = useMd();
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const total = segments.reduce((s, x) => s + x.value, 0);
@@ -22,7 +25,7 @@ export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonu
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <Circle cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke="#F0F0F0" strokeWidth={stroke} />
+        fill="none" stroke={md.surfaceContainerHighest} strokeWidth={stroke} />
       <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
         {segments.map((s, i) => {
           if (s.value === 0) return null;
@@ -42,8 +45,8 @@ export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonu
         x={size / 2}
         y={size * 0.5}
         textAnchor="middle"
-        fontFamily="Inter_700Bold" fontWeight="700" fontSize="30"
-        fill="#1A1A1A"
+        fontFamily="Inter_700Bold" fontSize="30"
+        fill={md.onSurface}
       >
         {String(total)}
       </SvgText>
@@ -51,8 +54,8 @@ export function MultiDonutChart({ size = 160, stroke = 20, segments }: MultiDonu
         x={size / 2}
         y={size * 0.65}
         textAnchor="middle"
-        fontFamily="Inter_600SemiBold" fontWeight="600" fontSize="10"
-        fill="#888"
+        fontFamily="Inter_600SemiBold" fontSize="10"
+        fill={md.onSurfaceVariant}
       >
         SHIFTS
       </SvgText>

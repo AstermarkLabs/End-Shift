@@ -9,13 +9,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, Card, Chip, IconButton, List, Switch, TextInput as PaperTextInput } from "react-native-paper";
+
+import { Ionicons } from "@expo/vector-icons";
 
 import {
   listRoles,
@@ -26,7 +27,9 @@ import type { Role } from "@workspace/api-client-react";
 
 import { SortableList } from "@/components/SortableList";
 import { Task, useChecklist } from "@/context/ChecklistContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 
 // ─── Drag Handle ─────────────────────────────────────────────────────────────
 
@@ -37,20 +40,24 @@ function DragHandle({
   panHandlers: object;
   isActive: boolean;
 }) {
-  const colors = useColors();
+  const md = useMd();
   return (
     <View
       {...panHandlers}
       style={[styles.dragHandle, { opacity: isActive ? 0.4 : 0.55 }]}
     >
-      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
-      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
-      <View style={[styles.dragLine, { backgroundColor: colors.mutedForeground }]} />
+      <View style={[styles.dragLine, { backgroundColor: md.onSurfaceVariant }]} />
+      <View style={[styles.dragLine, { backgroundColor: md.onSurfaceVariant }]} />
+      <View style={[styles.dragLine, { backgroundColor: md.onSurfaceVariant }]} />
     </View>
   );
 }
 
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
+// NOTE: renaming a section is keyed by its title string (updateSection(oldTitle,
+// newTitle) + tasks are filtered by t.category === title), so this stays a
+// modal commit boundary rather than an inline per-keystroke field — an inline
+// input would fragment the section into a new category on every keystroke.
 
 type EditTarget =
   | { kind: "section"; title: string }
@@ -66,7 +73,7 @@ function EditModal({
   target: NonNullable<EditTarget>;
   onClose: () => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const { addSection, updateSection, addTask, updateTask } = useChecklist();
 
@@ -104,58 +111,49 @@ function EditModal({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.modalOverlay}
       >
-        <Pressable style={styles.modalBackdrop} onPress={onClose} />
-        <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
-          <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: md.scrim + "66" }]} onPress={onClose} />
+        <View
+          style={[
+            styles.modalSheet,
+            {
+              backgroundColor: md.surfaceContainerHigh,
+              paddingBottom: insets.bottom + 20,
+              borderTopLeftRadius: shape.xl,
+              borderTopRightRadius: shape.xl,
+            },
+          ]}
+        >
+          <View style={[styles.modalHandle, { backgroundColor: md.onSurfaceVariant, opacity: 0.4 }]} />
+          <Text style={[styles.modalTitle, { color: md.onSurface }]}>
             {isNewSection ? "Add Section" : target.kind === "section" ? "Edit Section" : isNewTask ? "Add Task" : "Edit Task"}
           </Text>
-          <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>
-            {isSection ? "Section title" : "Task description"}
-          </Text>
-          <TextInput
+          <PaperTextInput
+            mode="outlined"
+            label={isSection ? "Section title" : "Task description"}
             value={text}
             onChangeText={setText}
             placeholder={isSection ? "e.g. End of Night" : "Describe the task…"}
-            placeholderTextColor={colors.mutedForeground}
             multiline={!isSection}
             numberOfLines={isSection ? 1 : 3}
             autoFocus
-            style={[
-              styles.textInput,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-                minHeight: isSection ? 44 : 88,
-              },
-            ]}
+            style={{ minHeight: isSection ? undefined : 88 }}
           />
           {!isSection && (
             <View style={styles.requiredRow}>
               <View>
-                <Text style={[styles.requiredLabel, { color: colors.foreground }]}>Required task</Text>
-                <Text style={[styles.requiredHint, { color: colors.mutedForeground }]}>Required tasks are shown in bold</Text>
+                <Text style={[styles.requiredLabel, { color: md.onSurface }]}>Required task</Text>
+                <Text style={[styles.requiredHint, { color: md.onSurfaceVariant }]}>Required tasks are shown in bold</Text>
               </View>
-              <Switch
-                value={required}
-                onValueChange={setRequired}
-                trackColor={{ true: colors.primary, false: colors.border }}
-                thumbColor="#fff"
-              />
+              <Switch value={required} onValueChange={setRequired} color={md.primary} />
             </View>
           )}
           <View style={styles.modalActions}>
-            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.muted }]} onPress={onClose}>
-              <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: valid ? colors.primary : colors.border, flex: 1.5 }]}
-              onPress={handleSave}
-              disabled={!valid}
-            >
-              <Text style={[styles.modalBtnText, { color: "#fff" }]}>Save</Text>
-            </TouchableOpacity>
+            <Button mode="text" onPress={onClose}>
+              Cancel
+            </Button>
+            <Button mode="contained" onPress={handleSave} disabled={!valid} style={{ flex: 1.5, borderRadius: shape.md }}>
+              Save
+            </Button>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -176,7 +174,7 @@ function TaskSettingsRow({
   dragHandleProps: object;
   onEdit: () => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const { removeTask, updateTask } = useChecklist();
 
   const handleRemove = () => {
@@ -197,35 +195,52 @@ function TaskSettingsRow({
       style={[
         styles.taskRow,
         {
-          borderBottomColor: colors.border,
-          backgroundColor: isActive ? colors.accent : colors.card,
+          borderRadius: shape.sm,
+          backgroundColor: isActive ? md.surfaceContainerHighest : md.surfaceContainerLow,
         },
       ]}
     >
       <DragHandle panHandlers={dragHandleProps} isActive={isActive} />
-      <TouchableOpacity onPress={toggleRequired} style={styles.taskContent}>
-        <View style={[styles.dot, { backgroundColor: task.required ? colors.primary : colors.border }]} />
-        <Text
-          style={[
-            styles.taskText,
-            {
-              color: task.required ? colors.foreground : colors.mutedForeground,
-              fontWeight: task.required ? "600" : "400",
-              flex: 1,
-            },
-          ]}
-          numberOfLines={2}
-        >
-          {task.text}
-        </Text>
-      </TouchableOpacity>
+      <Text
+        style={[
+          typeStyle("bodyMedium"),
+          {
+            color: task.required ? md.onSurface : md.onSurfaceVariant,
+            fontFamily: task.required ? "Inter_500Medium" : "Inter_400Regular",
+            flex: 1,
+          },
+        ]}
+        numberOfLines={2}
+      >
+        {task.text}
+      </Text>
+      <Chip
+        compact
+        onPress={toggleRequired}
+        style={{
+          backgroundColor: task.required ? md.secondaryContainer : md.surfaceContainerHighest,
+          borderRadius: shape.sm,
+        }}
+        textStyle={[
+          typeStyle("labelSmall"),
+          { color: task.required ? md.onSecondaryContainer : md.onSurfaceVariant },
+        ]}
+      >
+        {task.required ? "required" : "optional"}
+      </Chip>
       <View style={styles.rowActions}>
-        <TouchableOpacity onPress={onEdit} style={[styles.iconBtn, { backgroundColor: colors.muted }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.iconBtnText}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleRemove} style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.iconBtnText}>🗑️</Text>
-        </TouchableOpacity>
+        <IconButton
+          icon={() => <Ionicons name="pencil" size={14} color={md.onSurfaceVariant} />}
+          size={14}
+          onPress={onEdit}
+          style={[styles.iconBtn, { backgroundColor: md.surfaceContainerHighest }]}
+        />
+        <IconButton
+          icon={() => <Ionicons name="trash-outline" size={14} color={md.error} />}
+          size={14}
+          onPress={handleRemove}
+          style={[styles.iconBtn, { backgroundColor: md.errorContainer }]}
+        />
       </View>
     </View>
   );
@@ -248,7 +263,7 @@ function SectionCard({
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const { tasks, removeSection, reorderTasksInSection } = useChecklist();
   const sectionTasks = tasks.filter((t) => t.category === title);
   const [expanded, setExpanded] = useState(true);
@@ -266,33 +281,41 @@ function SectionCard({
   };
 
   return (
-    <View
+    <Card
+      mode="outlined"
       style={[
         styles.sectionCard,
         {
-          backgroundColor: colors.card,
-          borderColor: sectionActive ? colors.primary : colors.border,
+          borderRadius: shape.lg,
+          borderColor: sectionActive ? md.primary : md.outlineVariant,
           borderWidth: sectionActive ? 1.5 : StyleSheet.hairlineWidth,
+          backgroundColor: md.surface,
         },
       ]}
     >
       {/* Section header */}
-      <View style={[styles.sectionHeader, { borderBottomColor: expanded ? colors.border : "transparent" }]}>
+      <View style={[styles.sectionHeader, { borderBottomColor: expanded ? md.outlineVariant : "transparent" }]}>
         <DragHandle panHandlers={dragHandleProps} isActive={sectionActive} />
         <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.sectionTitleRow}>
-          <Text style={[styles.chevron, { color: colors.mutedForeground }]}>{expanded ? "▾" : "▸"}</Text>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
-          <Text style={[styles.taskCount, { color: colors.mutedForeground }]}>
+          <Ionicons name={expanded ? "chevron-down" : "chevron-forward"} size={14} color={md.onSurfaceVariant} />
+          <Text style={[styles.sectionTitle, { color: md.onSurface }]} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.taskCount, { color: md.onSurfaceVariant }]}>
             {sectionTasks.length} task{sectionTasks.length !== 1 ? "s" : ""}
           </Text>
         </TouchableOpacity>
         <View style={styles.rowActions}>
-          <TouchableOpacity onPress={() => onEdit({ kind: "section", title })} style={[styles.iconBtn, { backgroundColor: colors.muted }]}>
-            <Text style={styles.iconBtnText}>✏️</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleRemoveSection} style={[styles.iconBtn, { backgroundColor: "#fff0f0" }]}>
-            <Text style={styles.iconBtnText}>🗑️</Text>
-          </TouchableOpacity>
+          <IconButton
+            icon={() => <Ionicons name="pencil" size={14} color={md.onSurfaceVariant} />}
+            size={14}
+            onPress={() => onEdit({ kind: "section", title })}
+            style={[styles.iconBtn, { backgroundColor: md.surfaceContainerHighest }]}
+          />
+          <IconButton
+            icon={() => <Ionicons name="trash-outline" size={14} color={md.error} />}
+            size={14}
+            onPress={handleRemoveSection}
+            style={[styles.iconBtn, { backgroundColor: md.errorContainer }]}
+          />
         </View>
       </View>
 
@@ -315,22 +338,26 @@ function SectionCard({
               />
             )}
           />
-          <TouchableOpacity
-            style={[styles.addTaskBtn, { borderColor: colors.border }]}
+          <Button
+            mode="text"
+            icon="plus"
+            compact
             onPress={() => onEdit({ kind: "newTask", category: title })}
+            style={styles.addTaskBtn}
+            contentStyle={{ justifyContent: "flex-start" }}
           >
-            <Text style={[styles.addTaskBtnText, { color: colors.primary }]}>+ Add Task</Text>
-          </TouchableOpacity>
+            Add a task
+          </Button>
         </View>
       )}
-    </View>
+    </Card>
   );
 }
 
 // ─── Role Restrict Card ───────────────────────────────────────────────────────
 
 function RoleRestrictCard({ checklistId }: { checklistId: string }) {
-  const colors = useColors();
+  const md = useMd();
   const numericId = parseInt(checklistId, 10);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
   const [allowedRoleIds, setAllowedRoleIds] = useState<number[]>([]);
@@ -376,54 +403,48 @@ function RoleRestrictCard({ checklistId }: { checklistId: string }) {
       : `Restricted to ${allowedRoleIds.length} role${allowedRoleIds.length !== 1 ? "s" : ""}`;
 
   return (
-    <View style={[styles.roleCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[styles.roleCardLabel, { color: colors.mutedForeground }]}>RESTRICT TO ROLES</Text>
-      <Text style={[styles.roleCardHint, { color: colors.mutedForeground }]}>{hint}</Text>
+    <Card mode="outlined" style={[styles.roleCard, { borderRadius: shape.lg, borderColor: md.outlineVariant, backgroundColor: md.surface }]}>
+      <Text style={[styles.roleCardLabel, { color: md.onSurfaceVariant }]}>RESTRICT TO ROLES</Text>
+      <Text style={[styles.roleCardHint, { color: md.onSurfaceVariant }]}>{hint}</Text>
       {loading ? (
-        <Text style={[styles.roleCardHint, { color: colors.mutedForeground, padding: 4 }]}>
+        <Text style={[styles.roleCardHint, { color: md.onSurfaceVariant, padding: 4 }]}>
           Loading roles…
         </Text>
       ) : allRoles.length === 0 ? (
-        <Text style={[styles.roleCardHint, { color: colors.mutedForeground }]}>
+        <Text style={[styles.roleCardHint, { color: md.onSurfaceVariant }]}>
           No roles found for this tenant.
         </Text>
       ) : (
         allRoles.map((role) => (
-          <View
+          <List.Item
             key={role.id}
-            style={[styles.roleRow, { borderTopColor: colors.border }]}
-          >
-            <View style={styles.roleInfo}>
-              <Text style={[styles.roleName, { color: colors.foreground }]}>
-                {role.name}
-              </Text>
-              {allowedRoleIds.length === 0 && (
-                <Text style={[styles.roleAccess, { color: colors.mutedForeground }]}>
-                  unrestricted
-                </Text>
-              )}
-            </View>
-            <Switch
-              value={allowedRoleIds.includes(role.id)}
-              onValueChange={() => toggleRole(role.id)}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#fff"
-              disabled={saving}
-            />
-          </View>
+            title={role.name}
+            description={allowedRoleIds.length === 0 ? "unrestricted" : undefined}
+            titleStyle={[typeStyle("bodyLarge"), { color: md.onSurface }]}
+            descriptionStyle={[typeStyle("bodySmall"), { color: md.onSurfaceVariant }]}
+            style={[styles.roleRow, { borderTopColor: md.outlineVariant }]}
+            right={() => (
+              <Switch
+                value={allowedRoleIds.includes(role.id)}
+                onValueChange={() => toggleRole(role.id)}
+                color={md.primary}
+                disabled={saving}
+              />
+            )}
+          />
         ))
       )}
-    </View>
+    </Card>
   );
 }
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
 export default function ChecklistSettingsScreen() {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { checklists, activeChecklistId, updateChecklistName, sections, tasks, reorderSections } = useChecklist();
+  const { checklists, activeChecklistId, updateChecklistName, sections, tasks, reorderSections, storageMode } = useChecklist();
   const [editTarget, setEditTarget] = useState<EditTarget>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const isWeb = Platform.OS === "web";
@@ -441,14 +462,25 @@ export default function ChecklistSettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{activeMeta?.name ?? "Checklist"}</Text>
-        <View style={styles.backBtn} />
+    <View style={[styles.container, { backgroundColor: md.surface }]}>
+      {/* Top app bar */}
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: md.surface, borderBottomColor: md.outlineVariant, paddingTop: topPadding },
+        ]}
+      >
+        <IconButton
+          icon={() => <Ionicons name="chevron-back" size={22} color={md.onSurfaceVariant} />}
+          onPress={() => router.back()}
+          style={styles.backIconBtn}
+        />
+        <Text style={[styles.headerTitle, { color: md.onSurface }]} numberOfLines={1}>
+          Edit Tasks &amp; Sections
+        </Text>
+        <Button mode="text" onPress={() => router.back()} textColor={md.primary} compact>
+          Done
+        </Button>
       </View>
 
       <ScrollView
@@ -462,45 +494,43 @@ export default function ChecklistSettingsScreen() {
         }}
       >
         {/* Checklist name card */}
-        <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.nameCardLabel, { color: colors.mutedForeground }]}>CHECKLIST NAME</Text>
+        <Card mode="outlined" style={[styles.nameCard, { borderRadius: shape.lg, borderColor: md.outlineVariant, backgroundColor: md.surface }]}>
+          <Text style={[styles.nameCardLabel, { color: md.onSurfaceVariant }]}>CHECKLIST NAME</Text>
           <View style={styles.nameCardRow}>
-            <TextInput
+            <PaperTextInput
+              mode="outlined"
+              dense
               value={nameValue}
               onChangeText={(v) => {
                 setNameValue(v);
                 setNameDirty(v.trim() !== (activeMeta?.name ?? ""));
               }}
               placeholder="Checklist name"
-              placeholderTextColor={colors.mutedForeground}
               returnKeyType="done"
               onSubmitEditing={handleNameSave}
-              style={[
-                styles.nameCardInput,
-                { color: colors.foreground, borderColor: nameDirty ? colors.primary : colors.border },
-              ]}
+              style={styles.nameCardInput}
             />
             {nameDirty && (
-              <TouchableOpacity onPress={handleNameSave} style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.saveNameBtnText}>Save</Text>
-              </TouchableOpacity>
+              <Button mode="contained" onPress={handleNameSave} compact style={{ borderRadius: shape.sm }}>
+                Save
+              </Button>
             )}
           </View>
-        </View>
+        </Card>
 
         {/* Legend */}
-        <View style={[styles.legend, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.legend, { backgroundColor: md.surfaceContainerLow, borderColor: md.outlineVariant, borderRadius: shape.lg }]}>
           <View style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.legendText, { color: colors.foreground, fontWeight: "600" }]}>Required</Text>
+            <View style={[styles.dot, { backgroundColor: md.secondaryContainer }]} />
+            <Text style={[typeStyle("bodyMedium"), { color: md.onSurface, fontFamily: "Inter_500Medium" }]}>Required</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: colors.border }]} />
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Optional</Text>
+            <View style={[styles.dot, { backgroundColor: md.surfaceContainerHighest }]} />
+            <Text style={[typeStyle("bodyMedium"), { color: md.onSurfaceVariant }]}>Optional</Text>
           </View>
           <View style={styles.legendItem}>
-            <Text style={{ fontSize: 16, color: colors.mutedForeground }}>≡</Text>
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Hold to reorder</Text>
+            <Ionicons name="reorder-two" size={16} color={md.onSurfaceVariant} />
+            <Text style={[typeStyle("bodyMedium"), { color: md.onSurfaceVariant }]}>Hold to reorder</Text>
           </View>
         </View>
 
@@ -526,15 +556,16 @@ export default function ChecklistSettingsScreen() {
         />
 
         {/* Add section */}
-        <TouchableOpacity
-          style={[styles.addSectionBtn, { borderColor: colors.primary }]}
+        <Button
+          mode="outlined"
           onPress={() => setEditTarget({ kind: "newSection" })}
+          style={{ borderRadius: shape.lg, borderColor: md.primary }}
         >
-          <Text style={[styles.addSectionBtnText, { color: colors.primary }]}>+ Add Section</Text>
-        </TouchableOpacity>
+          + Add Section
+        </Button>
 
-        {/* Role restrictions */}
-        {activeChecklistId ? (
+        {/* Role restrictions — personal (local-storage) accounts have no tenant/role system */}
+        {activeChecklistId && storageMode === "cloud" ? (
           <RoleRestrictCard checklistId={activeChecklistId} />
         ) : null}
       </ScrollView>
@@ -551,22 +582,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingHorizontal: 4,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: 70 },
-  backBtnText: { color: "#fff", fontSize: 17, fontWeight: "500" },
+  backIconBtn: { margin: 0 },
   headerTitle: {
     flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
+    ...typeStyle("titleLarge"),
     fontFamily: "Inter_700Bold",
   },
 
@@ -589,48 +612,33 @@ const styles = StyleSheet.create({
 
   // Name card
   nameCard: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: 14,
     gap: 8,
   },
   nameCardLabel: {
-    fontSize: 11,
-    fontWeight: "600",
+    ...typeStyle("labelMedium"),
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
   nameCardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   nameCardInput: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
   },
-  saveNameBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8 },
-  saveNameBtnText: { color: "#fff", fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 
   // Legend
   legend: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     gap: 14,
     flexWrap: "wrap",
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendText: { fontSize: 13 },
   dot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
 
   // Section card
   sectionCard: {
-    borderRadius: 12,
     overflow: "hidden",
   },
   sectionHeader: {
@@ -648,58 +656,41 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 2,
   },
-  chevron: { fontSize: 14, width: 14 },
-  sectionTitle: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_700Bold", flex: 1 },
-  taskCount: { fontSize: 12 },
+  sectionTitle: { ...typeStyle("titleSmall"), fontFamily: "Inter_700Bold", flex: 1 },
+  taskCount: typeStyle("labelMedium"),
   rowActions: { flexDirection: "row", gap: 6 },
-  iconBtn: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  iconBtnText: { fontSize: 14 },
+  iconBtn: { width: 28, height: 28, margin: 0, borderRadius: 8 },
 
   // Task row
   taskRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingRight: 8,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 4,
+    paddingVertical: 6,
+    marginHorizontal: 10,
+    marginVertical: 3,
+    gap: 8,
   },
-  taskContent: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  taskText: { fontSize: 13, lineHeight: 18 },
 
   addTaskBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
+    marginHorizontal: 6,
+    marginBottom: 6,
+    alignSelf: "flex-start",
   },
-  addTaskBtnText: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-  addSectionBtn: {
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  addSectionBtnText: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
 
   // Role card
   roleCard: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: 14,
     gap: 4,
   },
   roleCardLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
+    ...typeStyle("labelMedium"),
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   roleCardHint: {
-    fontSize: 12,
+    ...typeStyle("bodySmall"),
     marginBottom: 4,
   },
   roleRow: {
@@ -710,29 +701,25 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   roleInfo: { flex: 1, gap: 1 },
-  roleName: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  roleAccess: { fontSize: 11 },
+  roleName: typeStyle("bodyLarge"),
+  roleAccess: typeStyle("labelSmall"),
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  modalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12 },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject },
+  modalSheet: { padding: 20, paddingBottom: 36, gap: 12 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
-  modalTitle: { fontSize: 18, fontWeight: "700", fontFamily: "Inter_700Bold", marginBottom: 4 },
-  inputLabel: { fontSize: 12, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5 },
+  modalTitle: { ...typeStyle("headlineSmall"), marginBottom: 4 },
+  inputLabel: { ...typeStyle("labelMedium"), textTransform: "uppercase", letterSpacing: 0.5 },
   textInput: {
+    ...typeStyle("bodyLarge"),
     borderWidth: 1,
-    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
     textAlignVertical: "top",
-    lineHeight: 22,
   },
   requiredRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6 },
-  requiredLabel: { fontSize: 15, fontWeight: "500" },
-  requiredHint: { fontSize: 12, marginTop: 2 },
-  modalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
-  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
-  modalBtnText: { fontSize: 15, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  requiredLabel: { ...typeStyle("bodyLarge"), fontFamily: "Inter_500Medium" },
+  requiredHint: { ...typeStyle("bodySmall"), marginTop: 2 },
+  modalActions: { flexDirection: "row", gap: 10, marginTop: 4, alignItems: "center" },
 });

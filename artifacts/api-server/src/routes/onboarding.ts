@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import { hashPassword } from "../lib/auth";
 import { requireAuth } from "../middlewares/auth";
 import { orgUnitSubtreeIds } from "../lib/tenant-scope";
+import { encryptField } from "../lib/fieldCrypto";
 
 const router: IRouter = Router();
 
@@ -127,7 +128,7 @@ router.post("/complete", requireAuth, async (req, res) => {
           tenantId: u.role.isSystem ? null : u.tenantId,
           orgUnitId,
           username: member.email,
-          displayName,
+          displayName: encryptField(displayName),
           passwordHash,
           roleId,
           mustChangePassword: true,

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Divider, SegmentedButtons } from 'react-native-paper';
+
+import shape from '@/constants/shape';
+import { useMd } from '@/theme/useMd';
 import { MultiDonutChart } from './MultiDonutChart';
 import { Counts, DeltaResult } from './types';
-import { deltaPct } from './dashUtils';
 
 interface BreakdownCardProps {
   current: Counts;
@@ -30,40 +33,55 @@ function calcDelta(cur: number, prv: number, compare: boolean): DeltaResult | nu
 }
 
 export function BreakdownCard({ current, prev, compare, period }: BreakdownCardProps) {
+  const md = useMd();
   const [showPct, setShowPct] = useState(false);
   const { completed, late, incomplete, missed, total } = current;
 
   const segments = [
-    { value: completed, color: '#16A34A' },
-    { value: late,       color: '#2196F3' },
-    { value: incomplete, color: '#FF9800' },
-    { value: missed,     color: '#EF4444' },
+    { value: completed, color: md.primary },
+    { value: late, color: md.tertiary },
+    { value: incomplete, color: md.secondary },
+    { value: missed, color: md.error },
   ];
 
   const pct = (v: number) => total > 0 ? `${Math.round(v / total * 100)}%` : '0%';
 
   const rows: LegendRow[] = [
-    { color: '#16A34A', name: 'Completed',  meta: 'All required tasks done',        val: completed,  prevVal: prev.completed,  polarity:  1 },
-    { color: '#2196F3', name: 'Late',       meta: 'Completed past shift window',    val: late,       prevVal: prev.late,       polarity: -1 },
-    { color: '#FF9800', name: 'Incomplete', meta: 'Saved with tasks unchecked',     val: incomplete, prevVal: prev.incomplete, polarity: -1 },
-    { color: '#EF4444', name: 'Missed',     meta: 'Shift never logged',             val: missed,     prevVal: prev.missed,     polarity: -1 },
+    { color: md.primary, name: 'Completed', meta: 'All required tasks done', val: completed, prevVal: prev.completed, polarity: 1 },
+    { color: md.tertiary, name: 'Late', meta: 'Completed past shift window', val: late, prevVal: prev.late, polarity: -1 },
+    { color: md.secondary, name: 'Incomplete', meta: 'Saved with tasks unchecked', val: incomplete, prevVal: prev.incomplete, polarity: -1 },
+    { color: md.error, name: 'Missed', meta: 'Shift never logged', val: missed, prevVal: prev.missed, polarity: -1 },
   ];
 
   const prevTotal = (prev.completed || 0) + (prev.late || 0) + (prev.incomplete || 0) + (prev.missed || 0);
-  const compRate  = total     > 0 ? completed      / total     : 0;
-  const prevRate  = prevTotal > 0 ? prev.completed / prevTotal : 0;
-  const overallD  = calcDelta(compRate * 100, prevRate * 100, compare);
+  const compRate = total > 0 ? completed / total : 0;
+  const prevRate = prevTotal > 0 ? prev.completed / prevTotal : 0;
+  const overallD = calcDelta(compRate * 100, prevRate * 100, compare);
 
   return (
-    <View style={styles.card} accessibilityLabel="Shift Breakdown">
+    <View
+      style={[styles.card, { backgroundColor: md.surfaceContainerHigh, borderRadius: shape.lg }]}
+      accessibilityLabel="Shift Breakdown"
+    >
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
-          <Text style={styles.cardTitle}>Shift Breakdown</Text>
+          <Text style={[styles.cardTitle, { color: md.onSurface }]}>Shift Breakdown</Text>
           <View style={styles.subRow}>
-            <Text style={styles.cardSub}>This {period}</Text>
+            <Text style={[styles.cardSub, { color: md.onSurfaceVariant }]}>This {period}</Text>
             {overallD && overallD.kind !== 'flat' && (
-              <View style={[styles.overallBadge, overallD.kind === 'up' ? styles.overallBadgeGood : styles.overallBadgeBad]}>
-                <Text style={[styles.overallBadgeText, overallD.kind === 'up' ? styles.overallBadgeTextGood : styles.overallBadgeTextBad]}>
+              <View
+                style={[
+                  styles.overallBadge,
+                  { borderRadius: shape.xs },
+                  overallD.kind === 'up' ? { backgroundColor: md.successContainer } : { backgroundColor: md.errorContainer },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.overallBadgeText,
+                    overallD.kind === 'up' ? { color: md.onSuccessContainer } : { color: md.onErrorContainer },
+                  ]}
+                >
                   {overallD.kind === 'up' ? '↑' : '↓'} {overallD.text} overall
                 </Text>
               </View>
@@ -72,69 +90,68 @@ export function BreakdownCard({ current, prev, compare, period }: BreakdownCardP
         </View>
         <View style={styles.cardHeaderRight}>
           <View style={styles.segmented}>
-            <Pressable
-              onPress={() => setShowPct(false)}
-              style={[styles.segBtn, !showPct && styles.segBtnActive]}
-              accessibilityRole="button"
-              accessibilityLabel="Show count"
-              accessibilityState={{ selected: !showPct }}
-            >
-              <Text style={[styles.segBtnText, !showPct && styles.segBtnTextActive]}>#</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setShowPct(true)}
-              style={[styles.segBtn, showPct && styles.segBtnActive]}
-              accessibilityRole="button"
-              accessibilityLabel="Show percentage"
-              accessibilityState={{ selected: showPct }}
-            >
-              <Text style={[styles.segBtnText, showPct && styles.segBtnTextActive]}>%</Text>
-            </Pressable>
+            <SegmentedButtons
+              value={showPct ? 'pct' : 'count'}
+              onValueChange={(v) => setShowPct(v === 'pct')}
+              density="small"
+              buttons={[
+                { value: 'count', label: '#', accessibilityLabel: 'Show count' },
+                { value: 'pct', label: '%', accessibilityLabel: 'Show percentage' },
+              ]}
+            />
           </View>
-          <Text style={styles.eyebrow}>{total} shifts</Text>
+          <Text style={[styles.eyebrow, { color: md.onSurfaceVariant }]}>{total} shifts</Text>
         </View>
       </View>
 
       <View style={styles.body}>
         <MultiDonutChart segments={segments} size={150} stroke={18} />
         <View style={styles.legend}>
-          {rows.map(row => {
+          {rows.map((row, i) => {
             const d = calcDelta(row.val, row.prevVal, compare);
             const good = d && ((d.kind === 'up' && row.polarity > 0) || (d.kind === 'down' && row.polarity < 0));
-            const bad  = d && ((d.kind === 'up' && row.polarity < 0) || (d.kind === 'down' && row.polarity > 0));
+            const bad = d && ((d.kind === 'up' && row.polarity < 0) || (d.kind === 'down' && row.polarity > 0));
             const arrow = d ? (d.kind === 'up' ? '↑' : d.kind === 'down' ? '↓' : '') : '';
             const displayVal = showPct ? pct(row.val) : String(row.val);
 
             return (
-              <View key={row.name} style={styles.legendRow} accessibilityLabel={`${row.name}: ${displayVal}`}>
+              <React.Fragment key={row.name}>
+              {i > 0 && <Divider style={{ backgroundColor: md.outlineVariant }} />}
+              <View style={styles.legendRow} accessibilityLabel={`${row.name}: ${displayVal}`}>
                 {/* Color swatch — LEFT edge, always aligned */}
-                <View style={[styles.swatch, { backgroundColor: row.color }]} />
+                <View style={[styles.swatch, { backgroundColor: row.color, borderRadius: shape.xs }]} />
                 {/* Name + meta — middle, flex */}
                 <View style={styles.labelBlock}>
-                  <Text style={styles.legendName}>{row.name}</Text>
-                  <Text style={styles.legendMeta} numberOfLines={1}>{row.meta}</Text>
+                  <Text style={[styles.legendName, { color: md.onSurface }]}>{row.name}</Text>
+                  <Text style={[styles.legendMeta, { color: md.onSurfaceVariant }]} numberOfLines={1}>{row.meta}</Text>
                 </View>
                 {/* Value + delta — right */}
                 <View style={styles.valBlock}>
                   <View style={styles.valRow}>
-                    <Text style={styles.valText}>{displayVal}</Text>
+                    <Text style={[styles.valText, { color: md.onSurface }]}>{displayVal}</Text>
                     {d && (
-                      <View style={[
-                        styles.deltaPill,
-                        good ? styles.deltaPillGood : bad ? styles.deltaPillBad : styles.deltaPillFlat,
-                      ]}>
-                        <Text style={[
-                          styles.deltaPillText,
-                          good ? styles.deltaPillTextGood : bad ? styles.deltaPillTextBad : styles.deltaPillTextFlat,
-                        ]}>{arrow}{d.text}</Text>
+                      <View
+                        style={[
+                          styles.deltaPill,
+                          { borderRadius: shape.full },
+                          good ? { backgroundColor: md.successContainer } : bad ? { backgroundColor: md.errorContainer } : { backgroundColor: md.surfaceContainerHighest },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.deltaPillText,
+                            good ? { color: md.onSuccessContainer } : bad ? { color: md.onErrorContainer } : { color: md.onSurfaceVariant },
+                          ]}
+                        >{arrow}{d.text}</Text>
                       </View>
                     )}
                   </View>
                   {compare && d && (
-                    <Text style={styles.wasText}>was {showPct ? pct(row.prevVal) : row.prevVal}</Text>
+                    <Text style={[styles.wasText, { color: md.onSurfaceVariant }]}>was {showPct ? pct(row.prevVal) : row.prevVal}</Text>
                   )}
                 </View>
               </View>
+              </React.Fragment>
             );
           })}
         </View>
@@ -145,10 +162,6 @@ export function BreakdownCard({ current, prev, compare, period }: BreakdownCardP
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 12,
     padding: 16,
     gap: 12,
   },
@@ -161,38 +174,18 @@ const styles = StyleSheet.create({
   },
   cardHeaderLeft: { flex: 1, gap: 4 },
   cardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 },
-  cardTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#1A1A1A', letterSpacing: -0.1 },
+  cardTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.1 },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  cardSub: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#888888' },
+  cardSub: { fontSize: 12, fontFamily: 'Inter_500Medium' },
   overallBadge: {
-    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4,
+    paddingHorizontal: 7, paddingVertical: 2,
   },
-  overallBadgeGood: { backgroundColor: 'rgba(22,163,74,0.12)' },
-  overallBadgeBad: { backgroundColor: 'rgba(239,68,68,0.10)' },
   overallBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-  overallBadgeTextGood: { color: '#16A34A' },
-  overallBadgeTextBad: { color: '#EF4444' },
   segmented: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    padding: 2,
+    minWidth: 90,
   },
-  segBtn: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6,
-  },
-  segBtnActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  segBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#888888' },
-  segBtnTextActive: { color: '#C8102E' },
   eyebrow: {
-    fontSize: 11, fontFamily: 'Inter_600SemiBold', color: '#888888',
+    fontSize: 11, fontFamily: 'Inter_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.5,
   },
   body: {
@@ -216,7 +209,6 @@ const styles = StyleSheet.create({
   swatch: {
     width: 10,
     height: 10,
-    borderRadius: 2,
     flexShrink: 0,
   },
   // MIDDLE: name + meta — flex:1 so value aligns to a consistent right edge
@@ -225,10 +217,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   legendName: {
-    fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#1A1A1A',
+    fontSize: 13, fontFamily: 'Inter_600SemiBold',
   },
   legendMeta: {
-    fontSize: 10, fontFamily: 'Inter_500Medium', color: '#888888',
+    fontSize: 10, fontFamily: 'Inter_500Medium',
   },
   // RIGHT: value + delta pill
   valBlock: {
@@ -242,18 +234,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   valText: {
-    fontSize: 18, fontFamily: 'Inter_700Bold', color: '#1A1A1A', letterSpacing: -0.4,
+    fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
   deltaPill: {
-    paddingHorizontal: 5, paddingVertical: 2, borderRadius: 9999,
+    paddingHorizontal: 5, paddingVertical: 2,
   },
-  deltaPillGood: { backgroundColor: 'rgba(22,163,74,0.10)' },
-  deltaPillBad: { backgroundColor: 'rgba(239,68,68,0.10)' },
-  deltaPillFlat: { backgroundColor: 'rgba(0,0,0,0.05)' },
   deltaPillText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
-  deltaPillTextGood: { color: '#16A34A' },
-  deltaPillTextBad: { color: '#EF4444' },
-  deltaPillTextFlat: { color: '#888888' },
-  wasText: { fontSize: 11, fontFamily: 'Inter_500Medium', color: '#888888' },
+  wasText: { fontSize: 11, fontFamily: 'Inter_500Medium' },
 });

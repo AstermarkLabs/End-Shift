@@ -12,7 +12,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -20,7 +21,7 @@ export type ErrorFallbackProps = {
 };
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
-  const colors = useColors();
+  const colors = useMd();
   const insets = useSafeAreaInsets();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -49,7 +50,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
@@ -59,21 +60,21 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             styles.topButton,
             {
               top: insets.top + 16,
-              backgroundColor: colors.card,
+              backgroundColor: colors.surfaceContainerLow,
               opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
-          <Feather name="alert-circle" size={20} color={colors.foreground} />
+          <Feather name="alert-circle" size={20} color={colors.onSurface} />
         </Pressable>
       ) : null}
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.foreground }]}>
+        <Text style={[styles.title, { color: colors.onSurface }]}>
           Something went wrong
         </Text>
 
-        <Text style={[styles.message, { color: colors.mutedForeground }]}>
+        <Text style={[styles.message, { color: colors.onSurfaceVariant }]}>
           Please reload the app to continue.
         </Text>
 
@@ -91,7 +92,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           <Text
             style={[
               styles.buttonText,
-              { color: colors.primaryForeground },
+              { color: colors.onPrimary },
             ]}
           >
             Try Again
@@ -110,16 +111,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             <View
               style={[
                 styles.modalContainer,
-                { backgroundColor: colors.background },
+                { backgroundColor: colors.surface },
               ]}
             >
               <View
                 style={[
                   styles.modalHeader,
-                  { borderBottomColor: colors.border },
+                  { borderBottomColor: colors.outlineVariant },
                 ]}
               >
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                <Text style={[styles.modalTitle, { color: colors.onSurface }]}>
                   Error Details
                 </Text>
                 <Pressable
@@ -131,7 +132,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                     { opacity: pressed ? 0.6 : 1 },
                   ]}
                 >
-                  <Feather name="x" size={24} color={colors.foreground} />
+                  <Feather name="x" size={24} color={colors.onSurface} />
                 </Pressable>
               </View>
 
@@ -146,14 +147,14 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                 <View
                   style={[
                     styles.errorContainer,
-                    { backgroundColor: colors.card },
+                    { backgroundColor: colors.surfaceContainerLow },
                   ]}
                 >
                   <Text
                     style={[
                       styles.errorText,
                       {
-                        color: colors.foreground,
+                        color: colors.onSurface,
                         fontFamily: monoFont,
                       },
                     ]}
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     textAlign: "center",
     lineHeight: 40,
   },
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   buttonText: {
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     fontSize: 16,
   },
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
   closeButton: {
     width: 44,

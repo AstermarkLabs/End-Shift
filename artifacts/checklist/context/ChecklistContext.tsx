@@ -78,6 +78,11 @@ export interface AppConfig {
   primaryColor: string;
   icon: string;
   customIconUri?: string;
+  // Theme override for the Settings > Dark theme switch. "system" (default)
+  // follows the OS color scheme; "light"/"dark" pin it once the user flips
+  // the switch. Tri-state rather than boolean so first-run/OS-dark users
+  // aren't silently forced to light mode — see theme/paperTheme.ts.
+  darkMode: "system" | "light" | "dark";
   // Export layout settings
   exportLogoEnabled: boolean;
   exportLogoPosition: "left" | "center" | "right";
@@ -116,6 +121,7 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   name: "End Shift",
   primaryColor: "#C8102E",
   icon: "🕐",
+  darkMode: "system",
   exportLogoEnabled: true,
   exportLogoPosition: "left",
   exportTitlePosition: "center",

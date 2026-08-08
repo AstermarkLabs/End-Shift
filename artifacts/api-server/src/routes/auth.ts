@@ -27,8 +27,9 @@ import {
   verifyRegistration,
 } from "../lib/webauthn";
 import { requireAuth } from "../middlewares/auth";
-import { profileFor } from "./profiles";
+import { profileFor, normalizeEmail } from "./profiles";
 import { consumeChallenge, rememberChallenge } from "../lib/passkey-challenges";
+import { encryptField, decryptField, hashForLookup } from "../lib/fieldCrypto";
 
 const router: IRouter = Router();
 
@@ -145,7 +146,7 @@ router.post("/passkey/register-options", requireAuth, async (req, res) => {
   const opts = await buildRegistrationOptions({
     userId: u.id,
     username: u.username,
-    displayName: u.displayName,
+    displayName: decryptField(u.displayName),
     excludeCredentials: existing.map((c) => ({
       id: c.credentialId,
       transports: c.transports,
@@ -350,10 +351,11 @@ router.post("/register", async (req, res) => {
     return;
   }
 
+  const emailHash = hashForLookup(normalizeEmail(body.email));
   const existingByEmail = await db
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(eq(usersTable.email, body.email))
+    .where(eq(usersTable.emailHash, emailHash))
     .limit(1);
   if (existingByEmail.length > 0) {
     res.status(409).json({ error: "Email already in use" });
@@ -396,8 +398,9 @@ router.post("/register", async (req, res) => {
       tenantId: tenant.id,
       orgUnitId: null, // tenant-wide scope — can see all users in the business
       username: body.username,
-      email: body.email,
-      displayName: body.businessName,
+      email: encryptField(body.email),
+      emailHash,
+      displayName: encryptField(body.businessName),
       passwordHash,
       roleId: ownerRole.id,
       accountType,

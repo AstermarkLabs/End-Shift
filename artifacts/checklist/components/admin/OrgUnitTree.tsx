@@ -21,7 +21,7 @@ import {
   type OrgUnit,
 } from "@workspace/api-client-react";
 import { describeApiError } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import { useMd } from "@/theme/useMd";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,7 +76,7 @@ export function OrgUnitTree({
   canManage,
   onScrollEnable,
 }: OrgUnitTreeProps) {
-  const colors = useColors();
+  const md = useMd();
 
   // ── Local units state — syncs from prop on initial load / parent refresh ────
   const [units, setUnits] = useState<OrgUnit[]>(orgUnits);
@@ -321,19 +321,19 @@ export function OrgUnitTree({
               s.regionCard,
               {
                 borderColor: isActiveRegion
-                  ? colors.primary
+                  ? md.primary
                   : isHighlightedRegion
-                  ? colors.primary + "55"
-                  : colors.border,
+                  ? md.primary + "55"
+                  : md.outlineVariant,
                 backgroundColor: isActiveRegion
-                  ? colors.primary + "12"
-                  : colors.card,
+                  ? md.primary + "12"
+                  : md.surfaceContainerLow,
               },
             ]}
           >
             {/* ── Region header ─────────────────────────────────────────── */}
             <View style={s.regionHeaderRow}>
-              <Text style={[s.regionName, { color: colors.foreground }]}>
+              <Text style={[s.regionName, { color: md.onSurface }]}>
                 {region.name}
               </Text>
               {canManage && (
@@ -341,7 +341,7 @@ export function OrgUnitTree({
                   onPress={() => setEditUnit(region)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={[s.menuBtn, { color: colors.mutedForeground }]}>
+                  <Text style={[s.menuBtn, { color: md.onSurfaceVariant }]}>
                     ···
                   </Text>
                 </TouchableOpacity>
@@ -363,13 +363,13 @@ export function OrgUnitTree({
                     s.districtSection,
                     {
                       borderColor: isActiveDistrict
-                        ? colors.primary
+                        ? md.primary
                         : isHighlightedDistrict
-                        ? colors.primary + "55"
-                        : colors.border,
+                        ? md.primary + "55"
+                        : md.outlineVariant,
                       backgroundColor: isActiveDistrict
-                        ? colors.primary + "12"
-                        : colors.background,
+                        ? md.primary + "12"
+                        : md.surface,
                       opacity: isDraggingThisDistrict ? 0.35 : 1,
                     },
                   ]}
@@ -385,7 +385,7 @@ export function OrgUnitTree({
                           <Text
                             style={[
                               s.dragHandleIcon,
-                              { color: colors.mutedForeground },
+                              { color: md.onSurfaceVariant },
                             ]}
                           >
                             ≡
@@ -394,13 +394,13 @@ export function OrgUnitTree({
                       </GestureDetector>
                     ) : (
                       <Text
-                        style={[s.districtArrow, { color: colors.mutedForeground }]}
+                        style={[s.districtArrow, { color: md.onSurfaceVariant }]}
                       >
                         ▸
                       </Text>
                     )}
                     <Text
-                      style={[s.districtName, { color: colors.foreground }]}
+                      style={[s.districtName, { color: md.onSurface }]}
                     >
                       {district.name}
                     </Text>
@@ -410,7 +410,7 @@ export function OrgUnitTree({
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
                         <Text
-                          style={[s.menuBtn, { color: colors.mutedForeground }]}
+                          style={[s.menuBtn, { color: md.onSurfaceVariant }]}
                         >
                           ···
                         </Text>
@@ -444,7 +444,7 @@ export function OrgUnitTree({
                               <Text
                                 style={[
                                   s.dragHandleIcon,
-                                  { color: colors.mutedForeground },
+                                  { color: md.onSurfaceVariant },
                                 ]}
                               >
                                 ≡
@@ -455,14 +455,14 @@ export function OrgUnitTree({
                           <Text
                             style={[
                               s.locationPin,
-                              { color: colors.mutedForeground },
+                              { color: md.onSurfaceVariant },
                             ]}
                           >
                             📍
                           </Text>
                         )}
                         <Text
-                          style={[s.locationName, { color: colors.foreground }]}
+                          style={[s.locationName, { color: md.onSurface }]}
                         >
                           {loc.name}
                         </Text>
@@ -474,7 +474,7 @@ export function OrgUnitTree({
                             <Text
                               style={[
                                 s.menuBtn,
-                                { color: colors.mutedForeground },
+                                { color: md.onSurfaceVariant },
                               ]}
                             >
                               ···
@@ -497,13 +497,13 @@ export function OrgUnitTree({
                       }
                       onSubmitEditing={() => handleAddLocation(district.id)}
                       placeholder="＋ Add location"
-                      placeholderTextColor={colors.primary}
+                      placeholderTextColor={md.primary}
                       returnKeyType="done"
                       style={[
                         s.addInput,
                         {
-                          color: colors.foreground,
-                          borderColor: colors.border,
+                          color: md.onSurface,
+                          borderColor: md.outlineVariant,
                           marginLeft: 28,
                           marginTop: 4,
                         },
@@ -523,13 +523,13 @@ export function OrgUnitTree({
                 }
                 onSubmitEditing={() => handleAddDistrict(region.id)}
                 placeholder="＋ Add district"
-                placeholderTextColor={colors.primary}
+                placeholderTextColor={md.primary}
                 returnKeyType="done"
                 style={[
                   s.addInput,
                   {
-                    color: colors.foreground,
-                    borderColor: colors.border,
+                    color: md.onSurface,
+                    borderColor: md.outlineVariant,
                     marginTop: 6,
                   },
                 ]}
@@ -546,21 +546,21 @@ export function OrgUnitTree({
           onChangeText={setNewRegionName}
           onSubmitEditing={handleAddRegion}
           placeholder="＋ Add region"
-          placeholderTextColor={colors.primary}
+          placeholderTextColor={md.primary}
           returnKeyType="done"
           style={[
             s.addRegionInput,
             {
-              color: colors.foreground,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
+              color: md.onSurface,
+              borderColor: md.outlineVariant,
+              backgroundColor: md.surfaceContainerLow,
             },
           ]}
         />
       )}
 
       {tree.length === 0 && !canManage && (
-        <Text style={{ color: colors.mutedForeground, fontSize: 13, paddingHorizontal: 4 }}>
+        <Text style={{ color: md.onSurfaceVariant, fontSize: 13, paddingHorizontal: 4 }}>
           No org units configured.
         </Text>
       )}
@@ -594,7 +594,7 @@ function UnitEditModal({
   onUnitUpdated: (updated: OrgUnit) => void;
   onUnitDeleted: (id: number) => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -651,7 +651,7 @@ function UnitEditModal({
       onRequestClose={onClose}
     >
       <ScrollView
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1, backgroundColor: md.surface }}
         contentContainerStyle={{
           padding: 16,
           paddingTop: insets.top + 16,
@@ -660,15 +660,15 @@ function UnitEditModal({
         }}
       >
         <View style={s.modalHeader}>
-          <Text style={[s.modalTitle, { color: colors.foreground }]}>
+          <Text style={[s.modalTitle, { color: md.onSurface }]}>
             Edit {unit?.type}
           </Text>
           <TouchableOpacity onPress={onClose}>
-            <Text style={{ color: colors.primary }}>Cancel</Text>
+            <Text style={{ color: md.primary }}>Cancel</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={[s.fieldLabel, { color: colors.foreground }]}>Name</Text>
+        <Text style={[s.fieldLabel, { color: md.onSurface }]}>Name</Text>
         <TextInput
           value={name}
           onChangeText={setName}
@@ -677,9 +677,9 @@ function UnitEditModal({
           style={[
             s.modalInput,
             {
-              borderColor: colors.input,
-              color: colors.foreground,
-              backgroundColor: colors.card,
+              borderColor: md.outlineVariant,
+              color: md.onSurface,
+              backgroundColor: md.surfaceContainerLow,
             },
           ]}
         />
@@ -687,27 +687,27 @@ function UnitEditModal({
         <TouchableOpacity
           style={[
             s.primaryBtn,
-            { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 },
+            { backgroundColor: md.primary, opacity: busy ? 0.6 : 1 },
           ]}
           onPress={onSave}
           disabled={busy}
         >
           {busy ? (
-            <ActivityIndicator color={colors.primaryForeground} />
+            <ActivityIndicator color={md.onPrimary} />
           ) : (
-            <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>
+            <Text style={{ color: md.onPrimary, fontFamily: "Inter_600SemiBold" }}>
               Save
             </Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[s.dangerBtn, { backgroundColor: colors.destructive }]}
+          style={[s.dangerBtn, { backgroundColor: md.error }]}
           onPress={onDelete}
           disabled={busy}
         >
           <Text
-            style={{ color: colors.destructiveForeground, fontWeight: "600" }}
+            style={{ color: md.onError, fontFamily: "Inter_600SemiBold" }}
           >
             Delete {unit?.type}
           </Text>
@@ -735,7 +735,7 @@ const s = StyleSheet.create({
   },
   regionName: {
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     flex: 1,
   },
 
@@ -758,7 +758,7 @@ const s = StyleSheet.create({
   districtName: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 
   // Location
@@ -786,13 +786,13 @@ const s = StyleSheet.create({
   },
   dragHandleIcon: {
     fontSize: 18,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 
   // Menu button
   menuBtn: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 1,
     paddingHorizontal: 2,
   },
@@ -821,12 +821,12 @@ const s = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     textTransform: "capitalize",
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: "500",
+    fontFamily: "Inter_500Medium",
     marginBottom: 4,
   },
   modalInput: {

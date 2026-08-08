@@ -1,0 +1,22 @@
+{
+  "git": {
+    "commitMessage": "chore(checklist): release v${version}",
+    "tagName": "checklist-v${version}",
+    "requireCleanWorkingDir": true
+  },
+  "github": {
+    "release": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "after:bump": "node scripts/sync-app-version.mjs"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "conventionalcommits",
+      "infile": "CHANGELOG.md"
+    }
+  }
+}

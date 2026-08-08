@@ -118,14 +118,14 @@ try {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
   // 1. Login screen (before inject)
-  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'load', timeout: 45_000 });
+  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'load', timeout: 180_000 });
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `${OUT_DIR}/01-login.png`, fullPage: true });
   console.log(`01-login.png  [${page.url()}]`);
 
   // 2. Inject no-auth state and reload
   await injectNoAuthState(page);
-  await page.reload({ waitUntil: 'load', timeout: 20_000 });
+  await page.reload({ waitUntil: 'load', timeout: 60_000 });
   await page.waitForTimeout(2500);
 
   // 3. Click "Back to personal account" to enter the app
@@ -135,13 +135,13 @@ try {
   console.log(`02-main-tabs.png  [${page.url()}]`);
 
   // 4. Settings screen
-  await page.goto(`http://localhost:${PORT}/settings`, { waitUntil: 'load', timeout: 10_000 });
+  await page.goto(`http://localhost:${PORT}/settings`, { waitUntil: 'load', timeout: 60_000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: `${OUT_DIR}/03-settings.png`, fullPage: true });
   console.log(`03-settings.png  [${page.url()}]`);
 
   // 5. Profile screen (no-auth → renders null body; tests routing/layout only)
-  await page.goto(`http://localhost:${PORT}/profile`, { waitUntil: 'load', timeout: 10_000 });
+  await page.goto(`http://localhost:${PORT}/profile`, { waitUntil: 'load', timeout: 60_000 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: `${OUT_DIR}/04-profile.png`, fullPage: true });
   console.log(`04-profile.png  [${page.url()}]`);

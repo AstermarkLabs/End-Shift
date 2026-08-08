@@ -17,6 +17,14 @@ import {
   UpdateMeBody,
 } from "@workspace/api-zod";
 import { hashPassword, verifyPassword } from "../lib/auth";
+import { encryptField, decryptField, hashForLookup } from "../lib/fieldCrypto";
+
+// email/displayName are stored encrypted at rest (see fieldCrypto.ts).
+// normalizeEmail keeps the blind-index hash consistent regardless of
+// case/whitespace variance in what a client sends.
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
 import {
   blockIfMustChangePassword,
   requireAnyRight,
@@ -65,8 +73,8 @@ export function profileFor(
         }
       : null,
     username: user.username,
-    email: user.email ?? null,
-    displayName: user.displayName,
+    email: user.email ? decryptField(user.email) : null,
+    displayName: decryptField(user.displayName),
     roleId: user.roleId,
     role: {
       id: role.id,
@@ -137,21 +145,26 @@ router.put("/me", requireAuth, async (req, res) => {
     }
     updates.username = body.username;
   }
-  if (body.displayName) updates.displayName = body.displayName;
+  if (body.displayName) updates.displayName = encryptField(body.displayName);
   if ("email" in body) {
     const newEmail = body.email ?? null;
     if (newEmail !== null) {
+      const newEmailHash = hashForLookup(normalizeEmail(newEmail));
       const existing = await db
         .select({ id: usersTable.id })
         .from(usersTable)
-        .where(eq(usersTable.email, newEmail))
+        .where(eq(usersTable.emailHash, newEmailHash))
         .limit(1);
       if (existing.length > 0 && existing[0]!.id !== u.id) {
         res.status(409).json({ error: "Email already in use" });
         return;
       }
+      updates.email = encryptField(newEmail);
+      updates.emailHash = newEmailHash;
+    } else {
+      updates.email = null;
+      updates.emailHash = null;
     }
-    updates.email = newEmail;
   }
   if (body.newPassword) {
     if (!u.passwordHash || !body.currentPassword) {
@@ -321,7 +334,7 @@ router.post(
           tenantId: u.role.isSystem ? null : u.tenantId,
           orgUnitId: requestedOrgUnitId,
           username: body.username,
-          displayName: body.displayName,
+          displayName: encryptField(body.displayName),
           passwordHash,
           roleId: body.roleId,
           mustChangePassword: body.mustChangePassword ?? true,
@@ -472,7 +485,7 @@ router.put("/:id", requireAuth, async (req, res) => {
 
   const updates: Partial<typeof usersTable.$inferInsert> = {};
   if (body.username) updates.username = body.username;
-  if (body.displayName) updates.displayName = body.displayName;
+  if (body.displayName) updates.displayName = encryptField(body.displayName);
   if (body.roleId !== undefined) updates.roleId = body.roleId;
   if (wantsOrgUnitChange) updates.orgUnitId = body.orgUnitId ?? null;
   if (body.isActive !== undefined) updates.isActive = body.isActive;

@@ -2,7 +2,8 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { type OrgUnit } from "@workspace/api-client-react";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ export function OrgUnitSelector({
   onChange,
   callerOrgUnitId,
 }: OrgUnitSelectorProps) {
-  const colors = useColors();
+  const md = useMd();
 
   const visibleUnits = useMemo(
     () =>
@@ -84,22 +85,25 @@ export function OrgUnitSelector({
 
   return (
     <>
-      <Text style={[s.label, { color: colors.foreground }]}>Location</Text>
+      <Text style={[s.label, { color: md.onSurface }]}>Location</Text>
 
       {callerOrgUnitId === null && (
         <TouchableOpacity
           style={[
             s.tenantWideRow,
             {
-              borderColor: value === null ? colors.primary : colors.border,
-              backgroundColor: value === null ? colors.secondary : colors.card,
+              borderColor: value === null ? md.primary : md.outlineVariant,
+              backgroundColor: value === null ? md.secondaryContainer : md.surfaceContainerLow,
+              borderRadius: shape.sm,
             },
           ]}
           onPress={() => onChange(null)}
         >
-          <Text style={{ color: colors.foreground, flex: 1 }}>None (Tenant-wide)</Text>
+          <Text style={{ color: value === null ? md.onSecondaryContainer : md.onSurface, flex: 1 }}>
+            None (Tenant-wide)
+          </Text>
           {value === null && (
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 16 }}>✓</Text>
+            <Text style={{ color: md.primary, fontFamily: "Inter_700Bold", fontSize: 16 }}>✓</Text>
           )}
         </TouchableOpacity>
       )}
@@ -112,17 +116,20 @@ export function OrgUnitSelector({
             style={[
               s.regionCard,
               {
-                borderColor: isRegionSelected ? colors.primary : colors.border,
-                backgroundColor: isRegionSelected ? colors.primary + "12" : colors.card,
+                borderColor: isRegionSelected ? md.primary : md.outlineVariant,
+                backgroundColor: isRegionSelected ? md.primaryContainer : md.surfaceContainerLow,
+                borderRadius: shape.md,
               },
             ]}
           >
             <TouchableOpacity style={s.regionHeaderRow} onPress={() => onChange(region.id)}>
-              <Text style={[s.regionName, { color: colors.foreground }]}>{region.name}</Text>
+              <Text style={[s.regionName, { color: isRegionSelected ? md.onPrimaryContainer : md.onSurface }]}>
+                {region.name}
+              </Text>
               <View style={s.regionMeta}>
-                <Text style={[s.typeLabel, { color: colors.mutedForeground }]}>region</Text>
+                <Text style={[s.typeLabel, { color: md.onSurfaceVariant }]}>region</Text>
                 {isRegionSelected && (
-                  <Text style={[s.checkmark, { color: colors.primary }]}>✓</Text>
+                  <Text style={[s.checkmark, { color: md.primary }]}>✓</Text>
                 )}
               </View>
             </TouchableOpacity>
@@ -135,10 +142,11 @@ export function OrgUnitSelector({
                   style={[
                     s.districtSection,
                     {
-                      borderColor: isDistrictSelected ? colors.primary : colors.border,
+                      borderColor: isDistrictSelected ? md.primary : md.outlineVariant,
                       backgroundColor: isDistrictSelected
-                        ? colors.primary + "12"
-                        : colors.background,
+                        ? md.primaryContainer
+                        : md.surface,
+                      borderRadius: shape.sm,
                     },
                   ]}
                 >
@@ -146,14 +154,14 @@ export function OrgUnitSelector({
                     style={s.districtHeaderRow}
                     onPress={() => onChange(district.id)}
                   >
-                    <Text style={[s.districtArrow, { color: colors.mutedForeground }]}>▸</Text>
-                    <Text style={[s.districtName, { color: colors.foreground }]}>
+                    <Text style={[s.districtArrow, { color: md.onSurfaceVariant }]}>▸</Text>
+                    <Text style={[s.districtName, { color: isDistrictSelected ? md.onPrimaryContainer : md.onSurface }]}>
                       {district.name}
                     </Text>
                     <View style={s.regionMeta}>
-                      <Text style={[s.typeLabel, { color: colors.mutedForeground }]}>district</Text>
+                      <Text style={[s.typeLabel, { color: md.onSurfaceVariant }]}>district</Text>
                       {isDistrictSelected && (
-                        <Text style={[s.checkmark, { color: colors.primary }]}>✓</Text>
+                        <Text style={[s.checkmark, { color: md.primary }]}>✓</Text>
                       )}
                     </View>
                   </TouchableOpacity>
@@ -165,18 +173,21 @@ export function OrgUnitSelector({
                         key={loc.id}
                         style={[
                           s.locationRow,
-                          { backgroundColor: isLocSelected ? colors.secondary : "transparent" },
+                          {
+                            backgroundColor: isLocSelected ? md.secondaryContainer : "transparent",
+                            borderRadius: shape.xs,
+                          },
                         ]}
                         onPress={() => onChange(loc.id)}
                       >
-                        <Text style={[s.locationPin, { color: colors.mutedForeground }]}>
+                        <Text style={[s.locationPin, { color: md.onSurfaceVariant }]}>
                           📍
                         </Text>
-                        <Text style={[s.locationName, { color: colors.foreground }]}>
+                        <Text style={[s.locationName, { color: isLocSelected ? md.onSecondaryContainer : md.onSurface }]}>
                           {loc.name}
                         </Text>
                         {isLocSelected && (
-                          <Text style={[s.checkmark, { color: colors.primary }]}>✓</Text>
+                          <Text style={[s.checkmark, { color: md.primary }]}>✓</Text>
                         )}
                       </TouchableOpacity>
                     );
@@ -196,7 +207,7 @@ export function OrgUnitSelector({
 const s = StyleSheet.create({
   label: {
     fontSize: 13,
-    fontWeight: "500",
+    fontFamily: "Inter_500Medium",
     marginTop: 8,
     marginBottom: 4,
   },
@@ -205,7 +216,6 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 10,
     padding: 12,
     marginBottom: 6,
   },
@@ -213,7 +223,6 @@ const s = StyleSheet.create({
   // Region
   regionCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
     padding: 14,
     marginBottom: 8,
   },
@@ -225,7 +234,7 @@ const s = StyleSheet.create({
   },
   regionName: {
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     flex: 1,
   },
   regionMeta: {
@@ -237,7 +246,6 @@ const s = StyleSheet.create({
   // District
   districtSection: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
     padding: 10,
     marginBottom: 8,
   },
@@ -253,7 +261,7 @@ const s = StyleSheet.create({
   districtName: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 
   // Location
@@ -263,7 +271,6 @@ const s = StyleSheet.create({
     gap: 8,
     paddingLeft: 28,
     paddingVertical: 6,
-    borderRadius: 8,
     marginTop: 4,
   },
   locationPin: {
@@ -281,7 +288,7 @@ const s = StyleSheet.create({
     textTransform: "capitalize",
   },
   checkmark: {
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     fontSize: 16,
   },
 });

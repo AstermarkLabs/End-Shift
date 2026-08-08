@@ -5,16 +5,18 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { IconButton, Switch } from "react-native-paper";
 
 import { useChecklist } from "@/context/ChecklistContext";
 import type { AppConfig } from "@/context/ChecklistContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 import type { HeaderPosition } from "@/utils/exportChecklist";
 
 // ─── Position picker ──────────────────────────────────────────────────────────
@@ -26,7 +28,7 @@ function PositionPicker({
   value: HeaderPosition;
   onChange: (v: HeaderPosition) => void;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const options: { key: HeaderPosition; label: string }[] = [
     { key: "left", label: "Left" },
     { key: "center", label: "Center" },
@@ -47,17 +49,13 @@ function PositionPicker({
             style={[
               styles.posPill,
               {
-                backgroundColor: sel ? colors.primary : colors.muted,
-                borderColor: sel ? colors.primary : colors.border,
+                borderRadius: shape.sm,
+                backgroundColor: sel ? md.secondaryContainer : "transparent",
+                borderColor: sel ? "transparent" : md.outlineVariant,
               },
             ]}
           >
-            <Text
-              style={[
-                styles.posPillText,
-                { color: sel ? "#fff" : colors.foreground },
-              ]}
-            >
+            <Text style={[styles.posPillText, { color: sel ? md.onSecondaryContainer : md.onSurfaceVariant }]}>
               {label}
             </Text>
           </TouchableOpacity>
@@ -70,12 +68,12 @@ function PositionPicker({
 // ─── Setting row wrappers ─────────────────────────────────────────────────────
 
 function SettingBlock({ children }: { children: React.ReactNode }) {
-  const colors = useColors();
+  const md = useMd();
   return (
     <View
       style={[
         styles.block,
-        { backgroundColor: colors.card, borderColor: colors.border },
+        { borderRadius: shape.md, borderColor: md.outlineVariant, backgroundColor: md.surface },
       ]}
     >
       {children}
@@ -94,28 +92,20 @@ function SettingRow({
   children: React.ReactNode;
   last?: boolean;
 }) {
-  const colors = useColors();
+  const md = useMd();
   return (
     <View
       style={[
         styles.settingRow,
         {
-          borderBottomColor: colors.border,
+          borderBottomColor: md.outlineVariant,
           borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
         },
       ]}
     >
       <View style={styles.settingLabel}>
-        <Text style={[styles.settingLabelText, { color: colors.foreground }]}>
-          {label}
-        </Text>
-        {hint ? (
-          <Text
-            style={[styles.settingHint, { color: colors.mutedForeground }]}
-          >
-            {hint}
-          </Text>
-        ) : null}
+        <Text style={[styles.settingLabelText, { color: md.onSurface }]}>{label}</Text>
+        {hint ? <Text style={[styles.settingHint, { color: md.onSurfaceVariant }]}>{hint}</Text> : null}
       </View>
       {children}
     </View>
@@ -123,18 +113,14 @@ function SettingRow({
 }
 
 function SectionLabel({ title }: { title: string }) {
-  const colors = useColors();
-  return (
-    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-      {title}
-    </Text>
-  );
+  const md = useMd();
+  return <Text style={[styles.sectionLabel, { color: md.primary }]}>{title}</Text>;
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ExportSettingsScreen() {
-  const colors = useColors();
+  const md = useMd();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { appConfig, updateAppConfig } = useChecklist();
@@ -147,19 +133,12 @@ export default function ExportSettingsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: md.surface }]}>
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.primary, paddingTop: topPadding },
-        ]}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Export Settings</Text>
-        <View style={styles.backBtn} />
+      <View style={[styles.header, { backgroundColor: md.surfaceContainerLow, paddingTop: topPadding }]}>
+        <IconButton icon="chevron-left" iconColor={md.onSurface} onPress={() => router.back()} style={styles.backBtn} />
+        <Text style={[styles.headerTitle, { color: md.onSurface }]}>Export Settings</Text>
+        <View style={{ width: 48 }} />
       </View>
 
       <ScrollView
@@ -174,23 +153,11 @@ export default function ExportSettingsScreen() {
         <SectionLabel title="LOGO" />
         <SettingBlock>
           <SettingRow label="Include Logo" hint="Uses your app icon image if set">
-            <Switch
-              value={appConfig.exportLogoEnabled}
-              onValueChange={(v) => update({ exportLogoEnabled: v })}
-              trackColor={{ false: colors.muted, true: colors.primary + "80" }}
-              thumbColor={
-                appConfig.exportLogoEnabled
-                  ? colors.primary
-                  : colors.mutedForeground
-              }
-            />
+            <Switch value={appConfig.exportLogoEnabled} onValueChange={(v) => update({ exportLogoEnabled: v })} />
           </SettingRow>
           {appConfig.exportLogoEnabled && (
             <SettingRow label="Logo Position" last>
-              <PositionPicker
-                value={appConfig.exportLogoPosition}
-                onChange={(v) => update({ exportLogoPosition: v })}
-              />
+              <PositionPicker value={appConfig.exportLogoPosition} onChange={(v) => update({ exportLogoPosition: v })} />
             </SettingRow>
           )}
         </SettingBlock>
@@ -198,15 +165,8 @@ export default function ExportSettingsScreen() {
         {/* ── Title ── */}
         <SectionLabel title="TITLE" />
         <SettingBlock>
-          <SettingRow
-            label="Title Position"
-            hint="Checklist name used as document title"
-            last
-          >
-            <PositionPicker
-              value={appConfig.exportTitlePosition}
-              onChange={(v) => update({ exportTitlePosition: v })}
-            />
+          <SettingRow label="Title Position" hint="Checklist name used as document title" last>
+            <PositionPicker value={appConfig.exportTitlePosition} onChange={(v) => update({ exportTitlePosition: v })} />
           </SettingRow>
         </SettingBlock>
 
@@ -214,80 +174,31 @@ export default function ExportSettingsScreen() {
         <SectionLabel title="DATE" />
         <SettingBlock>
           <SettingRow label="Show Date">
-            <Switch
-              value={appConfig.exportDateEnabled}
-              onValueChange={(v) => update({ exportDateEnabled: v })}
-              trackColor={{ false: colors.muted, true: colors.primary + "80" }}
-              thumbColor={
-                appConfig.exportDateEnabled
-                  ? colors.primary
-                  : colors.mutedForeground
-              }
-            />
+            <Switch value={appConfig.exportDateEnabled} onValueChange={(v) => update({ exportDateEnabled: v })} />
           </SettingRow>
           {appConfig.exportDateEnabled && (
             <SettingRow label="Date Position" last>
-              <PositionPicker
-                value={appConfig.exportDatePosition}
-                onChange={(v) => update({ exportDatePosition: v })}
-              />
+              <PositionPicker value={appConfig.exportDatePosition} onChange={(v) => update({ exportDatePosition: v })} />
             </SettingRow>
           )}
         </SettingBlock>
 
         {/* ── Preview hint ── */}
         <SectionLabel title="PREVIEW" />
-        <View
-          style={[
-            styles.previewCard,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
-          ]}
-        >
+        <View style={[styles.previewCard, { borderRadius: shape.md, borderColor: md.outlineVariant, backgroundColor: md.surfaceContainerHigh }]}>
           <View style={styles.previewHeader}>
             <PreviewCell position="left" appConfig={appConfig} />
             <PreviewCell position="center" appConfig={appConfig} />
             <PreviewCell position="right" appConfig={appConfig} />
           </View>
-          <View
-            style={[styles.previewDivider, { backgroundColor: colors.primary }]}
-          />
+          <View style={[styles.previewDivider, { backgroundColor: md.primary }]} />
           <View style={styles.previewTask}>
-            <View
-              style={[
-                styles.previewCheckbox,
-                { borderColor: colors.primary },
-              ]}
-            />
-            <View
-              style={[
-                styles.previewLine,
-                { backgroundColor: colors.muted, width: "60%" },
-              ]}
-            />
+            <View style={[styles.previewCheckbox, { borderRadius: shape.xs, borderColor: md.primary }]} />
+            <View style={[styles.previewLine, { backgroundColor: md.surfaceContainerHighest, width: "60%" }]} />
           </View>
           <View style={styles.previewTask}>
-            <View
-              style={[
-                styles.previewCheckbox,
-                {
-                  borderColor: colors.primary,
-                  backgroundColor: colors.primary,
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.previewLine,
-                {
-                  backgroundColor: colors.muted,
-                  width: "45%",
-                  opacity: 0.4,
-                },
-              ]}
-            />
+            <View style={[styles.previewCheckbox, { borderRadius: shape.xs, borderColor: md.primary, backgroundColor: md.primary }]} />
+            <View style={[styles.previewLine, { backgroundColor: md.surfaceContainerHighest, width: "45%", opacity: 0.6 }]} />
           </View>
         </View>
       </ScrollView>
@@ -302,7 +213,7 @@ function PreviewCell({
   position: HeaderPosition;
   appConfig: AppConfig;
 }) {
-  const colors = useColors();
+  const md = useMd();
   const hasLogo =
     appConfig.exportLogoEnabled &&
     appConfig.exportLogoPosition === position &&
@@ -325,20 +236,15 @@ function PreviewCell({
   return (
     <View style={[styles.previewCell, { alignItems: position === "left" ? "flex-start" : position === "right" ? "flex-end" : "center" }]}>
       {hasLogo && (
-        <View
-          style={[
-            styles.previewLogoPlaceholder,
-            { backgroundColor: colors.primary + "30" },
-          ]}
-        >
-          <Text style={{ fontSize: 8, color: colors.primary }}>IMG</Text>
+        <View style={[styles.previewLogoPlaceholder, { borderRadius: shape.xs, backgroundColor: md.primaryContainer }]}>
+          <Text style={{ fontSize: 8, color: md.onPrimaryContainer }}>IMG</Text>
         </View>
       )}
       {hasTitle && (
         <View
           style={[
             styles.previewTitleLine,
-            { backgroundColor: colors.foreground, alignSelf: textAlign === "left" ? "flex-start" : textAlign === "right" ? "flex-end" : "center" },
+            { backgroundColor: md.onSurface, alignSelf: textAlign === "left" ? "flex-start" : textAlign === "right" ? "flex-end" : "center" },
           ]}
         />
       )}
@@ -346,7 +252,7 @@ function PreviewCell({
         <View
           style={[
             styles.previewDateLine,
-            { backgroundColor: colors.mutedForeground, alignSelf: textAlign === "left" ? "flex-start" : textAlign === "right" ? "flex-end" : "center" },
+            { backgroundColor: md.onSurfaceVariant, alignSelf: textAlign === "left" ? "flex-start" : textAlign === "right" ? "flex-end" : "center" },
           ]}
         />
       )}
@@ -361,39 +267,29 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
   },
-  backBtn: { width: 70 },
-  backBtnText: { color: "#fff", fontSize: 17, fontWeight: "500" },
+  backBtn: { margin: 0 },
   headerTitle: {
+    ...typeStyle("titleLarge"),
     flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
     textAlign: "center",
     fontFamily: "Inter_700Bold",
   },
 
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.8,
+    ...typeStyle("titleSmall"),
+    letterSpacing: 1,
     textTransform: "uppercase",
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 6,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
   },
 
   block: {
     marginHorizontal: 16,
-    borderRadius: 12,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
   },
@@ -407,23 +303,21 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   settingLabel: { flex: 1, gap: 2 },
-  settingLabelText: { fontSize: 15, fontWeight: "500", fontFamily: "Inter_500Medium" },
-  settingHint: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  settingLabelText: { ...typeStyle("bodyLarge"), fontFamily: "Inter_500Medium" },
+  settingHint: typeStyle("bodySmall"),
 
   posRow: { flexDirection: "row", gap: 6 },
   posPill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1.5,
+    borderWidth: 1,
     alignItems: "center",
   },
-  posPillText: { fontSize: 12, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  posPillText: typeStyle("labelMedium"),
 
   // Preview
   previewCard: {
     marginHorizontal: 16,
-    borderRadius: 12,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     padding: 14,
@@ -438,7 +332,6 @@ const styles = StyleSheet.create({
   previewLogoPlaceholder: {
     width: 24,
     height: 24,
-    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -463,7 +356,6 @@ const styles = StyleSheet.create({
   previewCheckbox: {
     width: 10,
     height: 10,
-    borderRadius: 5,
     borderWidth: 1.5,
   },
   previewLine: { height: 5, borderRadius: 3 },

@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, Card, Chip, IconButton, RadioButton, TextInput as PaperTextInput } from "react-native-paper";
 
 import { completeOnboarding, createOrgUnit, register as apiRegister } from "@workspace/api-client-react";
 
@@ -26,7 +27,9 @@ import {
   type Region,
   type TeamMember,
 } from "@/context/OnboardingContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { typeStyle } from "@/constants/typography";
+import { useMd } from "@/theme/useMd";
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
@@ -47,32 +50,61 @@ function StepHeader({
   subtitle?: string;
   onBack?: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   return (
     <View style={sh.stepHeader}>
       <View style={sh.stepTopRow}>
         {onBack ? (
-          <TouchableOpacity onPress={onBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[sh.backBtn, { color: colors.mutedForeground }]}>‹ Back</Text>
-          </TouchableOpacity>
+          <Button
+            mode="text"
+            icon="chevron-left"
+            onPress={onBack}
+            compact
+            labelStyle={[sh.backBtn, { color: colors.onSurfaceVariant }]}
+            style={sh.backBtnWrap}
+          >
+            Back
+          </Button>
         ) : (
           <View style={sh.backPlaceholder} />
         )}
-        <Text style={[sh.stepLabel, { color: colors.mutedForeground }]}>
+        <Text style={[sh.stepLabel, typeStyle("labelSmall"), { color: colors.onSurfaceVariant, flex: 1, textAlign: "center" }]}>
           STEP {step} OF {total}
         </Text>
         <View style={sh.backPlaceholder} />
       </View>
-      <Text style={[sh.stepTitle, { color: colors.foreground }]}>{title}</Text>
+      <Text style={[sh.stepTitle, typeStyle("headlineSmall"), { color: colors.onSurface }]}>{title}</Text>
       {subtitle ? (
-        <Text style={[sh.stepSubtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+        <Text style={[sh.stepSubtitle, typeStyle("bodyMedium"), { color: colors.onSurfaceVariant }]}>{subtitle}</Text>
       ) : null}
+
+      {/* Stepper progress dots */}
+      <View style={sh.stepDotsRow}>
+        {Array.from({ length: total }).map((_, i) => {
+          const idx = i + 1;
+          const done = idx < step;
+          const active = idx === step;
+          return (
+            <View
+              key={idx}
+              style={[
+                sh.stepDot,
+                {
+                  backgroundColor: done || active ? colors.primary : colors.outlineVariant,
+                  width: active ? 20 : 6,
+                  borderRadius: shape.full,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-function FieldLabel({ label, colors }: { label: string; colors: ReturnType<typeof useColors> }) {
-  return <Text style={[sh.label, { color: colors.foreground }]}>{label}</Text>;
+function FieldLabel({ label, colors }: { label: string; colors: ReturnType<typeof useMd> }) {
+  return <Text style={[sh.label, typeStyle("labelLarge"), { color: colors.onSurface }]}>{label}</Text>;
 }
 
 function PrimaryButton({
@@ -85,21 +117,21 @@ function PrimaryButton({
   label: string;
   onPress: () => void;
   busy?: boolean;
-  colors: ReturnType<typeof useColors>;
+  colors: ReturnType<typeof useMd>;
   disabled?: boolean;
 }) {
   return (
-    <TouchableOpacity
-      style={[sh.primaryBtn, { backgroundColor: colors.primary, opacity: busy || disabled ? 0.6 : 1 }]}
+    <Button
+      mode="contained"
       onPress={onPress}
+      loading={busy}
       disabled={busy || disabled}
+      style={[sh.primaryBtn, { borderRadius: shape.md }]}
+      contentStyle={sh.primaryBtnContent}
+      labelStyle={[sh.primaryBtnText, typeStyle("titleMedium")]}
     >
-      {busy ? (
-        <ActivityIndicator color={colors.primaryForeground} />
-      ) : (
-        <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>{label}</Text>
-      )}
-    </TouchableOpacity>
+      {label}
+    </Button>
   );
 }
 
@@ -108,33 +140,123 @@ function SkipButton({
   colors,
 }: {
   onPress: () => void;
-  colors: ReturnType<typeof useColors>;
+  colors: ReturnType<typeof useMd>;
 }) {
   return (
-    <TouchableOpacity style={sh.skipBtn} onPress={onPress}>
-      <Text style={[sh.skipBtnText, { color: colors.mutedForeground }]}>Skip for now</Text>
-    </TouchableOpacity>
+    <Button
+      mode="text"
+      onPress={onPress}
+      style={sh.skipBtn}
+      labelStyle={[sh.skipBtnText, typeStyle("labelLarge"), { color: colors.onSurfaceVariant }]}
+    >
+      Skip for now
+    </Button>
   );
 }
 
-function ErrorBox({ message, colors }: { message: string; colors: ReturnType<typeof useColors> }) {
+function ErrorBox({ message, colors }: { message: string; colors: ReturnType<typeof useMd> }) {
   return (
     <View
-      style={[sh.errorBox, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive }]}
+      style={[sh.errorBox, { backgroundColor: colors.errorContainer, borderColor: colors.error, borderRadius: shape.sm }]}
     >
-      <Text style={[sh.errorText, { color: colors.destructive }]}>{message}</Text>
+      <Text style={[sh.errorText, typeStyle("bodyMedium"), { color: colors.onErrorContainer }]}>{message}</Text>
     </View>
   );
 }
 
 // ─── Step 0 — Account Type ────────────────────────────────────────────────────
 
+function SizeCard({
+  icon,
+  title,
+  description,
+  selected,
+  onPress,
+  colors,
+  variant = "radio",
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  selected: boolean;
+  onPress: () => void;
+  colors: ReturnType<typeof useMd>;
+  /** "radio" for a real selectable option (business size); "nav" for a navigational
+   * choice card that always moves forward, where a permanently-unchecked radio would
+   * be misleading — shows a chevron affordance instead. */
+  variant?: "radio" | "nav";
+}) {
+  return (
+    <Card
+      mode="outlined"
+      onPress={onPress}
+      style={[
+        sh.typeOption,
+        {
+          borderColor: selected ? colors.primary : colors.outlineVariant,
+          backgroundColor: selected ? colors.primaryContainer : colors.surface,
+          borderRadius: shape.md,
+        },
+      ]}
+    >
+      <Card.Content style={sh.typeOptionContent}>
+        <View
+          style={[
+            sh.typeOptionIconTile,
+            {
+              backgroundColor: selected ? colors.primary : colors.surfaceContainerHighest,
+              borderRadius: shape.sm,
+            },
+          ]}
+        >
+          <Text style={sh.typeOptionIconText}>{icon}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              sh.typeOptionTitle,
+              typeStyle("titleMedium"),
+              { color: selected ? colors.onPrimaryContainer : colors.onSurface },
+            ]}
+          >
+            {title}
+          </Text>
+          <Text
+            style={[
+              sh.typeOptionDesc,
+              typeStyle("bodySmall"),
+              { color: selected ? colors.onPrimaryContainer : colors.onSurfaceVariant },
+            ]}
+          >
+            {description}
+          </Text>
+        </View>
+        {variant === "radio" ? (
+          <RadioButton
+            value={title}
+            status={selected ? "checked" : "unchecked"}
+            onPress={onPress}
+            color={colors.primary}
+          />
+        ) : (
+          <IconButton
+            icon="chevron-right"
+            size={20}
+            iconColor={colors.onSurfaceVariant}
+            onPress={onPress}
+          />
+        )}
+      </Card.Content>
+    </Card>
+  );
+}
+
 function StepAccountType({
   onChoose,
 }: {
   onChoose: (kind: "personal" | "business") => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const router = useRouter();
 
   return (
@@ -145,55 +267,44 @@ function StepAccountType({
     >
       <View style={sh.stepHeader}>
         <View style={sh.stepTopRow}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[sh.backBtn, { color: colors.mutedForeground }]}>‹ Back</Text>
-          </TouchableOpacity>
-          <Text style={[sh.stepLabel, { color: colors.mutedForeground }]}>GET STARTED</Text>
+          <Button
+            mode="text"
+            icon="chevron-left"
+            onPress={() => router.back()}
+            compact
+            labelStyle={[sh.backBtn, { color: colors.onSurfaceVariant }]}
+            style={sh.backBtnWrap}
+          >
+            Back
+          </Button>
+          <Text style={[sh.stepLabel, typeStyle("labelSmall"), { color: colors.onSurfaceVariant, flex: 1, textAlign: "center" }]}>GET STARTED</Text>
           <View style={sh.backPlaceholder} />
         </View>
-        <Text style={[sh.stepTitle, { color: colors.foreground }]}>How will you use{"\n"}End Shift?</Text>
-        <Text style={[sh.stepSubtitle, { color: colors.mutedForeground }]}>
+        <Text style={[sh.stepTitle, typeStyle("headlineSmall"), { color: colors.onSurface }]}>How will you use{"\n"}End Shift?</Text>
+        <Text style={[sh.stepSubtitle, typeStyle("bodyMedium"), { color: colors.onSurfaceVariant }]}>
           Choose the option that fits you best. You can always upgrade later.
         </Text>
       </View>
 
-      <TouchableOpacity
+      <SizeCard
+        icon="👤"
+        title="Personal"
+        description="Just for you. Checklists live on this device — no account required. Great for solo routines."
+        selected={false}
         onPress={() => onChoose("personal")}
-        style={[
-          sh.typeOption,
-          sh.typeOptionLarge,
-          { borderColor: colors.border, backgroundColor: colors.card },
-        ]}
-        activeOpacity={0.8}
-      >
-        <Text style={sh.typeOptionIcon}>👤</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[sh.typeOptionTitle, { color: colors.foreground }]}>Personal</Text>
-          <Text style={[sh.typeOptionDesc, { color: colors.mutedForeground }]}>
-            Just for you. Checklists live on this device — no account required. Great for solo routines.
-          </Text>
-        </View>
-        <Text style={[sh.typeOptionArrow, { color: colors.mutedForeground }]}>›</Text>
-      </TouchableOpacity>
+        colors={colors}
+        variant="nav"
+      />
 
-      <TouchableOpacity
+      <SizeCard
+        icon="🏢"
+        title="Business"
+        description="For a team or multiple locations. Cloud-synced, collaborative, with roles and reporting."
+        selected={false}
         onPress={() => onChoose("business")}
-        style={[
-          sh.typeOption,
-          sh.typeOptionLarge,
-          { borderColor: colors.border, backgroundColor: colors.card },
-        ]}
-        activeOpacity={0.8}
-      >
-        <Text style={sh.typeOptionIcon}>🏢</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[sh.typeOptionTitle, { color: colors.foreground }]}>Business</Text>
-          <Text style={[sh.typeOptionDesc, { color: colors.mutedForeground }]}>
-            For a team or multiple locations. Cloud-synced, collaborative, with roles and reporting.
-          </Text>
-        </View>
-        <Text style={[sh.typeOptionArrow, { color: colors.mutedForeground }]}>›</Text>
-      </TouchableOpacity>
+        colors={colors}
+        variant="nav"
+      />
     </ScrollView>
   );
 }
@@ -217,7 +328,7 @@ function StepPersonalAccountName({
   onChange: (v: string) => void;
   onContinue: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const preview = toAppTitle(displayName);
 
   return (
@@ -230,31 +341,28 @@ function StepPersonalAccountName({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[sh.confirmCheck, { backgroundColor: colors.primary, alignSelf: "center", marginBottom: 20 }]}>
-          <Text style={sh.confirmCheckText}>✏️</Text>
+        <View style={[sh.confirmCheck, { backgroundColor: colors.primary, alignSelf: "center", marginBottom: 20, borderRadius: shape.full }]}>
+          <Text style={[sh.confirmCheckText, { color: colors.onPrimary }]}>✏️</Text>
         </View>
-        <Text style={[sh.confirmTitle, { color: colors.foreground, textAlign: "center" }]}>
+        <Text style={[sh.confirmTitle, { color: colors.onSurface, textAlign: "center" }]}>
           What should we call you?
         </Text>
-        <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground, textAlign: "center", marginBottom: 24 }]}>
+        <Text style={[sh.confirmSubtitle, { color: colors.onSurfaceVariant, textAlign: "center", marginBottom: 24 }]}>
           {displayName.trim()
             ? `Your app will be called "${preview}"`
             : "Your name becomes your app title."}
         </Text>
 
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={displayName}
           onChangeText={onChange}
           autoCapitalize="words"
           autoCorrect={false}
           returnKeyType="done"
           onSubmitEditing={onContinue}
-          style={[
-            sh.input,
-            { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card, fontSize: 20, textAlign: "center" },
-          ]}
+          style={{ fontSize: 20, textAlign: "center" }}
           placeholder="Your name"
-          placeholderTextColor={colors.mutedForeground}
         />
 
         <PrimaryButton
@@ -277,35 +385,37 @@ function StepPersonalAccount({
   onCreateAccount: () => void;
   onSkip: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
 
   return (
     <View style={[sh.confirmContainer, { paddingHorizontal: 28 }]}>
-      <View style={[sh.confirmCheck, { backgroundColor: colors.primary }]}>
-        <Text style={sh.confirmCheckText}>🔒</Text>
+      <View style={[sh.confirmCheck, { backgroundColor: colors.primary, borderRadius: shape.full }]}>
+        <Text style={[sh.confirmCheckText, { color: colors.onPrimary }]}>🔒</Text>
       </View>
-      <Text style={[sh.confirmTitle, { color: colors.foreground }]}>
+      <Text style={[sh.confirmTitle, { color: colors.onSurface }]}>
         Password protect your checklists?
       </Text>
-      <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground }]}>
+      <Text style={[sh.confirmSubtitle, { color: colors.onSurfaceVariant }]}>
         Creating an account lets you sign in with a password. You can always add one later in Settings.
       </Text>
 
-      <TouchableOpacity
-        style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32, width: "100%" }]}
+      <Button
+        mode="contained"
         onPress={onCreateAccount}
-        activeOpacity={0.85}
+        style={[sh.primaryBtn, { marginTop: 32, width: "100%", borderRadius: shape.md }]}
+        contentStyle={sh.primaryBtnContent}
       >
-        <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Yes, create an account</Text>
-      </TouchableOpacity>
+        Yes, create an account
+      </Button>
 
-      <TouchableOpacity
-        style={[sh.primaryBtn, { backgroundColor: colors.muted, marginTop: 12, width: "100%" }]}
+      <Button
+        mode="contained-tonal"
         onPress={onSkip}
-        activeOpacity={0.85}
+        style={[sh.primaryBtn, { marginTop: 12, width: "100%", borderRadius: shape.md }]}
+        contentStyle={sh.primaryBtnContent}
       >
-        <Text style={[sh.primaryBtnText, { color: colors.mutedForeground }]}>No thanks, skip for now</Text>
-      </TouchableOpacity>
+        No thanks, skip for now
+      </Button>
     </View>
   );
 }
@@ -325,7 +435,7 @@ function StepPersonalAccountForm({
   onBack: () => void;
   onDone: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const { signIn, setNoAuthMode } = useAuth();
 
   const [username, setUsername] = useState("");
@@ -385,53 +495,53 @@ function StepPersonalAccountForm({
         {error ? <ErrorBox message={error} colors={colors} /> : null}
 
         <FieldLabel label="Username" colors={colors} />
-        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+        <Text style={[sh.fieldHint, { color: colors.onSurfaceVariant }]}>
           This is how you'll sign in. Keep it short and memorable.
         </Text>
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={username}
           onChangeText={(v) => { setUsername(v); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!busy}
-          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="yourname"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
 
         <FieldLabel label="Email" colors={colors} />
-        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+        <Text style={[sh.fieldHint, { color: colors.onSurfaceVariant }]}>
           Used for account recovery only.
         </Text>
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={email}
           onChangeText={(v) => { setEmail(v); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
           editable={!busy}
-          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="you@example.com"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
 
         <FieldLabel label="Password" colors={colors} />
-        <View style={sh.passwordRow}>
-          <TextInput
-            value={password}
-            onChangeText={(v) => { setPassword(v); setError(null); }}
-            secureTextEntry={!showPassword}
-            editable={!busy}
-            style={[sh.input, sh.passwordInput, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
-            placeholder="••••••••••••"
-            placeholderTextColor={colors.mutedForeground}
-          />
-          <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={sh.showToggle}>
-            <Text style={[sh.showToggleText, { color: colors.primary }]}>
-              {showPassword ? "Hide" : "Show"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <PaperTextInput
+          mode="outlined"
+          value={password}
+          onChangeText={(v) => { setPassword(v); setError(null); }}
+          secureTextEntry={!showPassword}
+          editable={!busy}
+          placeholder="••••••••••••"
+          style={sh.paperInput}
+          right={
+            <PaperTextInput.Icon
+              icon={showPassword ? "eye-off" : "eye"}
+              onPress={() => setShowPassword((s) => !s)}
+              forceTextInputFocus={false}
+            />
+          }
+        />
         {password.length > 0 && (
           <View style={sh.rulesBox}>
             {PASSWORD_RULES.map((rule) => {
@@ -439,7 +549,7 @@ function StepPersonalAccountForm({
               return (
                 <Text
                   key={rule.label}
-                  style={[sh.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}
+                  style={[sh.ruleText, { color: met ? colors.primary : colors.onSurfaceVariant }]}
                 >
                   {met ? "✓" : "○"} {rule.label}
                 </Text>
@@ -449,19 +559,20 @@ function StepPersonalAccountForm({
         )}
 
         <FieldLabel label="Confirm password" colors={colors} />
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={confirmPassword}
           onChangeText={(v) => { setConfirmPassword(v); setError(null); }}
           secureTextEntry={!showPassword}
           editable={!busy}
-          style={[sh.input, { borderColor: confirmPassword && confirmPassword !== password ? colors.destructive : colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          error={!!confirmPassword && confirmPassword !== password}
           placeholder="••••••••••••"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
 
         <PrimaryButton label="Continue" onPress={onContinue} busy={busy} colors={colors} />
 
-        <Text style={[sh.legalText, { color: colors.mutedForeground }]}>
+        <Text style={[sh.legalText, { color: colors.onSurfaceVariant }]}>
           By continuing you agree to the Terms and Privacy Policy.
         </Text>
       </ScrollView>
@@ -482,7 +593,7 @@ function StepBusinessAccount({
   onBack: () => void;
   onDone: (businessName: string, businessType: "single-unit" | "multi-unit") => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const { signIn } = useAuth();
   const { setBusinessType } = useOnboarding();
 
@@ -544,56 +655,53 @@ function StepBusinessAccount({
         {error ? <ErrorBox message={error} colors={colors} /> : null}
 
         <FieldLabel label="Username" colors={colors} />
-        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+        <Text style={[sh.fieldHint, { color: colors.onSurfaceVariant }]}>
           This is how you'll sign in. Choose something short and easy to remember.
         </Text>
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={username}
           onChangeText={(v) => { setUsername(v); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!busy}
-          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="yourname"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
 
         <FieldLabel label="Work email" colors={colors} />
-        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+        <Text style={[sh.fieldHint, { color: colors.onSurfaceVariant }]}>
           Used for billing and account recovery only.
         </Text>
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={email}
           onChangeText={(v) => { setEmail(v); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
           editable={!busy}
-          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="you@business.com"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
 
         <FieldLabel label="Password" colors={colors} />
-        <View style={sh.passwordRow}>
-          <TextInput
-            value={password}
-            onChangeText={(v) => { setPassword(v); setError(null); }}
-            secureTextEntry={!showPassword}
-            editable={!busy}
-            style={[sh.input, sh.passwordInput, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
-            placeholder="••••••••••••"
-            placeholderTextColor={colors.mutedForeground}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword((s) => !s)}
-            style={sh.showToggle}
-          >
-            <Text style={[sh.showToggleText, { color: colors.primary }]}>
-              {showPassword ? "Hide" : "Show"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <PaperTextInput
+          mode="outlined"
+          value={password}
+          onChangeText={(v) => { setPassword(v); setError(null); }}
+          secureTextEntry={!showPassword}
+          editable={!busy}
+          placeholder="••••••••••••"
+          style={sh.paperInput}
+          right={
+            <PaperTextInput.Icon
+              icon={showPassword ? "eye-off" : "eye"}
+              onPress={() => setShowPassword((s) => !s)}
+              forceTextInputFocus={false}
+            />
+          }
+        />
         {password.length > 0 && (
           <View style={sh.rulesBox}>
             {PASSWORD_RULES.map((rule) => {
@@ -601,7 +709,7 @@ function StepBusinessAccount({
               return (
                 <Text
                   key={rule.label}
-                  style={[sh.ruleText, { color: met ? colors.primary : colors.mutedForeground }]}
+                  style={[sh.ruleText, { color: met ? colors.primary : colors.onSurfaceVariant }]}
                 >
                   {met ? "✓" : "○"} {rule.label}
                 </Text>
@@ -611,79 +719,52 @@ function StepBusinessAccount({
         )}
 
         <FieldLabel label="Confirm password" colors={colors} />
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={confirmPassword}
           onChangeText={(v) => { setConfirmPassword(v); setError(null); }}
           secureTextEntry={!showPassword}
           editable={!busy}
-          style={[sh.input, { borderColor: confirmPassword && confirmPassword !== password ? colors.destructive : colors.input, color: colors.foreground, backgroundColor: colors.card }]}
+          error={!!confirmPassword && confirmPassword !== password}
           placeholder="••••••••••••"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
 
         <FieldLabel label="Business name" colors={colors} />
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
           value={businessName}
           onChangeText={(v) => { setBusinessName(v); setError(null); }}
           editable={!busy}
-          style={[sh.input, { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card }]}
           placeholder="Rosa's Diner Group"
-          placeholderTextColor={colors.mutedForeground}
+          style={sh.paperInput}
         />
-        <Text style={[sh.fieldHint, { color: colors.mutedForeground }]}>
+        <Text style={[sh.fieldHint, { color: colors.onSurfaceVariant }]}>
           Shown to your team at the top of the app.
         </Text>
 
         <FieldLabel label="Business size" colors={colors} />
-        <TouchableOpacity
+        <SizeCard
+          icon="🏪"
+          title="Single-unit"
+          description="One location. Skip the setup — you'll be done in a minute."
+          selected={businessType === "single-unit"}
           onPress={() => setLocalBusinessType("single-unit")}
-          style={[
-            sh.typeOption,
-            {
-              borderColor: businessType === "single-unit" ? colors.primary : colors.border,
-              backgroundColor: businessType === "single-unit" ? colors.secondary : colors.card,
-            },
-          ]}
-          activeOpacity={0.8}
-        >
-          <Text style={sh.typeOptionIcon}>🏪</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[sh.typeOptionTitle, { color: colors.foreground }]}>Single-unit</Text>
-            <Text style={[sh.typeOptionDesc, { color: colors.mutedForeground }]}>
-              One location. Skip the setup — you'll be done in a minute.
-            </Text>
-          </View>
-          {businessType === "single-unit" && (
-            <Text style={[sh.typeOptionCheck, { color: colors.primary }]}>✓</Text>
-          )}
-        </TouchableOpacity>
+          colors={colors}
+        />
 
-        <TouchableOpacity
+        <SizeCard
+          icon="🏢"
+          title="Multi-unit"
+          description="More than one location. Group them by region and invite managers."
+          selected={businessType === "multi-unit"}
           onPress={() => setLocalBusinessType("multi-unit")}
-          style={[
-            sh.typeOption,
-            {
-              borderColor: businessType === "multi-unit" ? colors.primary : colors.border,
-              backgroundColor: businessType === "multi-unit" ? colors.secondary : colors.card,
-            },
-          ]}
-          activeOpacity={0.8}
-        >
-          <Text style={sh.typeOptionIcon}>🏢</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[sh.typeOptionTitle, { color: colors.foreground }]}>Multi-unit</Text>
-            <Text style={[sh.typeOptionDesc, { color: colors.mutedForeground }]}>
-              More than one location. Group them by region and invite managers.
-            </Text>
-          </View>
-          {businessType === "multi-unit" && (
-            <Text style={[sh.typeOptionCheck, { color: colors.primary }]}>✓</Text>
-          )}
-        </TouchableOpacity>
+          colors={colors}
+        />
 
         <PrimaryButton label="Continue" onPress={onContinue} busy={busy} colors={colors} />
 
-        <Text style={[sh.legalText, { color: colors.mutedForeground }]}>
+        <Text style={[sh.legalText, { color: colors.onSurfaceVariant }]}>
           By continuing you agree to the Terms and Privacy Policy.
         </Text>
       </ScrollView>
@@ -720,7 +801,7 @@ function StepRegions({
   updateDistrict: (regionId: string, districtId: string, name: string) => void;
   removeDistrict: (regionId: string, districtId: string) => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [newRegionName, setNewRegionName] = useState("");
   const [districtInputs, setDistrictInputs] = useState<Record<string, string>>({});
 
@@ -755,73 +836,102 @@ function StepRegions({
       />
 
       {regions.map((region, idx) => (
-        <View
+        <Card
           key={region.id}
-          style={[sh.regionCard, { borderColor: colors.border, backgroundColor: colors.card }]}
+          mode="outlined"
+          style={[sh.regionCard, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow, borderRadius: shape.md }]}
         >
-          <View style={sh.regionHeaderRow}>
-            <Text style={[sh.regionNum, { color: colors.mutedForeground }]}>{idx + 1}</Text>
-            <TextInput
-              value={region.name}
-              onChangeText={(v) => updateRegion(region.id, v)}
-              style={[sh.regionNameInput, { color: colors.foreground, borderColor: colors.border }]}
-              placeholder="Region name"
-              placeholderTextColor={colors.mutedForeground}
-            />
-            <TouchableOpacity onPress={() => removeRegion(region.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={[sh.deleteBtn, { color: colors.destructive }]}>🗑️</Text>
-            </TouchableOpacity>
-          </View>
-
-          {region.districts.map((d: District) => (
-            <View key={d.id} style={sh.districtRow}>
-              <Text style={[sh.districtArrow, { color: colors.mutedForeground }]}>▸</Text>
-              <TextInput
-                value={d.name}
-                onChangeText={(v) => updateDistrict(region.id, d.id, v)}
-                style={[sh.districtInput, { color: colors.foreground, borderColor: colors.border }]}
-                placeholder="District name"
-                placeholderTextColor={colors.mutedForeground}
+          <Card.Content>
+            <View style={sh.regionHeaderRow}>
+              <View style={[sh.regionNumChip, { backgroundColor: colors.primaryContainer, borderRadius: shape.full }]}>
+                <Text style={[sh.regionNum, { color: colors.onPrimaryContainer }]}>{idx + 1}</Text>
+              </View>
+              <PaperTextInput
+                mode="outlined"
+                dense
+                value={region.name}
+                onChangeText={(v) => updateRegion(region.id, v)}
+                style={sh.regionNameInput}
+                placeholder="Region name"
               />
-              <TouchableOpacity
-                onPress={() => removeDistrict(region.id, d.id)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={[sh.removeX, { color: colors.mutedForeground }]}>×</Text>
-              </TouchableOpacity>
+              <IconButton
+                icon="delete-outline"
+                size={20}
+                iconColor={colors.error}
+                onPress={() => removeRegion(region.id)}
+              />
             </View>
-          ))}
 
-          <View style={sh.addDistrictRow}>
-            <TextInput
-              value={districtInputs[region.id] ?? ""}
-              onChangeText={(v) =>
-                setDistrictInputs((prev) => ({ ...prev, [region.id]: v }))
-              }
-              onSubmitEditing={() => handleAddDistrict(region.id)}
-              style={[sh.addDistrictInput, { color: colors.foreground, borderColor: colors.border }]}
-              placeholder="＋ Add district"
-              placeholderTextColor={colors.primary}
-              returnKeyType="done"
-            />
-          </View>
-        </View>
+            <View style={sh.districtChipsRow}>
+              {region.districts.map((d: District) => (
+                <View
+                  key={d.id}
+                  style={[sh.districtChip, { backgroundColor: colors.surfaceContainerHighest, borderRadius: shape.full }]}
+                >
+                  {/* Deviation from "district chips -> Paper Chip": Paper's Chip renders
+                     children inside a Text node and can't host an editable field, and
+                     district names are inline-editable here. Kept a plain RN TextInput,
+                     restyled to read as an M3 input chip (pill radius, tonal surface). */}
+                  <TextInput
+                    value={d.name}
+                    onChangeText={(v) => updateDistrict(region.id, d.id, v)}
+                    style={[sh.districtChipInput, { color: colors.onSurface }]}
+                    placeholder="District name"
+                    placeholderTextColor={colors.onSurfaceVariant}
+                  />
+                  <TouchableOpacity
+                    onPress={() => removeDistrict(region.id, d.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={[sh.removeX, { color: colors.onSurfaceVariant }]}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            <View style={sh.addDistrictRow}>
+              <PaperTextInput
+                mode="outlined"
+                dense
+                value={districtInputs[region.id] ?? ""}
+                onChangeText={(v) =>
+                  setDistrictInputs((prev) => ({ ...prev, [region.id]: v }))
+                }
+                onSubmitEditing={() => handleAddDistrict(region.id)}
+                style={sh.addDistrictInput}
+                placeholder="Add district"
+                returnKeyType="done"
+                right={
+                  <PaperTextInput.Icon
+                    icon="plus"
+                    onPress={() => handleAddDistrict(region.id)}
+                    forceTextInputFocus={false}
+                  />
+                }
+              />
+            </View>
+          </Card.Content>
+        </Card>
       ))}
 
       <View style={sh.addRegionRow}>
-        <TextInput
+        <PaperTextInput
+          mode="outlined"
+          dense
           value={newRegionName}
           onChangeText={setNewRegionName}
           onSubmitEditing={handleAddRegion}
-          style={[sh.addRegionInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-          placeholder="＋ Add region"
-          placeholderTextColor={colors.primary}
+          style={sh.addRegionInput}
+          placeholder="Add region"
           returnKeyType="done"
+          right={
+            <PaperTextInput.Icon icon="plus" onPress={handleAddRegion} forceTextInputFocus={false} />
+          }
         />
       </View>
 
       {regions.length > 0 && (
-        <Text style={[sh.countLabel, { color: colors.mutedForeground }]}>
+        <Text style={[sh.countLabel, { color: colors.onSurfaceVariant }]}>
           {regions.length} {regions.length === 1 ? "region" : "regions"} · {totalDistricts}{" "}
           {totalDistricts === 1 ? "district" : "districts"}
         </Text>
@@ -863,7 +973,7 @@ function StepLocations({
   updateLocation: (id: string, name: string) => void;
   removeLocation: (id: string) => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [locationInputs, setLocationInputs] = useState<Record<string, string>>({});
 
   const handleAdd = (regionId: string, districtId: string) => {
@@ -892,7 +1002,7 @@ function StepLocations({
 
       {regions.map((region) => (
         <View key={region.id}>
-          <Text style={[sh.regionSectionLabel, { color: colors.mutedForeground }]}>
+          <Text style={[sh.regionSectionLabel, { color: colors.onSurfaceVariant }]}>
             {region.name.toUpperCase()}
           </Text>
           {region.districts.map((district) => {
@@ -901,60 +1011,79 @@ function StepLocations({
               (l) => l.regionId === region.id && l.districtId === district.id,
             );
             return (
-              <View
+              <Card
                 key={district.id}
-                style={[sh.districtCard, { borderColor: colors.border, backgroundColor: colors.card }]}
+                mode="outlined"
+                style={[sh.districtCard, { borderColor: colors.outlineVariant, backgroundColor: colors.surface, borderRadius: shape.md }]}
               >
-                <Text style={[sh.districtCardTitle, { color: colors.foreground }]}>
-                  {district.name}
-                </Text>
-                {districtLocations.map((loc) => (
-                  <View key={loc.id} style={sh.locationRow}>
-                    <Text style={[sh.locationPin, { color: colors.mutedForeground }]}>📍</Text>
-                    <TextInput
-                      value={loc.name}
-                      onChangeText={(v) => updateLocation(loc.id, v)}
-                      style={[sh.locationInput, { color: colors.foreground, borderColor: colors.border }]}
-                      placeholder="Location name"
-                      placeholderTextColor={colors.mutedForeground}
+                <Card.Content>
+                  <Text style={[sh.districtCardTitle, { color: colors.onSurface }]}>
+                    {district.name}
+                  </Text>
+                  {districtLocations.map((loc) => (
+                    <View key={loc.id} style={sh.locationRow}>
+                      <Text style={[sh.locationPin, { color: colors.onSurfaceVariant }]}>📍</Text>
+                      <PaperTextInput
+                        mode="outlined"
+                        dense
+                        value={loc.name}
+                        onChangeText={(v) => updateLocation(loc.id, v)}
+                        style={sh.locationInput}
+                        placeholder="Location name"
+                      />
+                      <TouchableOpacity
+                        onPress={() => removeLocation(loc.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={[sh.removeX, { color: colors.onSurfaceVariant }]}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <View style={sh.addLocationRow}>
+                    <PaperTextInput
+                      mode="outlined"
+                      dense
+                      value={locationInputs[key] ?? ""}
+                      onChangeText={(v) =>
+                        setLocationInputs((prev) => ({ ...prev, [key]: v }))
+                      }
+                      onSubmitEditing={() => handleAdd(region.id, district.id)}
+                      style={sh.addLocationInput}
+                      placeholder="Add location"
+                      returnKeyType="done"
+                      right={
+                        <PaperTextInput.Icon
+                          icon="plus"
+                          onPress={() => handleAdd(region.id, district.id)}
+                          forceTextInputFocus={false}
+                        />
+                      }
                     />
-                    <TouchableOpacity
-                      onPress={() => removeLocation(loc.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={[sh.removeX, { color: colors.mutedForeground }]}>×</Text>
-                    </TouchableOpacity>
                   </View>
-                ))}
-                <View style={sh.addLocationRow}>
-                  <TextInput
-                    value={locationInputs[key] ?? ""}
-                    onChangeText={(v) =>
-                      setLocationInputs((prev) => ({ ...prev, [key]: v }))
-                    }
-                    onSubmitEditing={() => handleAdd(region.id, district.id)}
-                    style={[sh.addLocationInput, { color: colors.foreground, borderColor: colors.border }]}
-                    placeholder="＋ Add location"
-                    placeholderTextColor={colors.primary}
-                    returnKeyType="done"
-                  />
-                </View>
-              </View>
+                </Card.Content>
+              </Card>
             );
           })}
         </View>
       ))}
 
       {regions.length === 0 && (
-        <View style={[sh.emptyState, { borderColor: colors.border }]}>
-          <Text style={[sh.emptyStateText, { color: colors.mutedForeground }]}>
+        <View
+          style={[
+            sh.emptyState,
+            { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow, borderRadius: shape.md },
+          ]}
+        >
+          <Text style={sh.emptyStateIcon}>🗺️</Text>
+          <Text style={[sh.emptyStateTitle, { color: colors.onSurface }]}>No regions yet</Text>
+          <Text style={[sh.emptyStateText, { color: colors.onSurfaceVariant }]}>
             No regions or districts set up yet. Go back to add them first.
           </Text>
         </View>
       )}
 
       {totalLocations > 0 && (
-        <Text style={[sh.countLabel, { color: colors.mutedForeground }]}>
+        <Text style={[sh.countLabel, { color: colors.onSurfaceVariant }]}>
           {totalLocations} {totalLocations === 1 ? "location" : "locations"}
         </Text>
       )}
@@ -995,7 +1124,7 @@ function StepTeam({
   updateTeamMember: (id: string, updates: Partial<Omit<TeamMember, "id">>) => void;
   removeTeamMember: (id: string) => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("Staff");
   const [newScope, setNewScope] = useState("");
@@ -1022,87 +1151,114 @@ function StepTeam({
         onBack={onBack}
       />
 
-      <Text style={[sh.teamHint, { color: colors.mutedForeground }]}>
+      <Text style={[sh.teamHint, { color: colors.onSurfaceVariant }]}>
         Heads up: Teammates will get an email with a passkey invite. They can sign in without a password.
       </Text>
 
-      {teamMembers.map((member) => (
+      {teamMembers.length === 0 ? (
         <View
-          key={member.id}
-          style={[sh.memberCard, { borderColor: colors.border, backgroundColor: colors.card }]}
+          style={[
+            sh.teamEmptyState,
+            { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow, borderRadius: shape.md },
+          ]}
         >
-          <View style={[sh.memberAvatar, { backgroundColor: colors.secondary }]}>
-            <Text style={[sh.memberAvatarText, { color: colors.primary }]}>
-              {member.email[0]?.toUpperCase() ?? "?"}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[sh.memberRole, { color: colors.foreground }]}>{member.role}</Text>
-            <Text style={[sh.memberEmail, { color: colors.mutedForeground }]}>{member.email}</Text>
-            {member.scope ? (
-              <Text style={[sh.memberScope, { color: colors.mutedForeground }]}>{member.scope}</Text>
-            ) : null}
-          </View>
-          <TouchableOpacity
-            onPress={() => removeTeamMember(member.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={[sh.removeX, { color: colors.mutedForeground }]}>×</Text>
-          </TouchableOpacity>
+          <Text style={sh.teamEmptyIcon}>👥</Text>
+          <Text style={[sh.teamEmptyTitle, { color: colors.onSurface }]}>No teammates yet</Text>
+          <Text style={[sh.teamEmptySubtitle, { color: colors.onSurfaceVariant }]}>
+            Invite people below to give them access.
+          </Text>
         </View>
-      ))}
+      ) : (
+        teamMembers.map((member) => (
+          <Card
+            key={member.id}
+            mode="outlined"
+            style={[sh.memberCard, { borderColor: colors.outlineVariant, backgroundColor: colors.surface, borderRadius: shape.md }]}
+          >
+            <Card.Content style={sh.memberCardContent}>
+              <View style={[sh.memberAvatar, { backgroundColor: colors.secondaryContainer, borderRadius: shape.full }]}>
+                <Text style={[sh.memberAvatarText, { color: colors.onSecondaryContainer }]}>
+                  {member.email[0]?.toUpperCase() ?? "?"}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[sh.memberRole, { color: colors.onSurface }]}>{member.role}</Text>
+                <Text style={[sh.memberEmail, { color: colors.onSurfaceVariant }]}>{member.email}</Text>
+                {member.scope ? (
+                  <Text style={[sh.memberScope, { color: colors.onSurfaceVariant }]}>{member.scope}</Text>
+                ) : null}
+              </View>
+              <IconButton
+                icon="close"
+                size={18}
+                iconColor={colors.onSurfaceVariant}
+                onPress={() => removeTeamMember(member.id)}
+              />
+            </Card.Content>
+          </Card>
+        ))
+      )}
 
-      <View style={[sh.addMemberCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
-        <Text style={[sh.addMemberLabel, { color: colors.mutedForeground }]}>EMAIL</Text>
-        <TextInput
-          value={newEmail}
-          onChangeText={setNewEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoCorrect={false}
-          style={[sh.addMemberInput, { color: colors.foreground, borderColor: colors.border }]}
-          placeholder="teammate@business.com"
-          placeholderTextColor={colors.mutedForeground}
-        />
-        <Text style={[sh.addMemberLabel, { color: colors.mutedForeground }]}>ROLE</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={sh.roleChips}
-        >
-          {ROLE_OPTIONS.map((r) => (
-            <TouchableOpacity
-              key={r}
-              onPress={() => setNewRole(r)}
-              style={[
-                sh.roleChip,
-                {
-                  backgroundColor: newRole === r ? colors.primary : colors.muted,
-                  borderColor: newRole === r ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text style={[sh.roleChipText, { color: newRole === r ? colors.primaryForeground : colors.foreground }]}>
+      <Card
+        mode="outlined"
+        style={[sh.addMemberCard, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow, borderRadius: shape.md }]}
+      >
+        <Card.Content>
+          <Text style={[sh.addMemberLabel, { color: colors.onSurfaceVariant }]}>EMAIL</Text>
+          <PaperTextInput
+            mode="outlined"
+            dense
+            value={newEmail}
+            onChangeText={setNewEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoCorrect={false}
+            placeholder="teammate@business.com"
+            style={sh.paperInput}
+          />
+          <Text style={[sh.addMemberLabel, { color: colors.onSurfaceVariant }]}>ROLE</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={sh.roleChips}
+          >
+            {ROLE_OPTIONS.map((r) => (
+              <Chip
+                key={r}
+                selected={newRole === r}
+                onPress={() => setNewRole(r)}
+                mode={newRole === r ? "flat" : "outlined"}
+                style={[
+                  sh.roleChip,
+                  {
+                    backgroundColor: newRole === r ? colors.primary : colors.surfaceContainerHighest,
+                    borderColor: newRole === r ? colors.primary : colors.outlineVariant,
+                  },
+                ]}
+                textStyle={{ color: newRole === r ? colors.onPrimary : colors.onSurface }}
+              >
                 {r}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <Text style={[sh.addMemberLabel, { color: colors.mutedForeground }]}>SCOPE (OPTIONAL)</Text>
-        <TextInput
-          value={newScope}
-          onChangeText={setNewScope}
-          style={[sh.addMemberInput, { color: colors.foreground, borderColor: colors.border }]}
-          placeholder="e.g. West Coast"
-          placeholderTextColor={colors.mutedForeground}
-        />
-        <TouchableOpacity
-          onPress={handleAdd}
-          style={[sh.addMemberBtn, { borderColor: colors.primary }]}
-        >
-          <Text style={[sh.addMemberBtnText, { color: colors.primary }]}>＋ Invite another</Text>
-        </TouchableOpacity>
-      </View>
+              </Chip>
+            ))}
+          </ScrollView>
+          <Text style={[sh.addMemberLabel, { color: colors.onSurfaceVariant }]}>SCOPE (OPTIONAL)</Text>
+          <PaperTextInput
+            mode="outlined"
+            dense
+            value={newScope}
+            onChangeText={setNewScope}
+            placeholder="e.g. West Coast"
+            style={sh.paperInput}
+          />
+          <Button
+            mode="outlined"
+            onPress={handleAdd}
+            style={[sh.addMemberBtn, { borderRadius: shape.sm, borderColor: colors.primary }]}
+          >
+            ＋ Invite another
+          </Button>
+        </Card.Content>
+      </Card>
 
       <PrimaryButton
         label={teamMembers.length > 0 ? `Send ${teamMembers.length} invite${teamMembers.length !== 1 ? "s" : ""}` : "Send invites"}
@@ -1138,24 +1294,26 @@ function StepConfirm({
   finishError: string | null;
   onOpen: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
 
   if (accountKind === "personal") {
     return (
       <View style={sh.confirmContainer}>
-        <View style={[sh.confirmCheck, { backgroundColor: colors.primary }]}>
-          <Text style={sh.confirmCheckText}>✓</Text>
+        <View style={[sh.confirmCheck, { backgroundColor: colors.primary, borderRadius: shape.full }]}>
+          <Text style={[sh.confirmCheckText, { color: colors.onPrimary }]}>✓</Text>
         </View>
-        <Text style={[sh.confirmTitle, { color: colors.foreground }]}>You're all set</Text>
-        <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground }]}>
+        <Text style={[sh.confirmTitle, { color: colors.onSurface }]}>You're all set</Text>
+        <Text style={[sh.confirmSubtitle, { color: colors.onSurfaceVariant }]}>
           Your checklists are saved on this device. You can enable cloud sync anytime from Settings.
         </Text>
-        <TouchableOpacity
-          style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32, width: "100%" }]}
+        <Button
+          mode="contained"
           onPress={onOpen}
+          style={[sh.primaryBtn, { marginTop: 32, width: "100%", borderRadius: shape.md }]}
+          contentStyle={sh.primaryBtnContent}
         >
-          <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Open End Shift</Text>
-        </TouchableOpacity>
+          Open End Shift
+        </Button>
       </View>
     );
   }
@@ -1171,45 +1329,49 @@ function StepConfirm({
 
   return (
     <View style={sh.confirmContainer}>
-      <View style={[sh.confirmCheck, { backgroundColor: colors.primary }]}>
-        <Text style={sh.confirmCheckText}>✓</Text>
+      <View style={[sh.confirmCheck, { backgroundColor: colors.primary, borderRadius: shape.full }]}>
+        <Text style={[sh.confirmCheckText, { color: colors.onPrimary }]}>✓</Text>
       </View>
 
-      <Text style={[sh.confirmTitle, { color: colors.foreground }]}>You're all set</Text>
-      <Text style={[sh.confirmSubtitle, { color: colors.mutedForeground }]}>
+      <Text style={[sh.confirmTitle, { color: colors.onSurface }]}>You're all set</Text>
+      <Text style={[sh.confirmSubtitle, { color: colors.onSurfaceVariant }]}>
         {businessName} is ready to run its first shift.
       </Text>
 
       {visibleItems.length > 0 && (
-        <View style={[sh.confirmList, { borderColor: colors.border, backgroundColor: colors.card }]}>
-          <Text style={[sh.confirmListHeader, { color: colors.mutedForeground }]}>WHAT WE SET UP</Text>
-          {visibleItems.map((item) => (
-            <View key={item.label} style={sh.confirmListRow}>
-              <Text style={[sh.confirmListCheck, { color: colors.primary }]}>✓</Text>
-              <Text style={[sh.confirmListText, { color: colors.foreground }]}>{item.label}</Text>
-            </View>
-          ))}
-          {businessType === "single-unit" && visibleItems.length === 0 && (
-            <Text style={[sh.confirmListText, { color: colors.mutedForeground }]}>Single-unit setup</Text>
-          )}
-        </View>
+        <Card
+          mode="outlined"
+          style={[sh.confirmList, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow, borderRadius: shape.md }]}
+        >
+          <Card.Content>
+            <Text style={[sh.confirmListHeader, { color: colors.onSurfaceVariant }]}>WHAT WE SET UP</Text>
+            {visibleItems.map((item) => (
+              <View key={item.label} style={sh.confirmListRow}>
+                <Text style={[sh.confirmListCheck, { color: colors.primary }]}>✓</Text>
+                <Text style={[sh.confirmListText, { color: colors.onSurface }]}>{item.label}</Text>
+              </View>
+            ))}
+            {businessType === "single-unit" && visibleItems.length === 0 && (
+              <Text style={[sh.confirmListText, { color: colors.onSurfaceVariant }]}>Single-unit setup</Text>
+            )}
+          </Card.Content>
+        </Card>
       )}
 
       {finishError && (
-        <Text style={[sh.errorText, { color: colors.destructive ?? "#ef4444" }]}>{finishError}</Text>
+        <Text style={[sh.errorText, { color: colors.error }]}>{finishError}</Text>
       )}
 
-      <TouchableOpacity
-        style={[sh.primaryBtn, { backgroundColor: colors.primary, marginTop: 32, opacity: isFinishing ? 0.7 : 1 }]}
+      <Button
+        mode="contained"
         onPress={onOpen}
+        loading={isFinishing}
         disabled={isFinishing}
+        style={[sh.primaryBtn, { marginTop: 32, width: "100%", borderRadius: shape.md }]}
+        contentStyle={sh.primaryBtnContent}
       >
-        {isFinishing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={[sh.primaryBtnText, { color: colors.primaryForeground }]}>Open End Shift</Text>
-        )}
-      </TouchableOpacity>
+        Open End Shift
+      </Button>
     </View>
   );
 }
@@ -1219,7 +1381,7 @@ function StepConfirm({
 export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const colors = useMd();
   const { updateAppConfig } = useChecklist();
   const { setNoAuthMode } = useAuth();
   const {
@@ -1408,7 +1570,7 @@ export default function OnboardingScreen() {
     <View
       style={[
         sh.container,
-        { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom },
+        { backgroundColor: colors.surface, paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
       {step === "account-type" && (
@@ -1513,22 +1675,22 @@ const sh = StyleSheet.create({
   // Step header
   stepHeader: { marginBottom: 24, marginTop: 8 },
   stepTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
-  backBtn: { fontSize: 16, fontWeight: "500" },
+  backBtn: { ...typeStyle("labelLarge") },
   backPlaceholder: { width: 60 },
-  stepLabel: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase" },
-  stepTitle: { fontSize: 26, fontWeight: "700", marginBottom: 6 },
-  stepSubtitle: { fontSize: 14, lineHeight: 20 },
+  stepLabel: { ...typeStyle("labelSmall"), textTransform: "uppercase" },
+  stepTitle: { ...typeStyle("headlineSmall"), marginBottom: 6 },
+  stepSubtitle: { ...typeStyle("bodyMedium") },
 
   // Fields
-  label: { fontSize: 14, fontWeight: "600", marginTop: 16, marginBottom: 4 },
-  fieldHint: { fontSize: 12, marginBottom: 4, marginTop: 2 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 2 },
+  label: { ...typeStyle("labelLarge"), marginTop: 16, marginBottom: 4 },
+  fieldHint: { ...typeStyle("bodySmall"), marginBottom: 4, marginTop: 2 },
+  input: { ...typeStyle("bodyLarge"), borderWidth: 1, borderRadius: shape.md, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 2 },
   passwordRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   passwordInput: { flex: 1 },
   showToggle: { paddingVertical: 12, paddingHorizontal: 4 },
-  showToggleText: { fontSize: 14, fontWeight: "500" },
+  showToggleText: { ...typeStyle("labelLarge") },
   rulesBox: { gap: 3, marginTop: 6, marginBottom: 2 },
-  ruleText: { fontSize: 12 },
+  ruleText: { ...typeStyle("bodySmall") },
 
   // Account / business type options
   typeOption: {
@@ -1545,76 +1707,97 @@ const sh = StyleSheet.create({
     marginTop: 14,
   },
   typeOptionIcon: { fontSize: 22, marginTop: 2 },
-  typeOptionTitle: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
-  typeOptionDesc: { fontSize: 13, lineHeight: 18 },
-  typeOptionCheck: { fontSize: 18, fontWeight: "700", marginTop: 2 },
-  typeOptionArrow: { fontSize: 20, fontWeight: "300", alignSelf: "center" },
+  typeOptionTitle: { ...typeStyle("titleMedium"), marginBottom: 2 },
+  typeOptionDesc: { ...typeStyle("bodySmall") },
+  typeOptionCheck: { ...typeStyle("titleMedium"), fontFamily: "Inter_700Bold", marginTop: 2 },
+  typeOptionArrow: { fontSize: 20, alignSelf: "center" },
 
   // Buttons
   primaryBtn: { marginTop: 24, height: 52, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  primaryBtnText: { fontSize: 16, fontWeight: "600" },
-  skipBtn: { marginTop: 12, alignItems: "center", paddingVertical: 8 },
-  skipBtnText: { fontSize: 15 },
-  legalText: { fontSize: 12, textAlign: "center", marginTop: 16 },
+  primaryBtnText: { ...typeStyle("titleMedium") },
+  backBtnWrap: { marginLeft: -8 },
+  skipBtn: { marginTop: 12, alignItems: "center" },
+  skipBtnText: { ...typeStyle("labelLarge") },
+  legalText: { ...typeStyle("bodySmall"), textAlign: "center", marginTop: 16 },
 
   // Error
   errorBox: { borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 8 },
-  errorText: { fontSize: 14, fontWeight: "500" },
+  errorText: { ...typeStyle("bodyMedium") },
 
   // Regions step
   regionCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, marginBottom: 12 },
   regionHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  regionNum: { fontSize: 13, fontWeight: "600", width: 20 },
-  regionNameInput: { flex: 1, fontSize: 15, fontWeight: "600", borderBottomWidth: 1, paddingBottom: 4 },
+  regionNum: { ...typeStyle("labelLarge"), width: 20, textAlign: "center" },
+  regionNameInput: { flex: 1, marginBottom: -8 },
   deleteBtn: { fontSize: 18 },
   districtRow: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 4, paddingLeft: 28 },
   districtArrow: { fontSize: 13, width: 16 },
-  districtInput: { flex: 1, fontSize: 14, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 3 },
-  removeX: { fontSize: 20, fontWeight: "300", paddingHorizontal: 4 },
-  addDistrictRow: { paddingLeft: 44, marginTop: 6 },
-  addDistrictInput: { fontSize: 14, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 4 },
-  addRegionRow: { marginBottom: 8 },
-  addRegionInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
-  countLabel: { fontSize: 13, textAlign: "center", marginTop: 4, marginBottom: 4 },
-  regionSectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, marginTop: 16, marginBottom: 8 },
+  districtInput: { ...typeStyle("bodyMedium"), flex: 1, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 3 },
+  removeX: { fontSize: 20, paddingHorizontal: 4 },
+  addDistrictRow: { paddingLeft: 28, marginTop: 6 },
+  addDistrictInput: { flex: 1 },
+  addRegionRow: { marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 8 },
+  addRegionInput: { flex: 1 },
+  countLabel: { ...typeStyle("bodySmall"), textAlign: "center", marginTop: 4, marginBottom: 4 },
+  regionSectionLabel: { ...typeStyle("labelSmall"), marginTop: 16, marginBottom: 8 },
 
   // Locations step
   districtCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, marginBottom: 10 },
-  districtCardTitle: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+  districtCardTitle: { ...typeStyle("titleSmall"), marginBottom: 8 },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 3 },
   locationPin: { fontSize: 14 },
-  locationInput: { flex: 1, fontSize: 14, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 3 },
-  addLocationRow: { marginTop: 6 },
-  addLocationInput: { fontSize: 14, borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 4 },
-  emptyState: { borderWidth: 1, borderRadius: 12, padding: 20, alignItems: "center", marginBottom: 16 },
-  emptyStateText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  locationInput: { flex: 1, marginBottom: -8 },
+  addLocationRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 8 },
+  addLocationInput: { flex: 1, marginLeft: 22 },
+  emptyState: { borderWidth: 1, padding: 24, alignItems: "center", gap: 6, marginBottom: 16 },
+  emptyStateIcon: { fontSize: 32, marginBottom: 4 },
+  emptyStateTitle: { ...typeStyle("titleMedium") },
+  emptyStateText: { ...typeStyle("bodySmall"), textAlign: "center" },
 
   // Team step
-  teamHint: { fontSize: 13, lineHeight: 18, marginBottom: 16, fontStyle: "italic" },
+  teamHint: { ...typeStyle("bodySmall"), marginBottom: 16, fontStyle: "italic" },
   memberCard: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, marginBottom: 8 },
   memberAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  memberAvatarText: { fontSize: 15, fontWeight: "700" },
-  memberRole: { fontSize: 14, fontWeight: "600" },
-  memberEmail: { fontSize: 12, marginTop: 1 },
-  memberScope: { fontSize: 12, fontStyle: "italic" },
+  memberAvatarText: { ...typeStyle("titleMedium"), fontFamily: "Inter_700Bold" },
+  memberRole: { ...typeStyle("titleSmall") },
+  memberEmail: { ...typeStyle("bodySmall"), marginTop: 1 },
+  memberScope: { ...typeStyle("bodySmall"), fontStyle: "italic" },
   addMemberCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, marginBottom: 8 },
-  addMemberLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, marginBottom: 6, marginTop: 10 },
-  addMemberInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 4 },
+  addMemberLabel: { ...typeStyle("labelSmall"), marginBottom: 6, marginTop: 10 },
+  addMemberInput: { ...typeStyle("bodyMedium"), borderWidth: 1, borderRadius: shape.sm, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 4 },
   roleChips: { gap: 8, paddingVertical: 4 },
   roleChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  roleChipText: { fontSize: 13, fontWeight: "500" },
+  roleChipText: { ...typeStyle("labelLarge") },
   addMemberBtn: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 10, alignItems: "center", marginTop: 10 },
-  addMemberBtnText: { fontSize: 14, fontWeight: "600" },
+  addMemberBtnText: { ...typeStyle("titleSmall") },
 
   // Confirm step
   confirmContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
   confirmCheck: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  confirmCheckText: { fontSize: 32, color: "#fff", fontWeight: "700" },
-  confirmTitle: { fontSize: 28, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  confirmSubtitle: { fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 24 },
+  confirmCheckText: { fontSize: 32, fontFamily: "Inter_700Bold" },
+  confirmTitle: { ...typeStyle("headlineSmall"), marginBottom: 8, textAlign: "center" },
+  confirmSubtitle: { ...typeStyle("bodyLarge"), textAlign: "center", marginBottom: 24 },
   confirmList: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 16 },
-  confirmListHeader: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, marginBottom: 10 },
+  confirmListHeader: { ...typeStyle("labelSmall"), marginBottom: 10 },
   confirmListRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
-  confirmListCheck: { fontSize: 15, fontWeight: "700" },
-  confirmListText: { fontSize: 15 },
+  confirmListCheck: { ...typeStyle("bodyLarge"), fontFamily: "Inter_700Bold" },
+  confirmListText: { ...typeStyle("bodyLarge") },
+
+  // MD3 restyle additions
+  stepDotsRow: { flexDirection: "row", gap: 6, marginTop: 16, alignItems: "center" },
+  stepDot: { height: 6 },
+  primaryBtnContent: { height: 52 },
+  typeOptionContent: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  typeOptionIconTile: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  typeOptionIconText: { fontSize: 22 },
+  paperInput: { marginBottom: 2 },
+  regionNumChip: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
+  districtChipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingLeft: 28, marginTop: 4 },
+  districtChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4 },
+  districtChipInput: { ...typeStyle("labelLarge"), minWidth: 40, padding: 0 },
+  teamEmptyState: { borderWidth: 1, padding: 24, alignItems: "center", gap: 6 },
+  teamEmptyIcon: { fontSize: 32, marginBottom: 4 },
+  teamEmptyTitle: { ...typeStyle("titleMedium") },
+  teamEmptySubtitle: { ...typeStyle("bodySmall"), textAlign: "center" },
+  memberCardContent: { flexDirection: "row", alignItems: "center", gap: 12 },
 });

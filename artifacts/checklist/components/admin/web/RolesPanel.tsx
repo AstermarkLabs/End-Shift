@@ -19,7 +19,8 @@ import {
 import { RoleHierarchyModal } from "./RoleHierarchyModal";
 
 import { describeApiError } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 
 // ─── Rights metadata ──────────────────────────────────────────────────────────
 
@@ -99,11 +100,14 @@ const GROUP_ORDER = ["USERS", "ORGANIZATION", "CHECKLISTS", "REPORTING"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function roleBadgeColors(level: number): { bg: string; text: string; border: string } {
-  if (level >= 950) return { bg: "#FEF2F2", text: "#DC2626", border: "#FCA5A5" };
-  if (level >= 700) return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
-  if (level >= 400) return { bg: "#F0FDF4", text: "#15803D", border: "#86EFAC" };
-  return { bg: "#F8FAFC", text: "#64748B", border: "#CBD5E1" };
+function roleBadgeColors(
+  level: number,
+  colors: ReturnType<typeof useMd>,
+): { bg: string; text: string; border: string } {
+  if (level >= 950) return { bg: colors.errorContainer, text: colors.error, border: colors.error };
+  if (level >= 700) return { bg: colors.tertiaryContainer, text: colors.tertiary, border: colors.tertiary };
+  if (level >= 400) return { bg: colors.successContainer, text: colors.success, border: colors.success };
+  return { bg: colors.surfaceContainerHighest, text: colors.onSurfaceVariant, border: colors.outlineVariant };
 }
 
 function isLocked(role: Role): boolean {
@@ -123,10 +127,11 @@ function CheckCell({
   saving: boolean;
   onToggle: () => void;
 }) {
+  const colors = useMd();
   if (saving) {
     return (
       <View style={c.cell}>
-        <ActivityIndicator size="small" color="#DC2626" />
+        <ActivityIndicator size="small" color={colors.error} />
       </View>
     );
   }
@@ -134,8 +139,15 @@ function CheckCell({
   if (locked) {
     return (
       <View style={c.cell}>
-        <View style={[c.checkbox, checked ? c.checkboxCheckedLocked : c.checkboxUnchecked]}>
-          {checked && <Text style={{ color: "#DC2626", fontSize: 11, fontWeight: "700" }}>✓</Text>}
+        <View
+          style={[
+            c.checkbox,
+            checked
+              ? { backgroundColor: colors.errorContainer, borderColor: colors.error }
+              : { backgroundColor: "transparent", borderColor: colors.outlineVariant },
+          ]}
+        >
+          {checked && <Text style={{ color: colors.error, fontSize: 11, fontFamily: "Inter_700Bold" }}>✓</Text>}
         </View>
       </View>
     );
@@ -143,8 +155,15 @@ function CheckCell({
 
   return (
     <TouchableOpacity style={c.cell} onPress={onToggle} activeOpacity={0.7}>
-      <View style={[c.checkbox, checked ? c.checkboxChecked : c.checkboxUnchecked]}>
-        {checked && <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>✓</Text>}
+      <View
+        style={[
+          c.checkbox,
+          checked
+            ? { backgroundColor: colors.error, borderColor: colors.error }
+            : { backgroundColor: "transparent", borderColor: colors.outlineVariant },
+        ]}
+      >
+        {checked && <Text style={{ color: colors.onError, fontSize: 11, fontFamily: "Inter_700Bold" }}>✓</Text>}
       </View>
     </TouchableOpacity>
   );
@@ -161,7 +180,7 @@ export function RolesPanel({
   currentUser: Profile;
   onReload: () => void;
 }) {
-  const colors = useColors();
+  const colors = useMd();
   const isOwner = currentUser.role.name === "Owner";
   const [showHierarchy, setShowHierarchy] = useState(false);
 
@@ -237,17 +256,17 @@ export function RolesPanel({
       {/* Header */}
       <View style={{ marginBottom: 24, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
         <View>
-          <Text style={[r.title, { color: colors.foreground }]}>Roles & Permissions</Text>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 2 }}>
+          <Text style={[r.title, { color: colors.onSurface }]}>Roles & Permissions</Text>
+          <Text style={{ color: colors.onSurfaceVariant, fontSize: 14, marginTop: 2 }}>
             Control what each role can do across the app.
           </Text>
         </View>
         {isOwner && (
           <TouchableOpacity
             onPress={() => setShowHierarchy(true)}
-            style={[r.editHierarchyBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+            style={[r.editHierarchyBtn, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}
           >
-            <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: "600" }}>
+            <Text style={{ fontSize: 14, color: colors.onSurface, fontFamily: "Inter_600SemiBold" }}>
               Edit Hierarchy
             </Text>
           </TouchableOpacity>
@@ -255,16 +274,16 @@ export function RolesPanel({
       </View>
 
       {/* Matrix table */}
-      <View style={[r.matrix, { borderColor: colors.border, backgroundColor: colors.card }]}>
+      <View style={[r.matrix, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow }]}>
         {/* Column headers */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View>
             {/* Role header row */}
-            <View style={[r.headerRow, { borderBottomColor: colors.border }]}>
+            <View style={[r.headerRow, { borderBottomColor: colors.outlineVariant }]}>
               <View style={{ width: RIGHT_COL_WIDTH }} />
               {sortedRoles.map((role) => {
                 const locked = isLocked(role);
-                const { bg, text, border } = roleBadgeColors(role.level);
+                const { bg, text, border } = roleBadgeColors(role.level, colors);
                 return (
                   <View key={role.id} style={[r.roleHeaderCell, { width: ROLE_COL_WIDTH }]}>
                     <View
@@ -274,12 +293,12 @@ export function RolesPanel({
                         paddingVertical: 4,
                         borderRadius: 999,
                         borderWidth: 1,
-                        borderColor: locked ? "#FCA5A5" : border,
-                        backgroundColor: locked ? "#FEF2F2" : bg,
+                        borderColor: locked ? colors.error : border,
+                        backgroundColor: locked ? colors.errorContainer : bg,
                       }}
                     >
                       <Text
-                        style={{ fontSize: 12, fontWeight: "600", color: locked ? "#DC2626" : text }}
+                        style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: locked ? colors.error : text }}
                         numberOfLines={1}
                       >
                         {role.name}
@@ -289,7 +308,7 @@ export function RolesPanel({
                       style={{
                         fontSize: 11,
                         marginTop: 3,
-                        color: locked ? colors.mutedForeground : "transparent",
+                        color: locked ? colors.onSurfaceVariant : "transparent",
                       }}
                     >
                       🔒 locked
@@ -306,11 +325,11 @@ export function RolesPanel({
                 <View
                   style={[
                     r.groupRow,
-                    { borderBottomColor: colors.border, backgroundColor: colors.background },
+                    { borderBottomColor: colors.outlineVariant, backgroundColor: colors.surface },
                   ]}
                 >
                   <View style={{ width: RIGHT_COL_WIDTH, paddingLeft: 16 }}>
-                    <Text style={[r.groupLabel, { color: colors.mutedForeground }]}>{group}</Text>
+                    <Text style={[r.groupLabel, { color: colors.onSurfaceVariant }]}>{group}</Text>
                   </View>
                   {sortedRoles.map((role) => (
                     <View key={role.id} style={{ width: ROLE_COL_WIDTH }} />
@@ -327,7 +346,7 @@ export function RolesPanel({
                       style={[
                         r.rightRow,
                         {
-                          borderBottomColor: colors.border,
+                          borderBottomColor: colors.outlineVariant,
                           borderBottomWidth: isLastInGroup ? 0 : 1,
                         },
                       ]}
@@ -337,10 +356,10 @@ export function RolesPanel({
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                           <Text style={{ fontSize: 18, width: 24 }}>{meta.icon}</Text>
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontWeight: "600", color: colors.foreground, fontSize: 14 }}>
+                            <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.onSurface, fontSize: 14 }}>
                               {meta.label}
                             </Text>
-                            <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 1 }}>
+                            <Text style={{ color: colors.onSurfaceVariant, fontSize: 12, marginTop: 1 }}>
                               {meta.description}
                             </Text>
                           </View>
@@ -372,7 +391,7 @@ export function RolesPanel({
       </View>
 
       {/* Footer note */}
-      <Text style={{ color: colors.mutedForeground, fontSize: 13, marginTop: 16 }}>
+      <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, marginTop: 16 }}>
         🔒 Owner has all permissions and cannot be modified.
       </Text>
     </ScrollView>
@@ -382,7 +401,7 @@ export function RolesPanel({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const r = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: "700" },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold" },
   matrix: {
     borderWidth: 1,
     borderRadius: 12,
@@ -416,7 +435,7 @@ const r = StyleSheet.create({
   },
   groupLabel: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -441,16 +460,6 @@ const c = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1.5,
   },
-  checkboxChecked: {
-    backgroundColor: "#DC2626",
-    borderColor: "#DC2626",
-  },
-  checkboxCheckedLocked: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FCA5A5",
-  },
-  checkboxUnchecked: {
-    backgroundColor: "transparent",
-    borderColor: "#D1D5DB",
-  },
+  // Checkbox fill/border come from the theme at render time (see PermissionCell) —
+  // a static sheet would freeze light-scheme values and break dark mode.
 });

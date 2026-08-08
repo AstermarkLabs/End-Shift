@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { IconButton } from "react-native-paper";
 import {
   createChecklist,
   createChecklistTask,
@@ -24,7 +25,8 @@ import {
   importChecklistFromPdf,
   importChecklistFromSpreadsheet,
 } from "@workspace/api-client-react";
-import { useColors } from "@/hooks/useColors";
+import shape from "@/constants/shape";
+import { useMd } from "@/theme/useMd";
 import { useChecklist } from "@/context/ChecklistContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -101,7 +103,7 @@ function getTemplateUrl(): string {
 export default function ImportChecklistScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const md = useMd();
   const { onChecklistImported } = useChecklist();
 
   const [stage, setStage] = useState<Stage>("pick");
@@ -113,7 +115,7 @@ export default function ImportChecklistScreen() {
   const [showHeadingTip, setShowHeadingTip] = useState(false);
   const [skippedRows, setSkippedRows] = useState(0);
 
-  const styles = makeStyles(colors);
+  const styles = makeStyles(md);
   const config = IMPORT_CONFIG[importType];
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -293,11 +295,9 @@ export default function ImportChecklistScreen() {
         ]}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>✕</Text>
-          </TouchableOpacity>
+          <IconButton icon="close" iconColor={md.onSurfaceVariant} size={20} onPress={() => router.back()} style={styles.closeBtn} />
           <Text style={styles.headerTitle}>Import Checklist</Text>
-          <View style={styles.closeBtn} />
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView
@@ -318,7 +318,7 @@ export default function ImportChecklistScreen() {
 
           {uploading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color={colors.tint} />
+              <ActivityIndicator size="large" color={md.primary} />
               <Text style={styles.loadingText}>{config.loadingText}</Text>
             </View>
           ) : (
@@ -329,8 +329,8 @@ export default function ImportChecklistScreen() {
               >
                 <Text style={styles.pickOptionIcon}>📄</Text>
                 <View style={styles.pickOptionText}>
-                  <Text style={[styles.pickOptionLabel, { color: colors.text }]}>PDF</Text>
-                  <Text style={[styles.pickOptionDesc, { color: colors.mutedForeground }]}>
+                  <Text style={[styles.pickOptionLabel, { color: md.onSurface }]}>PDF</Text>
+                  <Text style={[styles.pickOptionDesc, { color: md.onSurfaceVariant }]}>
                     Any checklist PDF — we'll scan and extract tasks automatically.
                   </Text>
                 </View>
@@ -342,10 +342,10 @@ export default function ImportChecklistScreen() {
               >
                 <Text style={styles.pickOptionIcon}>📝</Text>
                 <View style={styles.pickOptionText}>
-                  <Text style={[styles.pickOptionLabel, { color: colors.text }]}>
+                  <Text style={[styles.pickOptionLabel, { color: md.onSurface }]}>
                     Word Document (.docx)
                   </Text>
-                  <Text style={[styles.pickOptionDesc, { color: colors.mutedForeground }]}>
+                  <Text style={[styles.pickOptionDesc, { color: md.onSurfaceVariant }]}>
                     Headings become sections; bullet points and list items become tasks.
                   </Text>
                 </View>
@@ -358,10 +358,10 @@ export default function ImportChecklistScreen() {
                 >
                   <Text style={styles.pickOptionIcon}>📊</Text>
                   <View style={styles.pickOptionText}>
-                    <Text style={[styles.pickOptionLabel, { color: colors.text }]}>
+                    <Text style={[styles.pickOptionLabel, { color: md.onSurface }]}>
                       Spreadsheet (.xlsx / .xls / .csv)
                     </Text>
-                    <Text style={[styles.pickOptionDesc, { color: colors.mutedForeground }]}>
+                    <Text style={[styles.pickOptionDesc, { color: md.onSurfaceVariant }]}>
                       Columns: <Text style={styles.mono}>section</Text>,{" "}
                       <Text style={styles.mono}>task</Text>,{" "}
                       <Text style={styles.mono}>required</Text>,{" "}
@@ -376,10 +376,10 @@ export default function ImportChecklistScreen() {
                   style={styles.previewScroll}
                   contentContainerStyle={styles.previewScrollContent}
                 >
-                  <View style={[styles.previewTable, { borderColor: colors.border }]}>
-                    <View style={[styles.previewRow, styles.previewRowHeader, { backgroundColor: colors.muted ?? colors.secondary, borderBottomColor: colors.border }]}>
+                  <View style={[styles.previewTable, { borderColor: md.outlineVariant }]}>
+                    <View style={[styles.previewRow, styles.previewRowHeader, { backgroundColor: md.surfaceContainerHighest, borderBottomColor: md.outlineVariant }]}>
                       {TEMPLATE_PREVIEW_COLS.map((col) => (
-                        <Text key={col} style={[styles.previewCell, styles.previewCellHeader, { color: colors.mutedForeground }]}>
+                        <Text key={col} style={[styles.previewCell, styles.previewCellHeader, { color: md.onSurfaceVariant }]}>
                           {col}
                         </Text>
                       ))}
@@ -389,14 +389,14 @@ export default function ImportChecklistScreen() {
                         key={i}
                         style={[
                           styles.previewRow,
-                          i < TEMPLATE_PREVIEW_ROWS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                          i < TEMPLATE_PREVIEW_ROWS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: md.outlineVariant },
                         ]}
                       >
                         {row.map((cell, j) => (
                           <Text
                             key={j}
                             numberOfLines={1}
-                            style={[styles.previewCell, { color: cell ? colors.text : colors.mutedForeground }]}
+                            style={[styles.previewCell, { color: cell ? md.onSurface : md.onSurfaceVariant }]}
                           >
                             {cell || "—"}
                           </Text>
@@ -410,7 +410,7 @@ export default function ImportChecklistScreen() {
                   <TouchableOpacity
                     onPress={() => { void Linking.openURL(getTemplateUrl()); }}
                   >
-                    <Text style={[styles.templateLink, { color: colors.tint }]}>
+                    <Text style={[styles.templateLink, { color: md.primary }]}>
                       Download CSV template ↓
                     </Text>
                   </TouchableOpacity>
@@ -419,7 +419,7 @@ export default function ImportChecklistScreen() {
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={styles.shareIconBtn}
                   >
-                    <Text style={[styles.shareIcon, { color: templateCopied ? colors.tint : colors.mutedForeground }]}>
+                    <Text style={[styles.shareIcon, { color: templateCopied ? md.primary : md.onSurfaceVariant }]}>
                       {templateCopied ? "Copied!" : "⎘"}
                     </Text>
                   </TouchableOpacity>
@@ -446,15 +446,16 @@ export default function ImportChecklistScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity
+        <IconButton
+          icon="close"
+          iconColor={md.onSurfaceVariant}
+          size={20}
           onPress={() => setStage("pick")}
-          style={styles.closeBtn}
           disabled={creating}
-        >
-          <Text style={styles.closeBtnText}>✕</Text>
-        </TouchableOpacity>
+          style={styles.closeBtn}
+        />
         <Text style={styles.headerTitle}>Review Tasks</Text>
-        <View style={styles.closeBtn} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -518,7 +519,7 @@ export default function ImportChecklistScreen() {
           value={checklistName}
           onChangeText={setChecklistName}
           placeholder="Enter checklist name"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={md.onSurfaceVariant}
           editable={!creating}
         />
 
@@ -593,7 +594,7 @@ export default function ImportChecklistScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom || 16 }]}>
         {creating ? (
           <View style={styles.creatingRow}>
-            <ActivityIndicator size="small" color={colors.tint} />
+            <ActivityIndicator size="small" color={md.primary} />
             <Text style={styles.creatingText}>Creating checklist…</Text>
           </View>
         ) : (
@@ -618,37 +619,29 @@ export default function ImportChecklistScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-function makeStyles(colors: ReturnType<typeof useColors>) {
+function makeStyles(md: ReturnType<typeof useMd>) {
   return StyleSheet.create({
     fullScreen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: md.surface,
     },
     header: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingHorizontal: 8,
+      paddingVertical: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-      backgroundColor: colors.card,
+      borderBottomColor: md.outlineVariant,
+      backgroundColor: md.surfaceContainerLow,
     },
     headerTitle: {
       fontSize: 17,
-      fontWeight: "600",
-      color: colors.text,
       fontFamily: "Inter_600SemiBold",
+      color: md.onSurface,
     },
     closeBtn: {
-      width: 32,
-      height: 32,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    closeBtnText: {
-      fontSize: 18,
-      color: colors.mutedForeground,
+      margin: 0,
     },
 
     // Pick stage
@@ -664,14 +657,13 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     pickTitle: {
       fontSize: 22,
-      fontWeight: "700",
-      color: colors.text,
-      textAlign: "center",
       fontFamily: "Inter_700Bold",
+      color: md.onSurface,
+      textAlign: "center",
     },
     pickSubtitle: {
       fontSize: 15,
-      color: colors.mutedForeground,
+      color: md.onSurfaceVariant,
       textAlign: "center",
       lineHeight: 22,
     },
@@ -681,10 +673,10 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       marginTop: 8,
     },
     pickOption: {
-      backgroundColor: colors.card,
-      borderRadius: 14,
+      backgroundColor: md.surface,
+      borderRadius: shape.lg,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
+      borderColor: md.outlineVariant,
       overflow: "hidden",
     },
     pickOptionPressArea: {
@@ -703,7 +695,6 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     pickOptionLabel: {
       fontSize: 15,
-      fontWeight: "600",
       fontFamily: "Inter_600SemiBold",
     },
     pickOptionDesc: {
@@ -723,7 +714,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     templateLink: {
       fontSize: 13,
-      fontWeight: "500",
+      fontFamily: "Inter_500Medium",
       textDecorationLine: "underline",
     },
     shareIconBtn: {
@@ -731,7 +722,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     shareIcon: {
       fontSize: 13,
-      fontWeight: "500",
+      fontFamily: "Inter_500Medium",
     },
 
     // Template preview table
@@ -745,7 +736,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     previewTable: {
       borderWidth: StyleSheet.hairlineWidth,
-      borderRadius: 8,
+      borderRadius: shape.sm,
       overflow: "hidden",
       flexDirection: "column",
     },
@@ -763,7 +754,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     },
     previewCellHeader: {
-      fontWeight: "700",
+      fontFamily: "Inter_700Bold",
       letterSpacing: 0.2,
     },
     loadingBox: {
@@ -773,36 +764,35 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     loadingText: {
       fontSize: 15,
-      color: colors.mutedForeground,
+      color: md.onSurfaceVariant,
     },
     errorBox: {
-      backgroundColor: colors.destructive + "22",
-      borderRadius: 10,
+      backgroundColor: md.errorContainer,
+      borderRadius: shape.md,
       padding: 14,
       width: "100%",
     },
     errorText: {
-      color: colors.destructive,
+      color: md.onErrorContainer,
       fontSize: 14,
       textAlign: "center",
     },
 
     // Skipped-rows warning banner (formula errors)
     skippedRowsBox: {
-      backgroundColor: "#F59E0B18",
-      borderRadius: 10,
+      backgroundColor: md.tertiaryContainer,
+      borderRadius: shape.md,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: "#F59E0B88",
+      borderColor: md.tertiary,
       padding: 12,
       marginBottom: 8,
     },
     skippedRowsText: {
       fontSize: 13,
-      color: colors.text,
+      color: md.onTertiaryContainer,
       lineHeight: 19,
     },
     skippedRowsBold: {
-      fontWeight: "700",
       fontFamily: "Inter_700Bold",
     },
 
@@ -810,10 +800,10 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     headingTipBox: {
       flexDirection: "row",
       alignItems: "flex-start",
-      backgroundColor: colors.tint + "18",
-      borderRadius: 10,
+      backgroundColor: md.primaryContainer,
+      borderRadius: shape.md,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.tint + "55",
+      borderColor: md.primary,
       padding: 12,
       marginBottom: 8,
       gap: 10,
@@ -821,11 +811,10 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     headingTipText: {
       flex: 1,
       fontSize: 13,
-      color: colors.text,
+      color: md.onPrimaryContainer,
       lineHeight: 19,
     },
     headingTipBold: {
-      fontWeight: "700",
       fontFamily: "Inter_700Bold",
     },
     headingTipDismiss: {
@@ -833,7 +822,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     headingTipDismissText: {
       fontSize: 14,
-      color: colors.mutedForeground,
+      color: md.onPrimaryContainer,
     },
 
     // Review stage
@@ -846,36 +835,34 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     reviewHint: {
       fontSize: 13,
-      color: colors.mutedForeground,
+      color: md.onSurfaceVariant,
       marginBottom: 8,
       lineHeight: 18,
     },
     nameLabel: {
       fontSize: 13,
-      fontWeight: "600",
-      color: colors.mutedForeground,
-      marginBottom: 4,
       fontFamily: "Inter_600SemiBold",
+      color: md.onSurfaceVariant,
+      marginBottom: 4,
     },
     nameInput: {
-      backgroundColor: colors.card,
-      borderRadius: 10,
+      backgroundColor: md.surface,
+      borderRadius: shape.md,
       paddingHorizontal: 14,
       paddingVertical: 12,
       fontSize: 16,
-      color: colors.text,
+      color: md.onSurface,
       marginBottom: 16,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
+      borderColor: md.outlineVariant,
     },
     sectionBlock: {
       marginBottom: 12,
     },
     subsectionLabel: {
       fontSize: 11,
-      fontWeight: "600",
       fontFamily: "Inter_600SemiBold",
-      color: colors.mutedForeground,
+      color: md.onSurfaceVariant,
       textTransform: "uppercase",
       letterSpacing: 0.4,
       paddingHorizontal: 12,
@@ -884,18 +871,17 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     sectionTitle: {
       fontSize: 13,
-      fontWeight: "700",
-      color: colors.tint,
+      fontFamily: "Inter_700Bold",
+      color: md.primary,
       marginBottom: 6,
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      fontFamily: "Inter_700Bold",
     },
     taskRow: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.card,
-      borderRadius: 10,
+      backgroundColor: md.surfaceContainerLow,
+      borderRadius: shape.md,
       paddingHorizontal: 12,
       paddingVertical: 10,
       marginBottom: 4,
@@ -907,36 +893,36 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     taskCheckboxIcon: {
       fontSize: 20,
-      color: colors.tint,
+      color: md.primary,
     },
     taskText: {
       flex: 1,
       fontSize: 14,
-      color: colors.text,
+      color: md.onSurface,
       lineHeight: 20,
     },
     taskTextDimmed: {
-      color: colors.mutedForeground,
+      color: md.onSurfaceVariant,
       textDecorationLine: "line-through",
     },
     reqBadge: {
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 6,
+      borderRadius: shape.xs,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: md.outlineVariant,
     },
     reqBadgeActive: {
-      backgroundColor: colors.destructive + "22",
-      borderColor: colors.destructive,
+      backgroundColor: md.secondaryContainer,
+      borderColor: md.secondary,
     },
     reqBadgeText: {
       fontSize: 11,
-      color: colors.mutedForeground,
-      fontWeight: "500",
+      color: md.onSurfaceVariant,
+      fontFamily: "Inter_500Medium",
     },
     reqBadgeTextActive: {
-      color: colors.destructive,
+      color: md.onSecondaryContainer,
     },
     reqBadgePlaceholder: {
       width: 64,
@@ -945,13 +931,13 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     // Footer
     footer: {
       padding: 16,
-      backgroundColor: colors.card,
+      backgroundColor: md.surfaceContainerLow,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
+      borderTopColor: md.outlineVariant,
     },
     createBtn: {
-      backgroundColor: colors.tint,
-      borderRadius: 12,
+      backgroundColor: md.primary,
+      borderRadius: shape.full,
       paddingVertical: 14,
       alignItems: "center",
     },
@@ -959,9 +945,8 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       opacity: 0.4,
     },
     createBtnText: {
-      color: "#fff",
+      color: md.onPrimary,
       fontSize: 16,
-      fontWeight: "600",
       fontFamily: "Inter_600SemiBold",
     },
     creatingRow: {
@@ -973,7 +958,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     creatingText: {
       fontSize: 15,
-      color: colors.mutedForeground,
+      color: md.onSurfaceVariant,
     },
   });
 }
