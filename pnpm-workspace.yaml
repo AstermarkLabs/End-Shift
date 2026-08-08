@@ -3,12 +3,9 @@ packages:
   - lib/*
   - lib/integrations/*
   - scripts
-
 allowBuilds:
   esbuild: true
-
 autoInstallPeers: false
-
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
   '@replit/vite-plugin-dev-banner': ^0.1.1
@@ -32,19 +29,15 @@ catalog:
   vite: ^7.3.2
   wouter: ^3.3.5
   zod: 3.25.76
-
 minimumReleaseAge: 1440
-
 minimumReleaseAgeExclude:
   - '@replit/*'
   - stripe-replit-sync
-
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
   - msw
   - unrs-resolver
-
 overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   supports-color: ^8.1.1
@@ -97,7 +90,6 @@ overrides:
   esbuild>@esbuild/win32-arm64: '-'
   esbuild>@esbuild/win32-ia32: '-'
   esbuild>@esbuild/win32-x64: '-'
-  fast-uri: ^3.1.1
   jest-util>picomatch: ^2.3.2
   lightningcss>lightningcss-android-arm64: '-'
   lightningcss>lightningcss-darwin-arm64: '-'
@@ -141,3 +133,4 @@ overrides:
   rollup>@rollup/rollup-win32-x64-msvc: '-'
   tinyglobby>picomatch: ^4.0.4
   vite>picomatch: ^4.0.4
+  fast-uri: 3.1.5
