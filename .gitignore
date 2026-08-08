@@ -49,6 +49,7 @@ Thumbs.db
 .local/
 
 graphify-out/cache
+.codex
 
 # Local secrets (never commit)
 *.secret
